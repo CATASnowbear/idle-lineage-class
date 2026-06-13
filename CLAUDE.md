@@ -8,15 +8,27 @@
 
 ## 「合併原版」= 從原作者站台抓最新 `index.html` 更新本專案
 
-> **已自動化**:`.github/workflows/sync-upstream.yml` 會每天(+ 可手動)自動跑下面這套流程
-> (腳本 `scripts/sync-upstream.mjs`),抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖,
-> 再用 `scripts/smoke-hooks.mjs`(Playwright)驗三支外掛 `hooks OK`,**通過才自動 commit/push**。
+> **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
+> ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖,
+> 再用 `scripts/smoke-hooks.mjs`(Playwright)驗三支外掛 `hooks OK`,**通過才自動 commit/push**;
 > 掛點被原作者改壞時不會推壞版本,改開一個 issue 通知人工處理。
-> 所以平常原作者更新會自己同步;**只有 issue 跳出來(外掛掛點失效)時才需要手動跑下面這套並修掛點**。
-> Linux runner 上中文檔名可直接用 URL 抓,不必像本機那樣走 blob SHA。
 
-當我(使用者)說「**合併原版**」「**同步原版**」「**更新原版**」之類的指令時(手動流程,也是自動化失效時的後援),流程如下。
-原則:原版整份覆蓋 `index.html` + 補回外掛 + 補新圖,我們從不改動原作者的遊戲碼。
+### 使用者說「合併原版 / 同步原版 / 更新原版」時 → 先用 GitHub Action,不要急著手動
+
+**第一步永遠是直接觸發那支 workflow**,因為它做的就是完整合併流程、且在 Linux 上更穩(中文檔名直接用 URL,不必走 blob SHA):
+```bash
+gh workflow run sync-upstream.yml --ref main
+# 等幾秒拿到 run id,再盯著跑完
+gh run list --workflow=sync-upstream.yml --limit 1 --json databaseId --jq '.[0].databaseId'
+gh run watch <run_id>   # 或輪詢 gh run view <run_id> --json status,conclusion
+```
+跑完後看結果回報使用者:
+- **changed=false**:原作者沒更新,什麼都不用做。
+- **跑成功且有推 commit**:同步完成,GitHub Pages 會自動重建;`git pull --ff-only` 把本機同步回來。
+- **開了 issue(外掛掛點失效)**:原作者改了 DOM 害外掛掛不上 → 這時**才**走下面的手動流程,重點是去修「失效的外掛掛點」(改 id / DOM 選擇器),不只是重貼。
+
+> 只有在 workflow 不能用(沒有 `gh` 權限、Actions 被停、或要 debug 合併本身)時,才整套手動跑。手動流程如下,
+> 原則:原版整份覆蓋 `index.html` + 補回外掛 + 補新圖,我們從不改動原作者的遊戲碼。
 
 ### 1. 抓原版 `index.html`(放暫存區,別直接覆蓋)
 ```bash
