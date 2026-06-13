@@ -39,6 +39,8 @@
     colCenter.classList.add('m-col-center');
     colRight.classList.add('m-col-right');
 
+    ensureViewportFit();   // 開 viewport-fit=cover,讓 env(safe-area-inset-*) 真的有值
+    trackAppHeight();      // 量真實可視高度寫進 --app-h,蓋掉不可靠的 100vh
     injectCSS();
     var strip = buildStatusStrip();
     gs.insertBefore(strip, gs.firstChild);
@@ -199,6 +201,31 @@
     }
   }
 
+  // --- 修正手機瀏覽器「上下工具列 / 瀏海 / 手勢條」相關的視口問題 ----------------
+  // 1) 補 viewport-fit=cover:沒有它,iOS/Android 的 env(safe-area-inset-*) 一律是 0,
+  //    nav 的 padding-bottom 形同虛設,會被底部手勢條/工具列蓋住。只追加這個屬性,不動原本內容。
+  function ensureViewportFit() {
+    var m = document.querySelector('meta[name="viewport"]');
+    if (!m) {
+      m = document.createElement('meta');
+      m.setAttribute('name', 'viewport');
+      m.setAttribute('content', 'width=device-width, initial-scale=1.0');
+      document.head.appendChild(m);
+    }
+    var c = m.getAttribute('content') || '';
+    if (!/viewport-fit/.test(c)) m.setAttribute('content', c.replace(/\s+$/, '') + ', viewport-fit=cover');
+  }
+
+  // 2) 把「實際可視高度」(已扣掉手機瀏覽器上下工具列)寫進 --app-h。
+  //    100vh 在手機是「工具列收起時」的高度,比當下可視區高 → 底部 nav 被頂到工具列底下看不到。
+  //    window.innerHeight 反映當下可視高度,且涵蓋不支援 dvh 的舊瀏覽器,比 100dvh 更可靠。
+  function trackAppHeight() {
+    function set() { document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }
+    set();
+    window.addEventListener('resize', set);
+    window.addEventListener('orientationchange', function () { setTimeout(set, 250); });
+  }
+
   // --- 注入手機版 CSS(全部掛在 body.m-mobile 之下)--------------------------
   function injectCSS() {
     if (document.getElementById('m-style')) return;
@@ -206,12 +233,12 @@
       '#m-nav{display:none;}',
 
       'body.m-mobile{padding:0 !important;}',
-      'body.m-mobile #game-screen{flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;margin:0 !important;padding:0 !important;}',
+      'body.m-mobile #game-screen{flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
 
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
       '#m-status{display:none;}',
       'body.m-mobile #status-panel{display:none !important;}',
-      'body.m-mobile #m-status{display:flex !important;flex:0 0 auto !important;align-items:center;flex-wrap:wrap;gap:1px 14px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;}',
+      'body.m-mobile #m-status{display:flex !important;flex:0 0 auto !important;align-items:center;flex-wrap:wrap;gap:1px 14px;padding:calc(7px + env(safe-area-inset-top,0px)) calc(12px + env(safe-area-inset-right,0px)) 9px calc(12px + env(safe-area-inset-left,0px));position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;}',
       'body.m-mobile #m-status .ms-seg{white-space:nowrap;}',
       'body.m-mobile #m-status #ms-lv{color:#fff;font-size:15px;}',
       'body.m-mobile #m-status .ms-hp{color:#f87171;font-weight:bold;}',
@@ -227,7 +254,7 @@
       'body.m-mobile.mview-bag .m-col-right{display:flex !important;}',
 
       /* 底部導覽列 */
-      'body.m-mobile #m-nav{display:flex !important;flex:0 0 auto !important;height:56px;padding-bottom:env(safe-area-inset-bottom,0);background:#0f172a;border-top:1px solid #334155;}',
+      'body.m-mobile #m-nav{display:flex !important;flex:0 0 auto !important;box-sizing:content-box !important;height:56px;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);background:#0f172a;border-top:1px solid #334155;}',
       'body.m-mobile #m-nav button{flex:1;background:transparent;border:none;color:#94a3b8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;font-family:inherit;}',
       'body.m-mobile #m-nav button.m-active{color:#fcd34d;background:#1e293b;}',
       'body.m-mobile #m-nav button:active{background:#334155;}',
