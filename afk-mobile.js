@@ -172,12 +172,13 @@
     function buildNav() {
       var n = document.createElement('div');
       n.id = 'm-nav';
-      [['battle', '⚔️', '戰鬥', 'view'], ['config', '⚙️', '設定', 'view'], ['bag', '🎒', '背包', 'view'], ['log', '📜', '日誌', 'log']].forEach(function (it) {
+      [['battle', '⚔️', '戰鬥', 'view'], ['config', '⚙️', '設定', 'view'], ['bag', '🎒', '背包', 'view'], ['log', '📜', '日誌', 'log'], ['logout', '🚪', '登出', 'logout']].forEach(function (it) {
         var b = document.createElement('button');
         b.type = 'button';
         b.setAttribute('data-nav', it[0]);
         b.innerHTML = '<span style="font-size:20px;line-height:1">' + it[1] + '</span><span style="font-size:11px;line-height:1.2">' + it[2] + '</span>';
         if (it[3] === 'view') { b.setAttribute('data-v', it[0]); b.addEventListener('click', function () { setView(it[0]); }); }
+        else if (it[3] === 'logout') { b.addEventListener('click', doLogout); }
         else { b.addEventListener('click', function () { toggleLog(); }); }
         n.appendChild(b);
       });
@@ -227,6 +228,15 @@
       if (typeof updateUI === 'function') updateUI();
       if (typeof saveGame === 'function') saveGame();
     } catch (e) { console.warn('[AFK-mobile] 取名失敗:', e); }
+  }
+
+  // --- 登出回首頁:先記下離線錨點(時間+當前狩獵地圖),再 reload 回到開始選單 ----------------
+  //   用 reload 而非手動拆遊戲狀態:最乾淨、天然回首頁,且離線結算下次載入該角色時自然觸發。
+  //   手機 beforeunload 常不觸發,所以先主動呼叫外掛的 stamp() 把錨點落地保險。
+  function doLogout() {
+    if (!window.confirm('登出後會開始離線掛機(上限 24 小時),確定回首頁?')) return;
+    try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}
+    try { location.reload(); } catch (e) {}
   }
 
   // --- 創角面板手機化:原作是 flex-row + 一堆固定寬高,手機會爆寬。標記關鍵子層讓 CSS 改直向堆疊 ---
