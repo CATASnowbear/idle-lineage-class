@@ -257,14 +257,16 @@
 
       /* 戰鬥/系統日誌:底部浮動面板(從導覽列「日誌」開,浮在畫面上,不擠壓戰鬥畫面)*/
       '#m-log-sheet{display:none;}',
-      'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));height:45dvh;height:45vh;z-index:50;flex-direction:column;background:#0f172a;border-top:2px solid #475569;box-shadow:0 -12px 34px rgba(0,0,0,.6);}',
+      /* 日誌面板:表頭半透明(讓底下怪物血條透出來),內文維持不透明保持可讀。
+         所以 sheet 本身不上底色,底色只給內文 body;表頭/按鈕用半透明底 + 模糊。 */
+      'body.m-mobile #m-log-sheet{display:none;position:fixed;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom,0px));height:45dvh;height:45vh;z-index:50;flex-direction:column;background:transparent;border-top:2px solid #475569;box-shadow:0 -12px 34px rgba(0,0,0,.6);}',
       'body.m-mobile.mlog-open #m-log-sheet{display:flex !important;}',
-      'body.m-mobile #m-log-head{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #334155;}',
-      'body.m-mobile #m-log-head button[data-l]{flex:1;padding:8px 4px;border:1px solid #334155;background:#1e293b;color:#94a3b8;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;}',
-      'body.m-mobile #m-log-head button[data-l].m-active{background:#334155;color:#fcd34d;border-color:#eab308;}',
-      'body.m-mobile #m-log-close{flex:0 0 auto;width:40px;height:36px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
-      'body.m-mobile #m-log-close:active{background:#475569;}',
-      'body.m-mobile #m-log-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;}',
+      'body.m-mobile #m-log-head{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:7px 8px;border-bottom:1px solid #334155;background:rgba(15,23,42,0.45);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}',
+      'body.m-mobile #m-log-head button[data-l]{flex:1;padding:8px 4px;border:1px solid rgba(51,65,85,0.7);background:rgba(30,41,59,0.55);color:#cbd5e1;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;}',
+      'body.m-mobile #m-log-head button[data-l].m-active{background:rgba(51,65,85,0.72);color:#fcd34d;border-color:#eab308;}',
+      'body.m-mobile #m-log-close{flex:0 0 auto;width:40px;height:36px;border:1px solid rgba(51,65,85,0.7);background:rgba(30,41,59,0.55);color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
+      'body.m-mobile #m-log-close:active{background:rgba(71,85,105,0.7);}',
+      'body.m-mobile #m-log-body{flex:1 1 auto;min-height:0;display:flex;overflow:hidden;background:#0f172a;}',
       'body.m-mobile #m-log-body #combat-log-panel,body.m-mobile #m-log-body .m-syslog{flex:1 1 auto !important;width:100%;height:auto !important;min-height:0 !important;margin:0 !important;border-radius:0 !important;}',
       'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
       'body.m-mobile.mlog-combat #m-log-body .m-syslog{display:none !important;}',
