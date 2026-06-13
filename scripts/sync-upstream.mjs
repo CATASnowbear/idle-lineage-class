@@ -23,6 +23,7 @@ const rawUrl = (p) => `https://raw.githubusercontent.com/${UPSTREAM_USER}/${REPO
 const PLUGINS = [
   { file: 'afk-offline.js', comment: '離線掛機外掛(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-mobile.js',  comment: '手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-dex.js',     comment: '怪物/掉落查詢外掛(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {
