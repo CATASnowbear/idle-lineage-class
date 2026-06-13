@@ -195,9 +195,15 @@
 
     var after = snapshot();
 
-    // 結算完回到村莊甦醒(符合遊戲讀檔慣例:補滿 HP/MP、清除異常、確保存活)
+    // 結算後落點:陣亡(或拿不到狩獵圖)→ 回村莊甦醒;存活 → 接回原本掛機的狩獵圖繼續掛。
+    // 回狩獵圖前先補滿 HP/MP(等同「甦醒」),避免一上圖就低血暴斃。
     player.dead = false;
-    gotoMap(homeTown());
+    if (!died && huntMap) {
+      try { if (player.mhp) player.hp = player.mhp; if (player.mmp) player.mp = player.mmp; } catch (e) {}
+      gotoMap(huntMap);
+    } else {
+      gotoMap(homeTown());
+    }
     state.ff = prevFf0; state.inTick = prevInTick0;
 
     // 重啟 live loop(startGameTimers 內含去重,且重設 _loopLast=null → 不會把結算花掉的真實秒數再補一次)
