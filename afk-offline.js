@@ -106,7 +106,18 @@
     return { gold: player.gold || 0, exp: player.exp || 0, lv: player.lv || 0, inv: inv };
   }
   function fmt(n) { try { return (n || 0).toLocaleString(); } catch (e) { return '' + n; } }
-  function summarize(before, after, doneTicks, died) {
+  // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
+  function mapName(id) {
+    try {
+      if (id && typeof MAP_CATEGORIES !== 'undefined') {
+        for (var c in MAP_CATEGORIES) {
+          for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
+        }
+      }
+    } catch (e) {}
+    return id || '?';
+  }
+  function summarize(before, after, doneTicks, died, huntMap) {
     var mins = Math.round(doneTicks * TICK_MS / 60000);
     var dGold = (after.gold || 0) - (before.gold || 0);
     var dExp  = (after.exp  || 0) - (before.exp  || 0);
@@ -128,7 +139,7 @@
 
     window.__afk.last = { mins: mins, gold: dGold, exp: dExp, lv: dLv, died: !!died, ticks: doneTicks, items: items.length };
 
-    var line = `<span class="text-sky-300 font-bold">🌙 離線掛機 ${mins} 分鐘</span>，獲得：`;
+    var line = `<span class="text-sky-300 font-bold">🌙 離線掛機 ${mins} 分鐘</span>（在 <b>${mapName(huntMap)}</b>），獲得：`;
     var parts = [];
     if (dGold > 0) parts.push(`<span class="text-yellow-400 font-bold">${fmt(dGold)} 金幣</span>`);
     if (dLv   > 0) parts.push(`<span class="text-green-400 font-bold">升 ${dLv} 級</span>`);
@@ -211,7 +222,7 @@
     // 持久化離線收益(否則玩家在下次自動存檔前重載會丟失);saveGame 同時會蓋上新時間戳
     try { if (typeof saveGame === 'function') saveGame(); } catch (e) {}
 
-    summarize(before, after, done, died);
+    summarize(before, after, done, died, huntMap);
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
     removeOverlay();
@@ -229,26 +240,29 @@
   // 載入後決定要不要結算離線。preMap/preTs 由 loadGame wrapper 在「原 loadGame 執行前」擷取——
   // 因為原 loadGame 會在村莊甦醒(內部呼叫 changeMap),而 changeMap 已被攔截會 stamp(),會把
   // afk_map/afk_ts 覆寫成現在(村莊),晚讀就拿不到真正的離線狀態。
+  // 診斷用:把訊息同時印到 console 與系統日誌(手機看得到);查清楚後可移除。
+  function dbg(msg) { console.info('[AFK] ' + msg); try { logSys('<span class="text-slate-400">[離線診斷] ' + msg + '</span>'); } catch (e) {} }
   function maybeCatchup(preMap, preTs) {
     if (!validSlot() || !state || !state.running) return;
     var last = preTs;
     var savedMap = preMap;
+    var usedBlob = false;
     if (!savedMap) {   // 後援:舊資料沒有 afk_map,退回讀存檔 blob
-      try { var raw = JSON.parse(localStorage.getItem('lineage_idle_save_' + currentSlot)); savedMap = (raw && raw.ms && raw.ms.current) || ''; } catch (e) {}
+      try { var raw = JSON.parse(localStorage.getItem('lineage_idle_save_' + currentSlot)); savedMap = (raw && raw.ms && raw.ms.current) || ''; usedBlob = true; } catch (e) {}
     }
     var now = Date.now();
+    dbg('slot=' + currentSlot + ' afk_map=' + (preMap || '空') + (usedBlob ? '(退回存檔地圖=' + (savedMap || '空') + ')' : '') + ' afk_ts前=' + (preTs ? Math.round((now - preTs) / 1000) + '秒' : '無'));
     stamp(); // 不論如何先更新自己的心跳/錨點(宣告此分頁佔用此 slot)
-    if (!last) return;                         // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算
+    if (!last) { dbg('略過:沒有上次時間戳(全新角色/剛裝外掛)'); return; }
     var gap = now - last;
     // 不設「近期活躍就略過」的鎖:重新整理也照常結算那一小段 → 配合存活回原狩獵圖,刷新不會被丟回村莊。
     // (gap < 一個 tick 會在下方 ticks<=0 自然 no-op;結算會更新時間戳,連續刷新不會重複給獎勵。)
     if (!savedMap || savedMap.indexOf('town_') === 0) {
-      // 在村莊登出(安全區)→ 離線沒有戰鬥收益,不結算
-      console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
+      dbg('略過:關閉時在村莊/無有效地圖(' + (savedMap || '空') + ')');
       return;
     }
     if (typeof isSiegeArea === 'function' && isSiegeArea(savedMap)) {
-      console.info('[AFK] 關閉時位於攻城區，略過離線結算。');
+      dbg('略過:關閉時在攻城區(' + savedMap + ')');
       return;
     }
 
