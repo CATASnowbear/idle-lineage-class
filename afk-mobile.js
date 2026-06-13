@@ -202,14 +202,20 @@
 
   // --- 把「實際可視高度」(已扣掉手機瀏覽器上下工具列)寫進 --app-h --------------
   //   100vh 在手機是「工具列收起時」的高度,比當下可視區高 → 底部 nav 被頂到工具列底下看不到。
-  //   window.innerHeight 反映當下可視高度,且涵蓋不支援 dvh 的舊瀏覽器,比 100dvh 更可靠。
-  //   刻意不開 viewport-fit=cover:開了畫面會畫到系統列底下,innerHeight 變成全螢幕高、
-  //   nav 反而又被工具列蓋住,頂部還會多一塊瀏海留白。維持預設讓瀏覽器自動避開系統列。
+  //   優先用 visualViewport.height:它是「真正看得到的那塊」高度,會扣掉像 Brave 那種
+  //   常駐在內容上的底部工具列,比 innerHeight / 100dvh 都可靠;不支援時退回 innerHeight。
+  //   刻意不開 viewport-fit=cover:開了畫面會畫到系統列底下,高度變成全螢幕、nav 反而又被
+  //   工具列蓋住,頂部還會多一塊留白。維持預設讓瀏覽器自動避開系統列。
   function trackAppHeight() {
-    function set() { document.documentElement.style.setProperty('--app-h', window.innerHeight + 'px'); }
+    var vv = window.visualViewport;
+    function set() {
+      var h = (vv && vv.height) ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty('--app-h', Math.round(h) + 'px');
+    }
     set();
     window.addEventListener('resize', set);
     window.addEventListener('orientationchange', function () { setTimeout(set, 250); });
+    if (vv) vv.addEventListener('resize', set);
   }
 
   // --- 注入手機版 CSS(全部掛在 body.m-mobile 之下)--------------------------
