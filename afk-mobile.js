@@ -224,7 +224,10 @@
     var css = [
       '#m-nav{display:none;}',
 
-      'body.m-mobile{padding:0 !important;}',
+      /* 原作者 body 是 flex 置中(桌機把遊戲框置中);手機改靠左上對齊,
+         否則 game-screen 一旦比 body 矮(高度取可視區、body 仍是整個 layout 高),
+         就會被垂直置中 → 上方擠出空白、底部 nav 被推到瀏覽器工具列後面看不到。 */
+      'body.m-mobile{padding:0 !important;align-items:flex-start !important;justify-content:flex-start !important;}',
       'body.m-mobile #game-screen{flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
 
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
