@@ -44,8 +44,9 @@
     injectCSS();
     var strip = buildStatusStrip();
     gs.insertBefore(strip, gs.firstChild);
-    var nameSeg = strip.querySelector('.ms-name');   // 點左上暱稱 → 取名
-    if (nameSeg) nameSeg.addEventListener('click', editNameMobile);
+    var statModal = buildStatModal();
+    gs.appendChild(statModal);
+    strip.addEventListener('click', openStatModal);   // 點整條狀態列 → 彈出桌面版角色資訊塊(內含改名)
     var nav = buildNav();
     gs.appendChild(nav);
 
@@ -159,11 +160,12 @@
       var d = document.createElement('div');
       d.id = 'm-status';
       d.innerHTML =
-        '<span class="ms-seg ms-name"><b id="ms-name">--</b><span class="ms-name-edit">✎</span></span>' +
+        '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
         '<span class="ms-seg">Lv <b id="ms-lv">--</b></span>' +
         '<span class="ms-seg ms-hp">HP <span id="ms-hp">--</span></span>' +
         '<span class="ms-seg ms-mp">MP <span id="ms-mp">--</span></span>' +
         '<span class="ms-seg ms-gold">💰 <span id="ms-gold">--</span></span>' +
+        '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
         '<div id="ms-exp"></div>';
       return d;
     }
@@ -215,19 +217,40 @@
     }
   }
 
-  // --- 手機取名:點左上暱稱跳輸入框(原作的 startEditName 把輸入塞進 #st-class,在手機是隱藏的) ----
-  //   邏輯比照原作 confirmEditName:過濾 HTML 特殊字元、上限 12 字、留空回未取名(顯示職業)。
-  function editNameMobile() {
-    try {
-      if (typeof player === 'undefined' || !player || !player.cls) return;   // 還沒有角色就不給取名
-      var cur = player.name || '';
-      var v = window.prompt('輸入暱稱(最多 12 字;留空則顯示職業)', cur);
-      if (v === null) return;   // 取消
-      v = v.replace(/[<>&"']/g, '').trim().slice(0, 12);
-      player.name = v || null;
-      if (typeof updateUI === 'function') updateUI();
-      if (typeof saveGame === 'function') saveGame();
-    } catch (e) { console.warn('[AFK-mobile] 取名失敗:', e); }
+  // --- 角色資訊彈窗:桌面左上的 #status-panel(等級/AC/MR/金幣/HP·MP·EXP + 可點改名的職業列)
+  //   在手機被隱藏 → 點暱稱把它「移進」彈窗顯示(移動而非複製,資料才會即時更新);✕/點背景關閉、移回原欄。
+  //   名字仍可在彈窗內點 st-class 用遊戲原生 startEditName 修改,不另作取名 UI。
+  function buildStatModal() {
+    var m = document.createElement('div');
+    m.id = 'm-stat-modal';
+    var card = document.createElement('div');
+    card.id = 'm-stat-card';
+    var bar = document.createElement('div');
+    bar.id = 'm-stat-bar';
+    var x = document.createElement('button');
+    x.type = 'button'; x.id = 'm-stat-close'; x.textContent = '✕'; x.title = '關閉';
+    x.addEventListener('click', function (e) { e.stopPropagation(); closeStatModal(); });
+    bar.appendChild(x);
+    var body = document.createElement('div');
+    body.id = 'm-stat-body';
+    card.appendChild(bar); card.appendChild(body);
+    m.appendChild(card);
+    m.addEventListener('click', function () { closeStatModal(); });           // 點背景關閉
+    card.addEventListener('click', function (e) { e.stopPropagation(); });     // 點卡片內不關
+    return m;
+  }
+  function openStatModal() {
+    var sp = document.getElementById('status-panel');
+    var body = document.getElementById('m-stat-body');
+    if (!sp || !body) return;
+    body.appendChild(sp);                          // 把資訊塊移進彈窗
+    document.body.classList.add('m-stat-open');
+  }
+  function closeStatModal() {
+    document.body.classList.remove('m-stat-open');
+    var sp = document.getElementById('status-panel');
+    var col = document.querySelector('.m-col-left');   // 左欄(init 給它加了 m-col-left);此函式在 IIFE 層拿不到 init 的 colLeft
+    if (sp && col) col.insertBefore(sp, col.firstChild);   // 移回左欄原位(手機仍隱藏)
   }
 
   // --- 登出回首頁:先記下離線錨點(時間+當前狩獵地圖),再 reload 回到開始選單 ----------------
@@ -291,10 +314,10 @@
       'body.m-mobile #status-panel{display:none !important;}',
       'body.m-mobile #m-status{display:flex !important;flex:0 0 auto !important;align-items:center;flex-wrap:wrap;gap:1px 14px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;}',
       'body.m-mobile #m-status .ms-seg{white-space:nowrap;}',
-      'body.m-mobile #m-status .ms-name{display:inline-flex;align-items:center;gap:3px;cursor:pointer;max-width:46vw;min-width:0;}',
-      'body.m-mobile #m-status .ms-name #ms-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-weight:bold;font-size:14px;}',
-      'body.m-mobile #m-status .ms-name .ms-name-edit{flex:0 0 auto;color:#94a3b8;font-size:11px;}',
-      'body.m-mobile #m-status .ms-name:active{opacity:.6;}',
+      'body.m-mobile #m-status{cursor:pointer;}',
+      'body.m-mobile #m-status:active{background:#16233c;}',
+      'body.m-mobile #m-status .ms-name #ms-name{display:inline-block;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;color:#fff;font-weight:bold;font-size:14px;}',
+      'body.m-mobile #m-status .ms-info{margin-left:auto;color:#94a3b8;font-size:13px;}',
       'body.m-mobile #m-status #ms-lv{color:#fff;font-size:15px;}',
       'body.m-mobile #m-status .ms-hp{color:#f87171;font-weight:bold;}',
       'body.m-mobile #m-status .ms-mp{color:#60a5fa;font-weight:bold;}',
@@ -346,6 +369,16 @@
       'body.m-mobile #item-modal{flex-direction:column !important;align-items:stretch !important;width:94vw !important;max-width:94vw !important;max-height:90dvh !important;max-height:90vh !important;overflow-y:auto !important;gap:8px !important;z-index:70 !important;}',
       'body.m-mobile #item-modal > div{min-width:0 !important;max-width:100% !important;width:100% !important;flex:0 0 auto !important;}',
       'body.m-mobile #item-modal #modal-compare{max-width:100% !important;max-height:42vh !important;}',
+
+      /* 角色資訊彈窗:點暱稱叫出桌面版 #status-panel(手機平時隱藏);✕/點背景關閉 */
+      '#m-stat-modal{display:none;}',
+      'body.m-mobile.m-stat-open #m-stat-modal{display:flex;position:fixed;inset:0;z-index:80;align-items:center;justify-content:center;background:rgba(2,6,23,0.72);padding:16px;}',
+      'body.m-mobile #m-stat-card{position:relative;width:min(92vw,420px);max-height:84vh;max-height:calc(var(--app-h,84vh) - 32px);overflow-y:auto;}',
+      'body.m-mobile #m-stat-bar{display:flex;justify-content:flex-end;margin-bottom:6px;}',
+      'body.m-mobile #m-stat-close{width:36px;height:36px;border:1px solid rgba(51,65,85,0.85);background:rgba(30,41,59,0.92);color:#e2e8f0;border-radius:8px;font-size:17px;cursor:pointer;font-family:inherit;}',
+      'body.m-mobile #m-stat-close:active{background:rgba(71,85,105,0.92);}',
+      'body.m-mobile #m-stat-body{width:100%;}',
+      'body.m-mobile #m-stat-body #status-panel{display:flex !important;width:100% !important;margin:0 !important;}',
 
       /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
          工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
