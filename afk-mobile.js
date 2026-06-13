@@ -102,6 +102,10 @@
       if (elGold) elGold.textContent = txt('st-gold') || '--';
       var be = document.getElementById('bar-exp');
       if (elExp && be) elExp.style.width = be.style.width || '0%';
+      // 村莊時遊戲會給 combat-log-panel 加 hidden(沒有戰鬥日誌):強制切系統日誌、隱藏「切到戰鬥」鈕
+      var noCombat = !combatLog || combatLog.classList.contains('hidden');
+      document.body.classList.toggle('mlog-nocombat', noCombat);
+      if (noCombat && document.body.classList.contains('mlog-combat')) setLog('sys');
     }
     setInterval(mirror, 300);
 
@@ -196,10 +200,11 @@
       var ctrls = document.createElement('span');
       ctrls.className = 'm-log-ctrls';
       var sw = document.createElement('button');
-      sw.type = 'button'; sw.textContent = '⇆'; sw.title = '切換戰鬥/系統日誌';
-      sw.addEventListener('click', function (e) { e.stopPropagation(); setLog(otherType); });
+      sw.type = 'button'; sw.className = 'm-log-sw'; sw.textContent = '⇆'; sw.title = '切換戰鬥/系統日誌';
+      // 村莊(mlog-nocombat)時戰鬥日誌不存在 → 不給切
+      sw.addEventListener('click', function (e) { e.stopPropagation(); if (document.body.classList.contains('mlog-nocombat')) return; setLog(otherType); });
       var x = document.createElement('button');
-      x.type = 'button'; x.textContent = '✕'; x.title = '關閉';
+      x.type = 'button'; x.className = 'm-log-x'; x.textContent = '✕'; x.title = '關閉';
       x.addEventListener('click', function (e) { e.stopPropagation(); closeLog(); });
       ctrls.appendChild(sw); ctrls.appendChild(x);
       hdr.appendChild(ctrls);
@@ -275,6 +280,8 @@
       'body.m-mobile #m-log-body .panel-header.m-log-hdr .m-log-ctrls{display:flex;position:absolute;right:6px;top:50%;transform:translateY(-50%);gap:6px;}',
       'body.m-mobile .m-log-ctrls button{width:34px;height:30px;border:1px solid rgba(51,65,85,0.85);background:rgba(30,41,59,0.7);color:#e2e8f0;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0;}',
       'body.m-mobile .m-log-ctrls button:active{background:rgba(71,85,105,0.9);}',
+      /* 村莊:沒有戰鬥日誌可切 → 藏起「⇆ 切換」鈕(只剩 ✕ 關閉) */
+      'body.m-mobile.mlog-nocombat .m-log-sw{display:none !important;}',
       'body.m-mobile.mlog-sys #m-log-body #combat-log-panel{display:none !important;}',
       'body.m-mobile.mlog-combat #m-log-body .m-syslog{display:none !important;}',
       /* 點面板外面關閉用的透明遮罩(蓋戰鬥區、不蓋導覽列)*/
