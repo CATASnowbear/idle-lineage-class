@@ -38,14 +38,18 @@
 
 1. **確認所有外掛 JS 都已在 `index.html` 補上 `<script>` 引用**(在 `</body>` 前)。目前應有:
    ```html
-   <script src="afk-offline.js"></script>
-   <script src="afk-mobile.js"></script>
-   <script src="afk-savedata.js"></script>
+   <script src="afk-offline.js?v=YYYYMMDDx"></script>
+   <script src="afk-mobile.js?v=YYYYMMDDx"></script>
+   <script src="afk-savedata.js?v=YYYYMMDDx"></script>
    ```
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行,否則功能不會生效。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。
-2. 確認沒有把 `.scratch/`、`node_modules/` 等暫存物混進 commit(見下)。
-3. 載入遊戲後開 console,確認看到各外掛的 `[AFK*] hooks OK`,沒有缺掛點的警告。
+2. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;
+   只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS。
+   Brave 尤其黏)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。
+   **沒 bump 的話使用者載到的還是舊外掛,debug 會鬼打牆**(踩過一整輪才發現)。
+3. 確認沒有把 `.scratch/`、`node_modules/` 等暫存物混進 commit(見下)。
+4. 載入遊戲後開 console,確認看到各外掛的 `[AFK*] hooks OK`,沒有缺掛點的警告。
 
 ## 暫存檔 / 測試
 
