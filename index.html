@@ -263,12 +263,12 @@
         
         <div id="main-menu" class="flex flex-col gap-5 items-center my-12">
             <button onclick="openSlotSelect('new')" class="btn text-xl w-72 py-4 bg-blue-700 hover:bg-blue-600 border-blue-500">新遊戲 (創建角色)</button>
-            <button onclick="openSlotSelect('load')" id="btn-load" class="hidden btn text-xl w-72 py-4 bg-emerald-700 hover:bg-emerald-600 border-emerald-500">載入遊戲進度</button>
+            <button onclick="openSlotSelect('load')" id="btn-load" class="btn text-xl w-72 py-4 bg-emerald-700 hover:bg-emerald-600 border-emerald-500">載入遊戲進度</button>
         </div>
 
         <div id="slot-select-panel" class="hidden flex flex-col gap-4 items-center my-8 w-full">
             <h2 id="slot-select-title" class="text-2xl font-bold text-yellow-400">選擇存檔位</h2>
-            <div id="slot-list" class="flex flex-col gap-3 w-96 max-w-full"></div>
+            <div id="slot-list" class="flex flex-col gap-3 w-[34rem] max-w-full"></div>
             <button onclick="slotBackToMenu()" class="btn px-6 py-2 bg-slate-700 hover:bg-slate-600 text-base font-bold">返回</button>
         </div>
 
@@ -381,7 +381,10 @@
 						<div id="auto-buff-skills" class="col-span-2 grid grid-cols-2 gap-1 mt-1 border-t border-slate-600 pt-2"></div>
                     </div>
                     
-                    <button onclick="saveGame()" class="mt-auto btn w-full py-3 bg-slate-700 text-lg">儲存遊戲進度</button>
+                    <div class="mt-auto flex gap-2">
+                        <button onclick="exportSave()" class="btn w-1/2 py-3 bg-indigo-700 hover:bg-indigo-600 border-indigo-500 text-lg">匯出進度</button>
+                        <button onclick="saveGame()" class="btn w-1/2 py-3 bg-emerald-700 hover:bg-emerald-600 border-emerald-500 text-lg">儲存遊戲</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -599,7 +602,7 @@ const DB = {
         "wpn_30": { n: "米索莉箭", type: "wpn", isArrow: true, dmgS: 10, dmgL: 9, hit: 0, p: 1, unBonus: true, gachaWeight: 0 },
         "wpn_31": { n: "十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 50, dmgS: 3, dmgL: 2, hit: 3, dmgBonus: 2, spd: 1.0, req: "knight,elf", safe: 6, p: 59400, gachaWeight: 10 },
         "wpn_32": { n: "獵人之弓", type: "wpn", isBow: true, ranged: true, rapidfire: 30, dmgS: 2, dmgL: 2, hit: 5, dmgBonus: 1, spd: 1.0, req: "all", safe: 6, p: 11000, gachaWeight: 20 },
-		"wpn_flaming_angel": { n: "熾炎天使弓", type: "wpn", isBow: true, ranged: true, rapidfire: 40, dmgS: 3, dmgL: 3, hit: 3, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 37300, w2h: true, eff: "moonburst", legend: true, gachaWeight: 1 },
+		"wpn_flaming_angel": { n: "熾炎天使弓", type: "wpn", isBow: true, ranged: true, rapidfire: 40, dmgS: 3, dmgL: 3, hit: 3, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 37300, w2h: true, eff: "moonburst", legend: true, gachaWeight: 0 },   // 🔧 潘朵拉抽不到；取得來源：羅賓孫製作、死神(0.001%)、惡魔(0.5%)
         "wpn_redknight": { n: "紅騎士之劍", type: "wpn", dmgS: 8, dmgL: 12, hit: 0, spd: 1.1, req: "all", safe: 6, p: 2400, str: 1, gachaWeight: 20 },
         "wpn_invader": { n: "侵略者之劍", type: "wpn", dmgS: 9, dmgL: 11, hit: 0, spd: 1.1, req: "all", safe: 6, p: 3500, gachaWeight: 100 },
         "wpn_33": { n: "骰子匕首", type: "wpn", dmgS: 3, dmgL: 3, hit: 0, spd: 0.9, eff: "dice_death", req: "all", safe: 6, p: 444, gachaWeight: 10 },
@@ -823,6 +826,12 @@ const DB = {
         "new_item_160": { n: "藍寶石", p: 200, gachaWeight: 100 },
         "new_item_161": { n: "品質藍寶石", p: 650, gachaWeight: 50 },
         "new_item_162": { n: "高品質藍寶石", p: 2000, gachaWeight: 10 },
+        "mat_unicorn_horn":   { n: "神聖獨角獸之角", p: 5000, gachaWeight: 0, d: "獨角獸頭上的神聖之角，蘊含純淨之力。製作熾炎天使弓的核心材料。（獨角獸 0.1% 掉落）" },
+        "mat_wind_breath":    { n: "風之氣息", p: 1500, gachaWeight: 0, d: "凝聚自風精靈王的元素氣息。（風精靈王 1% 掉落）" },
+        "mat_water_breath":   { n: "水之氣息", p: 1500, gachaWeight: 0, d: "凝聚自水精靈王的元素氣息。（水精靈王 1% 掉落）" },
+        "mat_fire_breath":    { n: "火之氣息", p: 1500, gachaWeight: 0, d: "凝聚自火精靈王的元素氣息。（火精靈王 1% 掉落）" },
+        "mat_earth_breath":   { n: "土之氣息", p: 1500, gachaWeight: 0, d: "凝聚自地精靈王的元素氣息。（地精靈王 1% 掉落）" },
+        "mat_griffon_feather":{ n: "格利芬羽毛", p: 1000, gachaWeight: 0, d: "格利芬身上輕盈而堅韌的羽毛。（格利芬 1% 掉落）" },
         "new_item_163": { n: "潘的鬃毛", p: 10, gachaWeight: 100 },
         "new_item_164": { n: "粗糙的米索莉塊", p: 20, gachaWeight: 100 },
         "new_item_165": { n: "元素石", p: 20, gachaWeight: 100 },
@@ -1283,6 +1292,7 @@ const DB = {
                 { id: "npc_pan", n: "潘", title: "製作", type: "craft", d: "提供協助製作米索莉金屬板、奧里哈魯根金屬板、潘的角。" },
                 { id: "npc_rekne", n: "芮克妮", title: "製作", type: "craft", d: "提供協助製作線、米索莉線、芮克妮的蛻皮。" },
 				{ id: "npc_brabo", n: "布拉伯", title: "製作", type: "craft", d: "提供精靈專屬武器與部件的製作。" },
+				{ id: "npc_robinson", n: "羅賓孫", title: "製作", type: "craft", d: "蒐集精靈王與獨角獸、格利芬的稀有素材，可打造傳說的熾炎天使弓。" },
 				{ id: "npc_mother", n: "迷幻森林之母", title: "試煉", type: "quest", d: "妖精的試煉：淨化受詛咒的書來換取精靈的恩賜。" }
             ]
         },
@@ -1627,7 +1637,7 @@ const DB = {
         '哈維': [['arm_62',0.5], ['new_item_150',1], ['bk_haste_spell',0.5], ['bk_holy_dash',0.05], ['potion_blue',1], ['bk_greater_haste',0.01], ['new_item_195',1], ['bk_elf_stormeye',0.001]],
         '哥布林': [['hlm_mr', 0.05], ['wpn_9',1], ['wpn_10',1], ['arm_42',5], ['bot_short',3], ['potion_heal',3]],
         '地獄犬': [['wpn_strwand',0.1], ['wpn_witchwand',0.5], ['scroll_acc',0.01], ['new_item_150',1], ['new_item_157',5], ['new_item_158',0.5], ['new_item_159',0.1], ['bk_fireball',0.5], ['bk_break',0.5], ['bk_holy_barrier',0.001], ['new_item_195',1]],
-        '地精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_con',1]],
+        '地精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_con',1], ['mat_earth_breath',1]],
         '地靈': [['wpn_10',3], ['bot_short',1], ['new_item_179',50]],
         '夏洛伯': [['bk_slow',0.1], ['bk_earthquake',0.01], ['scroll_acc',0.001], ['new_item_144',1]],
         '多眼怪': [['scroll_weapon',1], ['new_item_160',5], ['new_item_161',0.5], ['new_item_162',0.1], ['bk_mummy_curse',0.5], ['bk_cancel',0.05], ['bk_elf_release',0.1], ['bk_weaken',0.1], ['bk_disease',0.1], ['bk_elf_triple',0.01]],
@@ -1659,7 +1669,7 @@ const DB = {
         '怪手': [['glv_glove',0.1], ['arm_99',0.001], ['new_item_150',1]],
         '惡魔': [['arm_69', 10], ['wpn_katana',5], ['wpn_2hsword',10], ['wpn_siruge',1], ['wpn_33',1], ['wpn_flaming_angel',0.5], ['amr_plate',5], ['arm_88',0.1], ['arm_63',10], ['arm_99',1], ['acc_117',0.01], ['amu_str',0.1], ['amu_int',0.15], ['acc_128',1], ['acc_129',1], ['acc_130',0.5], ['acc_131',0.5], ['potion_haste',1], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_152',0.5], ['new_item_153',0.1], ['new_item_159',0.1], ['bk_holy_barrier',0.5], ['potion_blue',1], ['bk_fire_storm',0.1], ['bk_elf_blazewpn',0.5]],
         '杜賓狗': [['new_item_143',10], ['new_item_179',100]],
-        '格利芬': [['arm_62',0.5], ['potion_haste',1], ['new_item_150',1], ['new_item_152',0.5], ['new_item_155',0.5], ['new_item_158',0.5], ['new_item_161',0.5], ['bk_tornado',0.001], ['bk_elf_release',0.1], ['bk_elf_winddash',0.05], ['bk_elf_stormeye',0.001], ['bk_magic_shield',0.01]],
+        '格利芬': [['arm_62',0.5], ['potion_haste',1], ['new_item_150',1], ['new_item_152',0.5], ['new_item_155',0.5], ['new_item_158',0.5], ['new_item_161',0.5], ['bk_tornado',0.001], ['bk_elf_release',0.1], ['bk_elf_winddash',0.05], ['bk_elf_stormeye',0.001], ['bk_magic_shield',0.01], ['mat_griffon_feather',1]],
         '楊果里恩': [['scroll_weapon',0.1], ['scroll_armor',0.3], ['scroll_acc',0.01], ['bk_slow',0.1], ['bk_charm',0.05], ['bk_rock_prison',0.5]],
         '歐吉': [['wpn_battleaxe',5], ['wpn_giantaxe',1], ['wpn_berserker',0.01], ['arm_61',0.5], ['arm_47',0.03], ['acc_133',0.001], ['scroll_weapon',0.3], ['scroll_armor',1], ['new_item_167',0.01], ['potion_brave',1]],
         '歐熊': [['potion_brave',1], ['new_item_182',3], ['scroll_acc',0.001]],
@@ -1667,7 +1677,7 @@ const DB = {
         '死亡騎士': [['wpn_katana',5], ['wpn_2hsword',10], ['wpn_33',1], ['amr_plate',5], ['arm_88',0.1], ['glv_glove',10], ['glv_dk',1], ['amr_dk',1], ['bot_dk',1], ['hlm_dk',1], ['acc_117',1], ['amu_str',0.1], ['acc_128',0.5], ['acc_129',0.5], ['acc_130',0.1], ['acc_131',0.1], ['potion_haste',1], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_150',1], ['new_item_151',5], ['new_item_152',0.5], ['new_item_153',0.1], ['bk_zombie',3], ['bk_tornado',0.5], ['bk_resurrection',0.1], ['bk_disease',3], ['bk_solid_shield',1], ['bk_blaze',1]],
         '死神': [['wpn_16',1], ['wpn_giantaxe',0.1], ['wpn_flaming_angel',0.001], ['arm_61',0.5], ['scroll_weapon',1], ['scroll_armor',2], ['scroll_acc',0.01], ['potion_blue',1], ['bk_elf_stormshot',0.01], ['bk_disease',0.1]],
         '毒蠍': [['arm_46',0.01], ['potion_haste',1], ['bk_thunder',0.01], ['bk_cancel',0.01], ['bk_rock_prison',0.5], ['bk_quake',0.001]],
-        '水精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_int',1]],
+        '水精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_int',1], ['mat_water_breath',1]],
         '污染的潘': [['new_item_163',100]],
 		'污染的安特': [['new_item_141',1], ['new_item_237',100]],
         '法利昂': [['wpn_katana',10], ['wpn_siruge',5], ['amr_plate',10], ['arm_88',1], ['glv_glove',20], ['arm_80',0.1], ['acc_116',0.1], ['acc_117',0.1], ['acc_120',1], ['acc_127',5], ['acc_128',5], ['acc_129',5], ['blt_body',1], ['acc_130',1], ['acc_131',1], ['potion_haste',1], ['scroll_weapon',100], ['scroll_armor',100], ['scroll_acc',50], ['new_item_150',1], ['new_item_151',50], ['new_item_152',5], ['new_item_153',1], ['new_item_160',50], ['new_item_161',5], ['new_item_162',1], ['bk_slow',10], ['bk_holy_light',10], ['bk_regen',5], ['bk_summon',2], ['bk_blizzard',1], ['bk_resurrection',1], ['new_item_190',100], ['potion_blue',1], ['bk_elf_eleres',1]],
@@ -1677,7 +1687,7 @@ const DB = {
         '火炎蛋': [['scroll_weapon',1], ['scroll_armor',2], ['bk_fireball',0.1], ['bk_holy_light',0.1], ['scroll_poly',1], ['new_item_192',0.01], ['potion_blue',1]],
         '火焰弓箭手': [['hlm_mr', 1], ['wpn_32',0.1], ['arm_42',2], ['arm_67',4], ['arm_90',1], ['bk_dex_up',0.05], ['bk_slow',0.1], ['new_item_192',0.01]],
         '火焰戰士': [['hlm_mr', 1], ['wpn_longsword',1], ['arm_42',2], ['arm_62',1], ['arm_105',3], ['potion_haste',1], ['new_item_192',0.01]],
-        '火精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_str',1]],
+        '火精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_str',1], ['mat_fire_breath',1]],
         '火蜥蜴': [['potion_haste',1], ['new_item_155',0.5], ['new_item_158',0.5], ['new_item_192',0.01], ['bk_fire_storm',0.001], ['bk_elf_magicerase',0.01], ['bk_elf_stormeye',0.01], ['bk_shock_stun',0.01]],
         '烈炎獸': [['scroll_weapon',1], ['scroll_armor',2], ['bk_holy_barrier',0.002], ['scroll_acc',0.01], ['new_item_192',0.01], ['bk_elf_magicerase',0.1], ['bk_shock_stun',0.05]],
         '熔岩高崙': [['wpn_2hsword',0.5], ['wpn_18',1], ['wpn_giantaxe',0.5], ['bk_slow',0.5], ['bk_str_up',0.05], ['scroll_acc',0.01], ['new_item_192',0.01], ['bk_elf_triple',0.01]],
@@ -1687,7 +1697,7 @@ const DB = {
         '狼': [['wpn_5',1], ['new_item_195',1], ['new_item_179',100]],
         '狼人': [['arm_69', 0.1], ['wpn_longsword',0.1], ['wpn_2',1], ['wpn_10',3], ['wpn_13',2], ['arm_66',0.5], ['arm_103',1], ['bot_short',0.5], ['bk_dex_up',0.01], ['bk_vampire',0.05]],
         '獨眼巨人': [['arm_62',1], ['arm_47',0.01], ['scroll_weapon',1], ['scroll_armor',2], ['scroll_acc',0.01], ['bk_str_up',0.05], ['bk_summon',0.002], ['bk_rock_prison',0.5], ['bk_quake',0.003], ['bk_elf_groundtrap',0.1], ['bk_elf_earthbless',0.01], ['bk_weaken',0.1], ['bk_seal',0.05], ['new_item_227',0.01]],
-        '獨角獸': [['wpn_18',3], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_poly',1], ['panacea_cha',1]],
+        '獨角獸': [['wpn_18',3], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_poly',1], ['panacea_cha',1], ['mat_unicorn_horn',0.1]],
         '甘地妖魔': [['potion_heal',1], ['new_item_148',1], ['new_item_150',1], ['new_item_201',1], ['item_orc_amulet',0.01]],
         '卡瑞': [['wpn_dragonslayer',100]],
         '巴列斯': [['wpn_katana',2], ['wpn_2hsword',5], ['wpn_powerless_baless',1], ['amr_plate',10], ['glv_glove',10], ['bot_baless',1], ['acc_122',1], ['acc_116',0.1], ['rng_mr',1], ['acc_127',0.5], ['acc_128',0.5], ['acc_129',0.5], ['blt_body',0.1], ['acc_130',0.1], ['acc_131',0.1], ['potion_haste',1], ['potion_brave',1], ['new_item_140',1], ['new_item_151',50], ['new_item_157',50], ['new_item_152',5], ['new_item_158',5], ['new_item_153',1], ['new_item_159',1], ['scroll_weapon',10], ['scroll_armor',20], ['bk_magic_shield',3], ['bk_heal2',3], ['bk_zombie',2], ['bk_blaze',1], ['bk_disease',1], ['bk_full_heal',1], ['bk_fire_storm',0.5], ['bk_elf_winddash',3], ['bk_elf_stormeye',2], ['bk_elf_stormshot',1]],
@@ -1721,7 +1731,7 @@ const DB = {
         '阿魯巴': [['wpn_18',2], ['bk_str_up',0.05], ['bk_haste_spell',0.5], ['bk_earthquake',0.1], ['bk_rock_prison',0.5], ['bk_greater_haste',0.1], ['bk_quake',0.005]],
         '雪人': [['bk_elf_release',0.1], ['scroll_acc',0.01]],
         '雪怪': [['wpn_18',1], ['scroll_acc',0.01], ['new_item_195',1]],
-        '風精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_dex',1]],
+        '風精靈王': [['arm_69', 1], ['arm_63',5], ['potion_haste',1], ['scroll_weapon',5], ['scroll_armor',10], ['scroll_revive',1], ['potion_blue',1], ['panacea_dex',1], ['mat_wind_breath',1]],
         '飛龍': [['item_dragon_claw',1], ['potion_haste',1], ['scroll_weapon',10], ['scroll_armor',20], ['scroll_acc',1], ['new_item_150',1], ['new_item_151',5], ['new_item_152',0.5], ['new_item_153',0.1], ['new_item_154',5],['new_item_155',0.5], ['new_item_156',0.1], ['new_item_157',5], ['new_item_158',0.5], ['new_item_159',0.1], ['new_item_160',5], ['new_item_161',0.5], ['new_item_162',0.1], ['bk_holy_dash',1], ['potion_blue',1], ['bk_quake',1], ['bk_elf_magicerase',1], ['bk_elf_stormeye',1], ['bk_elf_triple',1]],
         '食人妖精': [['wpn_battleaxe',3], ['wpn_giantaxe',1], ['arm_61',0.6], ['scroll_weapon',0.2], ['scroll_armor',0.5], ['bk_fireball',0.1], ['bk_break',0.5], ['bk_elf_release',0.05], ['new_item_217',0.1], ['bk_blaze',0.01]],
         '食人妖精王': [['wpn_battleaxe',3], ['wpn_10',2], ['wpn_giantaxe',0.5], ['wpn_berserker',0.02], ['arm_61',0.5], ['arm_47',0.05], ['scroll_weapon',1], ['scroll_armor',1.5], ['new_item_158',0.5], ['bk_fireball',0.5], ['bk_break',0.5], ['bk_holy_light',0.1], ['potion_blue',1], ['bk_disease',0.1], ['bk_shock_stun',0.01]],
@@ -3884,8 +3894,8 @@ function playerAttack() {
                 target._bluntDelayed = true;
             }
         }
-        // 🔧 硬皮消磨：玩家一般攻擊命中時，依重擊與武器（單手鈍器鈍擊 -1/重擊 -5、雙手鈍器/屠龍劍重擊 -20、其餘重擊 -2）扣減
-        if (target.curHp > 0) wearHardSkin(target, player.eq.wpn ? player.eq.wpn.id : null, result.heavy, _isBlunt1h);
+        // 🔧 硬皮消磨：玩家一般攻擊命中時固定再磨 1（basic），並依重擊與武器（單手鈍器鈍擊 -1/重擊 -5、雙手鈍器/屠龍劍重擊 -20、其餘重擊 -2）疊加扣減
+        if (target.curHp > 0) wearHardSkin(target, player.eq.wpn ? player.eq.wpn.id : null, result.heavy, _isBlunt1h, true);
         if (target.curHp <= 0) killMob(mapState.targetIdx);
         else renderMobs();
     } else {
@@ -4761,7 +4771,8 @@ function mobHasTag(m, tag) {
 // ===== 🔧 硬皮系統 =====
 // 硬皮值＝額外的「物理」傷害減免（魔法傷害不減）。最大值：一般怪 等級×1.5、頭目 等級×3、三大龍 等級×5、
 // 城門固定100、守護塔固定50；席琳的世界 ×2（攻城區不適用）。
-// 消磨：單手鈍器鈍擊 -1、單手鈍器重擊 -5、雙手鈍器/屠龍劍重擊 -20、其餘一般攻擊重擊 -2；
+// 消磨：玩家/傭兵一般攻擊命中固定 -1（與下列各項疊加）；單手鈍器鈍擊 -1、單手鈍器重擊 -5、
+//       雙手鈍器/屠龍劍重擊 -20、其餘一般攻擊重擊 -2、粉碎武器未重擊命中 -1；
 //       傭兵以外的召喚物重擊不消磨。每 10 秒恢復 3% 最大值。
 function initHardSkin(m) {
     if (!m || !m.hard) return;
@@ -4777,7 +4788,7 @@ function initHardSkin(m) {
 }
 function mobHardSkin(m) { return (m && m.hardSkin > 0) ? m.hardSkin : 0; }   // 物理減傷量（供傷害公式扣減）
 // 依武器特效與重擊/鈍擊消磨硬皮值；wpnId 為攻擊者（玩家或傭兵）的武器 id
-function wearHardSkin(target, wpnId, heavy, bluntProc) {
+function wearHardSkin(target, wpnId, heavy, bluntProc, basic) {
     if (!target || !(target.hardSkin > 0)) return;
     let tags = wpnId ? getWeaponTags(wpnId) : [];
     let dec = 0;
@@ -4791,6 +4802,7 @@ function wearHardSkin(target, wpnId, heavy, bluntProc) {
         dec += 1;   // 🔧 粉碎武器：一般攻擊命中(未重擊)也磨 1 硬皮值
     }
     if (bluntProc) dec += 1;   // 單手鈍器鈍擊
+    if (basic) dec += 1;   // 🔧 玩家/傭兵一般攻擊命中：固定再磨 1 硬皮值（與上述重擊/粉碎/鈍擊削減疊加）
     if (dec > 0) target.hardSkin = Math.max(0, target.hardSkin - dec);
 }
 function tryInstakill(m, ik, skillName, idx) {
@@ -4985,8 +4997,8 @@ function allyAttackOnce(ally) {
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
         let mark = (heavy && isCrit) ? '會心一擊' : (isCrit ? '爆擊' : (heavy ? '重擊' : ''));
         logCombat(`${kp}<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
-        // 🔧 硬皮消磨：傭兵一般攻擊（與玩家同規則）；單手鈍器鈍擊另由 allyOnHitEffects 觸發
-        if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, heavy, false);
+        // 🔧 硬皮消磨：傭兵一般攻擊命中固定再磨 1（basic，與玩家同規則）；單手鈍器鈍擊另由 allyOnHitEffects 觸發
+        if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, heavy, false, true);
         allyOnHitEffects(ally, t, { dmg: dmg, heavy: heavy, hardSkin: _hsT });        // 🔧 命中後特效：穿透/即死/出血/鈍擊/切割（hardSkin 供穿透精通無視判定）
         allyWeaponProcs(ally, t, { hit: true, dmg: dmg });            // 🔧 普攻判定特效：瑪那回魔/共鳴/魔擊/月光爆裂
     }
@@ -8517,7 +8529,7 @@ function interactNPC(npcId, townId) {
         renderFinnCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_joel' || npc.id === 'npc_ryan') { 
         renderJoelCraft(contentDiv, npc.id);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas'].includes(npc.id)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson'].includes(npc.id)) {
         renderUniversalCraft(contentDiv, npc.id);
     } else if (npc.id === 'npc_os') {
         renderOsQuest(contentDiv);
@@ -8670,11 +8682,11 @@ function renderWarehouseNPC(div){
         return;
     }
     let w = loadWarehouse();
-    let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" class="btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;
+    let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;
     let _invItems = player.inv.filter(it => whCategory(it.id) === _whFilter);
     let _whItems  = w.items.filter(it => whCategory(it.id) === _whFilter);
     let invHtml = _invItems.length ? _invItems.map(it => (WH_NO_STORE.includes(it.id) || it.lock)
-        ? `<div class="w-full text-left py-1.5 px-2 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-50 cursor-not-allowed">${getItemFullName(it)} <span class="text-xs text-red-400">（${(it.lock && !WH_NO_STORE.includes(it.id)) ? '鎖定，需解鎖' : '不可存'}）</span></div>`
+        ? `<div data-tip-uid="${it.uid}" data-tip-src="inv" class="tip-host w-full text-left py-1.5 px-2 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-50 cursor-not-allowed">${getItemFullName(it)} <span class="text-xs text-red-400">（${(it.lock && !WH_NO_STORE.includes(it.id)) ? '鎖定，需解鎖' : '不可存'}）</span></div>`
         : mkBtn(it, 'whDeposit')).join('') : '<div class="text-slate-500 text-sm text-center py-4">此分類背包沒有物品</div>';
     let whHtml  = _whItems.length ? _whItems.map(it => mkBtn(it, 'whWithdraw')).join('') : '<div class="text-slate-500 text-sm text-center py-4">此分類倉庫是空的</div>';
     let _oi = document.getElementById('wh-inv-list'), _os = document.getElementById('wh-store-list');
@@ -9486,7 +9498,7 @@ function renderShopItems() {
                     <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none ${glowClass}">
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
-                    <span class="${d.c || 'text-white'} font-bold text-lg leading-none truncate">
+                    <span class="${getItemColor({ id })} font-bold text-lg leading-none truncate">
                         ${nameDisp}${learned ? ' <span class="text-slate-500 text-xs font-normal">已習得</span>' : ''}
                     </span>
                     <div class="flex items-center gap-2">
@@ -9512,14 +9524,15 @@ function migrateSaves(){
     if(oldS && !localStorage.getItem('lineage_idle_save_1')) localStorage.setItem('lineage_idle_save_1', oldS);
 }
 function anySaveExists(){ return ['1','2','3'].some(n => localStorage.getItem('lineage_idle_save_' + n)); }
-function slotSummary(n){
-    let s = localStorage.getItem('lineage_idle_save_' + n);
+function _summaryFromRaw(s){
     if(!s) return null;
     try { let d = JSON.parse(s); let p = d.p;
         let clsName = { knight:'騎士', mage:'法師', elf:'妖精' }[p.cls] || p.cls;
         return { name: p.name || '未命名', cls: clsName, lv: p.lv || 1, gold: p.gold || 0 };
     } catch(e){ return null; }
 }
+function slotSummary(n){ return _summaryFromRaw(localStorage.getItem('lineage_idle_save_' + n)); }
+function slotBackupSummary(n){ return _summaryFromRaw(localStorage.getItem('lineage_idle_save_' + n + '_bak')); }   // 匯入前自動備份的摘要
 let _slotMode = 'new';
 function openSlotSelect(mode){
     _slotMode = mode;
@@ -9532,7 +9545,16 @@ function openSlotSelect(mode){
         let sum = slotSummary(n);
         let label = sum ? `存檔 ${n}　${sum.cls} Lv.${sum.lv}　${sum.name}` : `存檔 ${n}　（空）`;
         let disabled = (mode === 'load' && !sum);
-        list.innerHTML += `<button onclick="chooseSlot(${n})" ${disabled ? 'disabled' : ''} class="btn w-full py-4 text-lg font-bold ${disabled ? 'opacity-40' : ''}">${label}</button>`;
+        let bak = (mode === 'load') ? slotBackupSummary(n) : null;
+        // 動作區固定寬度：匯入(+復原)鈕各 flex-1。無備份時匯入鈕獨佔整個動作區
+        //（寬度＝有備份時 匯入+復原 之和），使左側「載入存檔」鈕寬度恆定。
+        let importBtn = `<button onclick="importSave(${n})" class="btn flex-1 min-w-0 py-4 px-2 text-base font-bold bg-indigo-700 hover:bg-indigo-600 border-indigo-500 whitespace-nowrap">匯入進度</button>`;
+        let restoreBtn = bak ? `<button onclick="restoreBackup(${n})" title="復原匯入前自動備份的存檔（${bak.cls} Lv.${bak.lv}　${bak.name}）" class="btn flex-1 min-w-0 py-4 px-2 text-sm font-bold bg-amber-700 hover:bg-amber-600 border-amber-500 whitespace-nowrap">↩ 復原備份</button>` : '';
+        let actionArea = (mode === 'load') ? `<div class="flex gap-2 shrink-0 w-56">${importBtn}${restoreBtn}</div>` : '';
+        list.innerHTML += `<div class="flex gap-2 w-full">`
+            + `<button onclick="chooseSlot(${n})" ${disabled ? 'disabled' : ''} class="btn flex-1 min-w-0 py-4 text-lg font-bold ${disabled ? 'opacity-40' : ''}">${label}</button>`
+            + actionArea
+            + `</div>`;
     }
 }
 function chooseSlot(n){
@@ -9547,6 +9569,85 @@ function slotBackToMenu(){
     document.getElementById('slot-select-panel').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
     if(anySaveExists()) document.getElementById('btn-load').classList.remove('hidden');
+}
+
+// ===== 存檔 匯出 / 匯入 =====
+// 匯出：先儲存當前進度，再把該角色存檔寫成 .json 檔。優先用檔案系統 API（可自選資料夾），
+//       不支援時退回瀏覽器下載（落在預設下載資料夾）。
+async function exportSave(){
+    saveGame();   // 先儲存，確保匯出的是最新進度
+    let data = localStorage.getItem('lineage_idle_save_' + currentSlot);
+    if(!data){ alert('目前沒有可匯出的存檔。'); return; }
+    let sum = slotSummary(currentSlot);
+    let cname = (sum && sum.name && sum.name !== '未命名') ? sum.name : ('slot' + currentSlot);
+    let fname = `fable5_save_${currentSlot}_${cname}.json`;
+    if(window.showSaveFilePicker){
+        try {
+            let handle = await window.showSaveFilePicker({
+                suggestedName: fname,
+                types: [{ description: '放置天堂存檔', accept: { 'application/json': ['.json'] } }]
+            });
+            let w = await handle.createWritable();
+            await w.write(data);
+            await w.close();
+            logSys(`<span class="text-indigo-300 font-bold">✔ 存檔已匯出：${fname}</span>`);
+            return;
+        } catch(e){
+            if(e && e.name === 'AbortError') return;   // 使用者取消選擇資料夾
+            downloadSaveFile(data, fname);             // 其他錯誤 → 退回下載
+            return;
+        }
+    }
+    downloadSaveFile(data, fname);
+}
+function downloadSaveFile(data, fname){
+    let blob = new Blob([data], { type: 'application/json' });
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    logSys(`<span class="text-indigo-300 font-bold">✔ 存檔已匯出至下載資料夾：${fname}</span>`);
+}
+// 匯入：對指定存檔位 n 開啟選檔視窗，驗證後用匯入的存檔「取代」該位置的存檔，並刷新清單。
+function importSave(n){
+    let input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = function(){
+        let file = input.files && input.files[0];
+        if(!file) return;
+        let reader = new FileReader();
+        reader.onload = function(){
+            let text = String(reader.result || '');
+            let d;
+            try { d = JSON.parse(text); }
+            catch(e){ alert('匯入失敗：檔案不是有效的存檔（JSON 解析錯誤）。'); return; }
+            if(!d || typeof d !== 'object' || !d.p || typeof d.p !== 'object' || !d.p.cls){
+                alert('匯入失敗：檔案內容不是有效的放置天堂存檔。'); return;
+            }
+            let existing = slotSummary(n);
+            if(existing && !confirm(`存檔 ${n} 已有角色（${existing.cls} Lv.${existing.lv} ${existing.name}）。\n確定要用匯入的存檔「取代」它嗎？\n（原存檔會自動備份，可於載入畫面點「復原備份」還原）`)) return;
+            let cur = localStorage.getItem('lineage_idle_save_' + n);
+            if(cur) localStorage.setItem('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
+            localStorage.setItem('lineage_idle_save_' + n, text);
+            openSlotSelect(_slotMode);   // 重新整理存檔位清單（更新名稱/等級與可載入狀態）
+            let ns = slotSummary(n);
+            alert(`已匯入到存檔 ${n}：${ns ? (ns.cls + ' Lv.' + ns.lv + '　' + ns.name) : '完成'}。${cur ? '\n（原存檔已自動備份，可點「復原備份」還原）' : ''}`);
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+// 復原匯入前自動建立的備份：把備份寫回該存檔位（取代目前內容）。
+function restoreBackup(n){
+    let bak = localStorage.getItem('lineage_idle_save_' + n + '_bak');
+    if(!bak){ alert('沒有可復原的備份。'); return; }
+    let b = slotBackupSummary(n);
+    if(!confirm(`確定要將存檔 ${n} 復原為匯入前的備份${b ? `（${b.cls} Lv.${b.lv}　${b.name}）` : ''}嗎？\n目前存檔 ${n} 的內容將被取代。`)) return;
+    localStorage.setItem('lineage_idle_save_' + n, bak);
+    openSlotSelect(_slotMode);   // 刷新清單
+    alert(`存檔 ${n} 已復原為匯入前的備份。`);
 }
 function showCreation() {
     document.getElementById('main-menu').classList.add('hidden');
@@ -10142,6 +10243,26 @@ const CRAFT_RECIPES = {
         { result: 'new_item_178', req: [{ id: 'new_item_173', cnt: 30 }, { id: 'new_item_175', cnt: 1 }] },
         { result: 'wpn_39', req: [{ id: 'new_item_176', cnt: 1 }] }
     ],
+// 👇 新增羅賓孫的配方（妖精森林：熾炎天使弓）
+    'npc_robinson': [
+        { result: 'wpn_flaming_angel', req: [
+            { id: 'mat_unicorn_horn', cnt: 4 },
+            { id: 'mat_wind_breath', cnt: 30 },
+            { id: 'mat_water_breath', cnt: 30 },
+            { id: 'mat_fire_breath', cnt: 30 },
+            { id: 'mat_earth_breath', cnt: 30 },
+            { id: 'mat_griffon_feather', cnt: 30 },
+            { id: 'new_item_152', cnt: 10 },   // 品質鑽石
+            { id: 'new_item_158', cnt: 10 },   // 品質紅寶石
+            { id: 'new_item_161', cnt: 10 },   // 品質藍寶石
+            { id: 'new_item_155', cnt: 10 },   // 品質綠寶石
+            { id: 'new_item_153', cnt: 1 },    // 高品質鑽石
+            { id: 'new_item_159', cnt: 1 },    // 高品質紅寶石
+            { id: 'new_item_162', cnt: 1 },    // 高品質藍寶石
+            { id: 'new_item_156', cnt: 1 },    // 高品質綠寶石
+            { id: 'new_item_195', cnt: 1000 }  // 精靈玉
+        ] }
+    ],
 // 👇 新增奇岩製作 NPC 的配方
     'npc_moliya': [
         { result: 'hlm_mage', req: [{ id: 'new_item_189', cnt: 1 }, { id: 'new_item_188', cnt: 1 }, { id: 'new_item_187', cnt: 1 }, { id: 'new_item_150', cnt: 20 }, { id: 'new_item_155', cnt: 2 }] },
@@ -10219,7 +10340,7 @@ function renderUniversalCraft(div, npcId) {
                     <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none">
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
-                    <span class="${resItem.c || 'text-white'} font-bold text-lg leading-none truncate">${resName}</span>
+                    <span class="${getItemColor({ id: r.result })} font-bold text-lg leading-none truncate">${resName}</span>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-slate-400 text-sm">需求：</span>${reqHtml}
                     </div>
@@ -10252,7 +10373,7 @@ function renderMoliCraft(div) {
                     <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none">
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
-                    <span class="${resItem.c || 'text-white'} font-bold text-lg leading-none truncate">${resItem.n}</span>
+                    <span class="${getItemColor({ id: r.result })} font-bold text-lg leading-none truncate">${resItem.n}</span>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-slate-400 text-sm">需求：</span>${reqHtml}
                     </div>
@@ -10283,7 +10404,7 @@ function renderBraboCraft(div) {
                     <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none">
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
-                    <span class="${resItem.c || 'text-white'} font-bold text-lg leading-none truncate">${resItem.n}</span>
+                    <span class="${getItemColor({ id: r.result })} font-bold text-lg leading-none truncate">${resItem.n}</span>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-slate-400 text-sm">需求：</span>${reqHtml}
                     </div>
@@ -10313,7 +10434,7 @@ function renderFinnCraft(div, npcId) {
                     <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none">
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
-                    <span class="${resItem.c || 'text-white'} font-bold text-lg leading-none truncate">${resItem.n}</span>
+                    <span class="${getItemColor({ id: r.result })} font-bold text-lg leading-none truncate">${resItem.n}</span>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-slate-400 text-sm">需求：</span>${reqHtml}
                     </div>
@@ -10343,7 +10464,7 @@ function renderJoelCraft(div, npcId) {
                     <img src="${imgUrl}" onerror="this.style.display='none';" class="w-10 h-10 object-contain pointer-events-none">
                 </div>
                 <div class="flex flex-col items-start gap-1.5">
-                    <span class="${resItem.c || 'text-white'} font-bold text-lg leading-none truncate">${resItem.n}</span>
+                    <span class="${getItemColor({ id: r.result })} font-bold text-lg leading-none truncate">${resItem.n}</span>
                     <div class="flex items-center gap-2 flex-wrap">
                         <span class="text-slate-400 text-sm">需求：</span>${reqHtml}
                     </div>
@@ -10561,7 +10682,7 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
         _forceSherineSet = false;
     }
     let totalOut = (recipe.yield || 1) * makeCount;
-    logSys(`${sherine ? '<span class="c-sherine font-bold">席琳製作</span>' : '製作'}完成：<span class="${DB.items[recipe.result].c || 'text-white'} font-bold">${DB.items[recipe.result].n}</span> ×${totalOut}${sherine ? `（消耗 席琳結晶 ×${makeCount}）` : ''}`);
+    logSys(`${sherine ? '<span class="c-sherine font-bold">席琳製作</span>' : '製作'}完成：<span class="${getItemColor({ id: recipe.result })} font-bold">${DB.items[recipe.result].n}</span> ×${totalOut}${sherine ? `（消耗 席琳結晶 ×${makeCount}）` : ''}`);
 
     // 重新渲染介面與左側狀態列
     updateUI();
@@ -10575,7 +10696,7 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
         renderFinnCraft(document.getElementById('interaction-content'), npcId);
     } else if (npcId === 'npc_joel' || npcId === 'npc_ryan') {
         renderJoelCraft(document.getElementById('interaction-content'), npcId);
-    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas'].includes(npcId)) {
+    } else if (['npc_nalien', 'npc_rekne', 'npc_narupa', 'npc_elfqueen', 'npc_elf', 'npc_ent', 'npc_pan', 'npc_moliya', 'npc_hector', 'npc_herbert', 'npc_lumiel', 'npc_ibelbin', 'npc_tas', 'npc_robinson'].includes(npcId)) {
         renderUniversalCraft(document.getElementById('interaction-content'), npcId);
     }
 
@@ -11017,7 +11138,7 @@ window.onload = () => {
     function hideTip(){ if(tipEl) tipEl.style.display = 'none'; }
     function buildItemTipHTML(id){
         let d = DB.items[id]; if(!d) return '';
-        let nameColor = d.c || 'text-white';
+        let nameColor = getItemColor({ id });
         let parts = [];
         parts.push(`<div class="font-bold text-base ${nameColor}" style="margin-bottom:2px;">${d.n}</div>`);
         let tl = TYPE_LABEL[d.type] || '道具';
@@ -11058,17 +11179,39 @@ window.onload = () => {
         if(d.d) parts.push(`<div class="text-slate-400" style="font-size:11px;margin-top:4px;">${d.d}</div>`);
         return parts.join('');
     }
+    // 取出 hover 物品的實例（倉庫或背包），供倉庫等以實例顯示的清單使用
+    function findTipItem(src, uidv){
+        try {
+            if(src === 'wh'){ let w = loadWarehouse(); return ((w && w.items) || []).find(x => x.uid === uidv) || null; }
+            return (player.inv || []).find(x => x.uid === uidv) || null;
+        } catch(e){ return null; }
+    }
     document.addEventListener('mousemove', function(e){
         let host = e.target && e.target.closest ? e.target.closest('.tip-host') : null;
         let panel = document.getElementById('interaction-content');
         if(!host || !panel || !panel.contains(host)){ hideTip(); return; }
-        if(!ICON2ID) buildMap();
-        let img = host.querySelector('img');
-        let src = img ? img.getAttribute('src') : null;
-        let id = src ? ICON2ID[src] : null;
-        if(!id){ hideTip(); return; }
         let el = getTip();
-        if(el._id !== id){ el.innerHTML = buildItemTipHTML(id); el._id = id; }
+        let tUid = host.getAttribute('data-tip-uid');
+        if(tUid){
+            // 實例物品（倉庫/背包清單）：顯示完整資訊（含 +N、詞綴、套裝效果）
+            let tSrc = host.getAttribute('data-tip-src') || 'inv';
+            let key = 'I:' + tSrc + ':' + tUid;
+            if(el._id !== key){
+                let it = findTipItem(tSrc, tUid);
+                if(!it){ hideTip(); return; }
+                el.innerHTML = `<div class="font-bold text-base ${getItemColor(it)}" style="margin-bottom:4px;">${getItemFullName(it)}</div>`
+                    + `<div class="text-slate-300" style="font-size:12px;line-height:1.5;">${buildItemDescHTML(it)}</div>`;
+                el._id = key;
+            }
+        } else {
+            // 商店/製作圖示：依 icon → 基底物品 ID 顯示
+            if(!ICON2ID) buildMap();
+            let img = host.querySelector('img');
+            let src = img ? img.getAttribute('src') : null;
+            let id = src ? ICON2ID[src] : null;
+            if(!id){ hideTip(); return; }
+            if(el._id !== id){ el.innerHTML = buildItemTipHTML(id); el._id = id; }
+        }
         el.style.display = 'block';
         let pad = 16, w = el.offsetWidth, h = el.offsetHeight;
         let x = e.clientX + pad, y = e.clientY + pad;
