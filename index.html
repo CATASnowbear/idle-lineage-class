@@ -1861,7 +1861,7 @@ function fragileMult(t) { return (t && t.st && t.st.fragile > 0) ? 1.2 : 1; }
 // ============================================================================
 const MASTERY_DATA = {
     knight: { logo: 'assets/logo/騎士logo.png', boss: '飛龍', list: {
-        k_counter: { n: '反擊精通', pos: 'top',    msg: '反擊與居合100%發動並且傷害提升',       d: '使用有反擊與居合武器時，反擊與居合觸發機率變成100%，反擊與居合傷害提升' },
+        k_counter: { n: '反擊精通', pos: 'top',    msg: '反擊與居合100%發動、傷害提升、並削減硬皮',       d: '使用有反擊與居合武器時，反擊與居合觸發機率變成100%、傷害提升，且反擊與居合命中時各再削減 1 點硬皮值（與居合重擊的削減疊加）' },
         k_cleave:  { n: '切割精通', pos: 'left',   msg: '切割持續時間更長且速度更快',           d: '使用有切割的武器時，切割持續時間變成4秒，增加攻擊速度變成33%' },
         k_pierce:  { n: '穿透精通', pos: 'right',  msg: '穿透變成全體攻擊',                     d: '使用有穿透的武器時，穿透效果變成全體攻擊' },
         k_survive: { n: '生存精通', pos: 'bottom', msg: '藥水治癒量增加，魔抗增加',             d: '治癒藥水恢復量增加25%，MR+15' }
@@ -3672,6 +3672,7 @@ function procCounter(t) {
     t.curHp -= dmg;
     t.justHit = getWpnEle(player.eq.wpn, wpn);
     mobWake(t);
+    if (t.curHp > 0 && hasMastery('k_counter')) wearHardSkin(t, null, false, false, true);   // 🏅 反擊精通：反擊命中削減 1 硬皮值
     let mark = res.crit ? '（爆擊!）' : '';
     logCombat(`<span class="font-bold" style="color:#fbbf24;text-shadow:0 0 6px #f59e0b;">【反擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害${mark}。`, 'player');
     let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -3689,7 +3690,7 @@ function procIai(t) {
     t.curHp -= res.dmg;
     t.justHit = getWpnEle(player.eq.wpn, wpn);
     mobWake(t);
-    if (res.heavy) wearHardSkin(t, null, true, false);   // 🔧 硬皮消磨：居合重擊 → 視為一般重擊 -2
+    wearHardSkin(t, null, res.heavy, false, hasMastery('k_counter'));   // 🔧 居合重擊 -2；🏅 反擊精通：居合命中再削減 1 硬皮值（與重擊 -2 疊加）
     let mark = (res.heavy && res.crit) ? '會心一擊' : (res.crit ? '爆擊' : (res.heavy ? '重擊' : ''));
     logCombat(`<span class="font-bold" style="color:#a5f3fc;text-shadow:0 0 6px #06b6d4;">【居合】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害${mark ? '（' + mark + '!）' : ''}。`, 'player');
     let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -5284,6 +5285,7 @@ function allyReactCounter(mob, blocked) {
         if (!_ctr && Math.random() >= (blocked ? 1 : 0.50)) return;
         let res = allyStrikeRoll(ally, mob, { forceHit: true, noHeavy: true, mult: _ctr ? 0.65 : 0.50 });
         logCombat(`<span class="font-bold" style="color:#fbbf24;text-shadow:0 0 6px #f59e0b;">【協力·${ally._allyName}·反擊】</span>對 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 造成 ${res.dmg} 點傷害${res.crit?'（爆擊!）':''}。`, 'player');
+        if (_ctr) wearHardSkin(mob, null, false, false, true);   // 🏅 傭兵反擊精通：反擊命中削減 1 硬皮值
         _allyDamageMob(ally, mob, res.dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
     });
 }
@@ -5300,7 +5302,7 @@ function allyReactIai(mob) {
         if (_iai) res.dmg = Math.max(1, Math.floor(res.dmg * 1.3));
         let mark = (res.heavy && res.crit) ? '會心一擊' : (res.crit ? '爆擊' : (res.heavy ? '重擊' : ''));
         logCombat(`<span class="font-bold" style="color:#a5f3fc;text-shadow:0 0 6px #06b6d4;">【協力·${ally._allyName}·居合】</span>對 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 造成 ${res.dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
-        if (res.heavy) wearHardSkin(mob, null, true, false);   // 🔧 硬皮消磨：傭兵居合重擊 -2
+        wearHardSkin(mob, null, res.heavy, false, _iai);   // 🔧 傭兵居合重擊 -2；🏅 反擊精通：居合命中再削減 1 硬皮值（疊加）
         _allyDamageMob(ally, mob, res.dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
     });
 }
