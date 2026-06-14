@@ -123,7 +123,9 @@
       st('HP', fmt(m.hp)) + st('攻擊', dmg) + st('命中', m.hit != null ? m.hit : '-') +
       st('AC', m.ac != null ? m.ac : '-') + st('魔防', m.mr != null ? m.mr : '-') +
       st('經驗', fmt(m.exp)) + st('金幣', gold) + '</div>';
-    var mapsHTML = h.maps.length ? h.maps.map(function (nm) { return hl(nm, q); }).join('、') : '—';
+    var mapsHTML = h.maps.length
+      ? h.maps.map(function (nm) { return '<span class="m-dex-maplink" data-map="' + esc(nm) + '">' + hl(nm, q) + '</span>'; }).join('、')
+      : '—';
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
@@ -175,6 +177,15 @@
       var i = document.getElementById('m-dex-input');
       i.value = ''; doSearch(); i.focus();
     });
+    // 點出沒地圖名稱 → 把搜尋框設成該地圖名(等於查那張圖的所有怪)。事件委派,結果重繪也持續有效。
+    document.getElementById('m-dex-results').addEventListener('click', function (e) {
+      var link = e.target.closest ? e.target.closest('.m-dex-maplink') : null;
+      if (!link) return;
+      var i = document.getElementById('m-dex-input');
+      i.value = link.getAttribute('data-map') || '';
+      doSearch();
+      var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
+    });
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });   // 點背景關閉
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
@@ -209,7 +220,9 @@
       '.m-dex-stats{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:#cbd5e1;margin-bottom:6px;}',
       '.m-dex-stat b{color:#94a3b8;font-weight:normal;margin-right:2px;}',
       '.m-dex-sub{font-size:12px;color:#fcd34d;font-weight:bold;margin:8px 0 3px;}',
-      '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.5;}',
+      '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
+      '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
+      '.m-dex-maplink:active{color:#38bdf8;}',
       '.m-dex-nodrop{font-size:13px;color:#64748b;}',
       '.m-dex-drops{width:100%;border-collapse:collapse;font-size:13px;}',
       '.m-dex-drops td{padding:3px 4px;border-bottom:1px solid #1e293b;color:#e2e8f0;}',
