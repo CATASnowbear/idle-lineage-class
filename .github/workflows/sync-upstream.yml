@@ -5,7 +5,7 @@ name: sync-upstream
 
 on:
   schedule:
-    - cron: '0 * * * *'    # 每小時檢查一次原作者更新(公開 repo,Actions 免費無上限)
+    - cron: '23 * * * *'   # 每小時檢查一次原作者更新;用 :23 而非整點 :00,閃過整點排程大軍以降低 GitHub 排隊延遲
   workflow_dispatch: {}     # 也可在 Actions 頁手動觸發 / gh workflow run 觸發
 
 permissions:
