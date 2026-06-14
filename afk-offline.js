@@ -122,10 +122,20 @@
     } catch (e) {}
     return id || '?';
   }
+  // 累積總經驗(等級已過的各級需求總和 + 目前這級經驗)。player.exp 是「當級經驗」升級會歸零,
+  // 直接相減在升級時會變負;改用累積值相減才正確(getExpReq=每級所需經驗,核心遊戲全域函式)。
+  function expTotal(lv, exp) {
+    var t = exp || 0;
+    if (typeof getExpReq === 'function') {
+      for (var i = 1; i < (lv || 1); i++) { var r = getExpReq(i); if (!isFinite(r)) break; t += r; }
+    }
+    return t;
+  }
   function summarize(before, after, doneTicks, died, huntMap) {
     var mins = Math.round(doneTicks * TICK_MS / 60000);
     var dGold = (after.gold || 0) - (before.gold || 0);
-    var dExp  = (after.exp  || 0) - (before.exp  || 0);
+    var dExp  = expTotal(after.lv, after.exp) - expTotal(before.lv, before.exp);
+    if (dExp < 0) dExp = 0;   // 保險:經驗只增不減,理論上不會 < 0
     var dLv   = (after.lv   || 0) - (before.lv   || 0);
     var items = [];
     var ids = {};
