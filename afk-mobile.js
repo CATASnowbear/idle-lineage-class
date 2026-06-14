@@ -403,14 +403,16 @@
       'body.m-mobile #m-stat-body{width:100%;}',
       'body.m-mobile #m-stat-body #status-panel{display:flex !important;width:100% !important;margin:0 !important;}',
 
-      /* 商店列(村莊雜貨商人等):手機窄寬下商品名稱用了 truncate 但文字容器沒 min-w-0,名稱會溢出壓到
-         數量輸入框上(看不清買什麼/多少錢)。粗粒度修法:讓文字容器可縮、名稱改換行、數量框縮窄、間距縮小。
-         只 scope 在穩定的 #shop-items-list .list-item;作者若重排商店,規則失效即回原樣(不會壞)。 */
-      'body.m-mobile #shop-items-list .list-item > div:first-child{min-width:0 !important;gap:8px !important;}',
-      'body.m-mobile #shop-items-list .list-item > div:first-child > div{min-width:0 !important;}',
-      'body.m-mobile #shop-items-list .list-item > div:first-child span{white-space:normal !important;overflow-wrap:break-word;}',
-      'body.m-mobile #shop-items-list .list-item input{width:44px !important;}',
-      'body.m-mobile #shop-items-list .list-item > div:last-child{gap:6px !important;}',
+      /* NPC 互動列(商店/製作 等共用同款 .list-item):手機窄寬下名稱用了 truncate 但文字容器沒 min-w-0,
+         名稱會整行溢出壓到右側的數量框/製作鈕(看不清買/做什麼)。粗粒度修法:讓文字容器可縮、名稱改換行、
+         數量框縮窄、間距縮小。scope 在穩定的 #interaction-content .list-item → 商店+製作+同款 NPC 一次涵蓋;
+         作者若重排,規則失效即回原樣(不會壞)。 */
+      'body.m-mobile #interaction-content .list-item{flex-wrap:wrap !important;gap:8px;}',   /* 控制區太寬(如製作含兩顆鈕)時整塊換到第二行,資訊區就有整行空間 */
+      'body.m-mobile #interaction-content .list-item > div:first-child{min-width:45% !important;gap:8px !important;}',   /* 資訊區保底 45%:商店(控制窄)維持一行;製作(控制寬)放不下→控制整塊換行 */
+      'body.m-mobile #interaction-content .list-item > div:first-child > div{min-width:0 !important;}',
+      'body.m-mobile #interaction-content .list-item > div:first-child span{white-space:normal !important;overflow-wrap:break-word;}',
+      'body.m-mobile #interaction-content .list-item input{width:44px !important;}',
+      'body.m-mobile #interaction-content .list-item > div:last-child{gap:6px !important;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;}',
 
       /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
          工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
