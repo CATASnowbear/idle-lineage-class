@@ -4200,8 +4200,12 @@ function playerAttack() {
         // 🔧 黑暗妖精：附加劇毒（命中 50%／劇毒精通 100% 使目標中毒：每秒該次傷害 30%，持續 5 秒，取較高傷害）
         if (player.buffs && player.buffs.sk_dark_poison > 0 && target.curHp > 0 && Math.random() < (hasMastery('d_poison') ? 1 : 0.5)) {
             if (!target.st) target.st = newMobStatus();
+            let _pUnit = Math.max(1, Math.floor(result.dmg * 0.3));
+            let _pMax = hasMastery('d_poison') ? 5 : 1;   // 🔧 劇毒精通：中毒最多疊 5 層
             target.st.poison = 50; target.st.poisonTick = 10;
-            target.st.poisonDmg = Math.max(target.st.poisonDmg || 0, Math.max(1, Math.floor(result.dmg * 0.3)));
+            target.st.poisonStacks = Math.min(_pMax, (target.st.poisonStacks || 0) + 1);
+            target.st.poisonUnit = Math.max(target.st.poisonUnit || 0, _pUnit);
+            target.st.poisonDmg = target.st.poisonUnit * target.st.poisonStacks;
         }
         target.justHit = getWpnEle(player.eq.wpn, wpn);
         if (player._setBeauty5 && result.heavy) player._beautyNextSure = true;   // 🔮 麗人 5/5：觸發重擊 → 下一次一般攻擊必中
@@ -4261,7 +4265,7 @@ function playerAttack() {
         let _bleedChance = (player.eq.wpn && weaponHasBleed(player.eq.wpn.id)) ? ((player.d.str || 0) / 60) : 0;
         if (player.eq.wpn && hasMastery('d_bleed') && getWeaponTags(player.eq.wpn.id).includes('雙刀')) _bleedChance = Math.max(_bleedChance, 0.5);
         if (player.eq.wpn && target.curHp > 0 && Math.random() < _bleedChance) {
-            applyBleed(target, result.dmg);
+            applyBleed(target, result.dmg, (hasMastery('d_bleed') && getWeaponTags(player.eq.wpn.id).includes('匕首')) ? 10 : 5);   // 🔧 出血精通+匕首：上限 10 層
         }
         // 單手鈍器鈍擊：命中使目標攻擊延遲 1 秒；每個敵人攻擊週期僅延遲一次（攻擊後重置），故最多 +1 秒、不會無限延遲
         let _isBlunt1h = !!(player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('單手鈍器'));
@@ -5139,7 +5143,7 @@ function updateReviveInPlaceBtn() {
 
 // ===================== 異常狀態 / 召喚物 / 手動技能 引擎 =====================
 function newMobStatus() {
-    return { freeze:0, stun:0, stone:0, sleep:0, poison:0, poisonTick:30, poisonDmg:0,
+    return { freeze:0, stun:0, stone:0, sleep:0, poison:0, poisonTick:30, poisonDmg:0, poisonStacks:0, poisonUnit:0,
              blind:0, blindVal:0, weaken:0, disease:0, vacuum:0, broken:0, slow:0, mrhalf:0, magicseal:0, armorbreak:0 };
 }
 function mobEffAC(m) { return (m.ac || 0) + ((m.st && m.st.disease > 0) ? 8 : 0); }
@@ -5182,6 +5186,7 @@ function applyMobStatus(m, st, skillName) {
     if(k === 'poison') {
         m.st.poison = dur; m.st.poisonTick = (st.tick || 3) * 10;
         m.st.poisonDmg = roll(st.dmg[0], st.dmg[1]);
+        m.st.poisonStacks = 1; m.st.poisonUnit = m.st.poisonDmg;   // 技能類中毒：單層（不疊加），仍顯示層數符號
     } else if(k === 'blind') {
         m.st.blind = dur; m.st.blindVal = st.hit || 4;
     } else if(k in m.st) {
@@ -5259,11 +5264,12 @@ function tryInstakill(m, ik, skillName, idx) {
     killMob(idx);
     return true;
 }
-// 出血：對怪物施加一層出血（每秒造成 hitDmg 的 20%，持續 8 秒）。最多 5 層，已滿時新層取代最舊層。
-function applyBleed(m, hitDmg) {
+// 出血：對怪物施加一層出血（每秒造成 hitDmg 的 20%，持續 8 秒）。預設最多 5 層；🔧 出血精通+匕首可達 10 層；已滿時新層取代最舊層。
+function applyBleed(m, hitDmg, maxLayers) {
     if(!m.bleeds) m.bleeds = [];
+    let cap = maxLayers || 5;
     let dps = Math.max(1, Math.floor(hitDmg * 0.20));
-    if(m.bleeds.length >= 5) m.bleeds.shift();          // 已 5 層：移除最舊的，由新層取代
+    while(m.bleeds.length >= cap) m.bleeds.shift();      // 超過上限：移除最舊的，由新層取代
     m.bleeds.push({ dmg: dps, ticksLeft: 80 });          // 8 秒 = 80 ticks
     logCombat(`<span class="${getMobColor(m.lv)}">${m.n}</span> 陷入出血（${m.bleeds.length} 層，每秒 ${dps}）。`, 'player');
 }
@@ -5282,6 +5288,7 @@ function processMobStatusTick(m, i) {
             logCombat(`<span class="${getMobColor(m.lv)}">${m.n}</span> 受到中毒傷害 ${s.poisonDmg} 點。`, 'magic');
             if(m.curHp <= 0) { killMob(i); return true; }
         }
+        if(s.poison <= 0) { s.poisonStacks = 0; s.poisonUnit = 0; s.poisonDmg = 0; }   // 中毒結束：清空層數
     }
     // 出血 DoT：可疊 5 層，每層各自獨立計時，每秒(10 ticks)造成一次傷害；同 tick 觸發的多層合併為一次顯示
     if(m.bleeds && m.bleeds.length) {
@@ -5436,8 +5443,12 @@ function allyAttackOnce(ally) {
         // 🔧 黑暗妖精傭兵：預設攻擊自動維持附加劇毒（學過 sk_dark_poison 即視為常駐增益）；命中 50%／劇毒精通 100% 使目標中毒（與玩家同規則）
         if (ally.cls === 'dark' && ally.skills && ally.skills.includes('sk_dark_poison') && t.curHp > 0 && Math.random() < (allyHasMastery(ally, 'd_poison') ? 1 : 0.5)) {
             if (!t.st) t.st = newMobStatus();
+            let _pUnit = Math.max(1, Math.floor(dmg * 0.3));
+            let _pMax = allyHasMastery(ally, 'd_poison') ? 5 : 1;   // 🔧 劇毒精通：中毒最多疊 5 層
             t.st.poison = 50; t.st.poisonTick = 10;
-            t.st.poisonDmg = Math.max(t.st.poisonDmg || 0, Math.max(1, Math.floor(dmg * 0.3)));
+            t.st.poisonStacks = Math.min(_pMax, (t.st.poisonStacks || 0) + 1);
+            t.st.poisonUnit = Math.max(t.st.poisonUnit || 0, _pUnit);
+            t.st.poisonDmg = t.st.poisonUnit * t.st.poisonStacks;
         }
         let mark = (heavy && isCrit) ? '會心一擊' : (isCrit ? '爆擊' : (heavy ? '重擊' : ''));
         logCombat(`${kp}<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
@@ -5718,7 +5729,7 @@ function allyOnHitEffects(ally, t, res) {
     let _bleedChance = weaponHasBleed(wpnInst.id) ? ((d.str||0)/60) : 0;   // 匕首/矛：力量/60 機率出血
     if (allyHasMastery(ally, 'd_bleed') && getWeaponTags(wpnInst.id).includes('雙刀')) _bleedChance = Math.max(_bleedChance, 0.5);   // 🔧 黑暗妖精出血精通：傭兵雙刀 50% 觸發出血
     if (_bleedChance > 0 && t.curHp > 0 && !t._dead && Math.random() < _bleedChance) {
-        applyBleed(t, res.dmg);
+        applyBleed(t, res.dmg, (allyHasMastery(ally, 'd_bleed') && getWeaponTags(wpnInst.id).includes('匕首')) ? 10 : 5);   // 🔧 出血精通+匕首：上限 10 層
     }
     if (getWeaponTags(wpnInst.id).includes('單手鈍器') && t.curHp > 0 && !t._dead) {   // 鈍擊：延遲目標攻擊 1 秒（每攻擊週期僅一次，同玩家）
         t._bluntShow = state.ticks + 30;
@@ -7398,6 +7409,10 @@ function renderMobs() {
                 _badgeTags = order.filter(k => m.st[k] > 0).map(k =>
                     `<span class="px-1 rounded bg-purple-900/70 text-purple-200 text-[10px]">${STATUS_NAME[k]}</span>`).join(' ');
             }
+            // 🔧 出血（存於 m.bleeds，不在 m.st）：頭上徽章列也顯示「出血」
+            if(m.bleeds && m.bleeds.length) {
+                _badgeTags += (_badgeTags ? ' ' : '') + `<span class="px-1 rounded bg-purple-900/70 text-purple-200 text-[10px]">出血</span>`;
+            }
             // 🔮 席琳恩賜：名字下方常駐標誌（置於異常狀態列最前，不會被狀態列覆蓋）
             if(m._grace) _badgeTags = `<span class="px-1 rounded bg-red-950/80 grace-badge text-[10px] font-bold">席琳恩賜</span>` + (_badgeTags ? ' ' + _badgeTags : '');
             // 徽章列固定常駐（單行、固定高度），避免有/無狀態時背景框忽大忽小
@@ -7411,7 +7426,7 @@ function renderMobs() {
                         <div class="flex justify-center mb-3">
                             <img src="${imgUrl}" alt="${m.n}" onerror="this.onerror=null; this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}">
                         </div>
-                        <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;">${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold text-red-400" title="出血層數">🩸×${m.bleeds.length}</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}</div>
+                        <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${(m.st && m.st.poison > 0) ? `<span class="text-[11px] font-bold" style="color:#4ade80;display:inline-flex;align-items:center;line-height:1;" title="中毒層數">◆×${m.st.poisonStacks || 1}</span>` : ''}${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold" style="color:#f87171;display:inline-flex;align-items:center;line-height:1;" title="出血層數">◆×${m.bleeds.length}</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" style="display:inline-flex;align-items:center;line-height:1;" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" style="display:inline-flex;align-items:center;line-height:1;" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}</div>
                         <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
                             <div class="bg-red-500 h-full transition-all" style="width:${pct}%"></div>
                         </div>
