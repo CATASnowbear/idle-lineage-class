@@ -154,7 +154,9 @@
 
     window.__afk.last = { mins: mins, gold: dGold, exp: dExp, lv: dLv, died: !!died, ticks: doneTicks, items: items.length };
 
-    var line = `<span class="text-sky-300 font-bold">🌙 離線掛機 ${mins} 分鐘</span>（在 <b>${mapName(huntMap)}</b>），獲得：`;
+    var timeStr = mins < 60 ? (mins + ' 分鐘')
+                : (Math.floor(mins / 60) + ' 小時' + (mins % 60 ? ' ' + (mins % 60) + ' 分鐘' : ''));   // ≥60 分進位成「X 小時 Y 分鐘」
+    var line = `<span class="text-sky-300 font-bold">🌙 離線掛機 ${timeStr}</span>（在 <b>${mapName(huntMap)}</b>），獲得：`;
     var parts = [];
     if (dGold > 0) parts.push(`<span class="text-yellow-400 font-bold">${fmt(dGold)} 金幣</span>`);
     if (dLv   > 0) parts.push(`<span class="text-green-400 font-bold">升 ${dLv} 級</span>`);
