@@ -51,6 +51,21 @@ jobs:
           git commit -m "chore(sync): 自動同步原作者最新 index.html(新增圖檔 ${{ steps.merge.outputs.assets_added }} 張)"
           git push
 
+      - name: 打 tag + 開 Release (供 release 下載原始碼)
+        if: steps.merge.outputs.changed == 'true' && steps.smoke.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v$(TZ='Asia/Taipei' date +%Y%m%d-%H%M)"
+          SHA="$(git rev-parse HEAD)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "已有同名 release $TAG,略過(避免重複)。"
+          else
+            gh release create "$TAG" --target "$SHA" \
+              --title "同步原作者更新 $TAG" \
+              --notes "已自動同步原作者最新版,並套上外掛(離線掛機 / 手機版面 / 怪物掉落查詢)。原始碼請由下方 Source code (zip / tar.gz) 下載。本次新增圖檔 ${{ steps.merge.outputs.assets_added }} 張。"
+          fi
+
       - name: 掛點失效 → 開 issue 通知 (不自動推壞版本)
         if: steps.merge.outputs.changed == 'true' && steps.smoke.outcome == 'failure'
         env:

@@ -11,6 +11,7 @@
 > **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
 > ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖,
 > 再用 `scripts/smoke-hooks.mjs`(Playwright)驗三支外掛 `hooks OK`,**通過才自動 commit/push**;
+> 推送成功後再**打 tag(台灣時間 `v YYYYMMDD-HHMM`)+ 開 GitHub Release**(Release 自動附原始碼 zip/tar.gz 供下載)。
 > 掛點被原作者改壞時不會推壞版本,改開一個 issue 通知人工處理。
 
 ### 使用者說「合併原版 / 同步原版 / 更新原版」時 → 先用 GitHub Action,不要急著手動
