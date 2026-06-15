@@ -554,11 +554,11 @@
 
       /* 倉庫(warehouse NPC):金幣存取列 + 分類/一鍵列在手機窄寬下擠成一團 → 重排成整齊兩行。
          用倉庫專屬 id/onclick(#wh-gold-amt、whOneClickDeposit)定位,只命中倉庫;原作改版即失效不影響別頁。 */
-      /* 金幣列:資訊獨佔一行,下一行 [數量輸入][存入][取出] 平均撐開 */
+      /* 金幣列:資訊一行、數量輸入一行,[存入][取出]自成一列各佔一半 */
       'body.m-mobile #interaction-content div:has(> #wh-gold-amt){gap:8px !important;}',
       'body.m-mobile #interaction-content div:has(> #wh-gold-amt) > span:first-child{flex:1 1 100% !important;}',
-      'body.m-mobile #interaction-content #wh-gold-amt{flex:1 1 90px !important;width:auto !important;margin-left:0 !important;}',
-      'body.m-mobile #interaction-content div:has(> #wh-gold-amt) > button{flex:1 1 auto !important;}',
+      'body.m-mobile #interaction-content #wh-gold-amt{flex:1 1 100% !important;width:auto !important;margin-left:0 !important;}',
+      'body.m-mobile #interaction-content div:has(> #wh-gold-amt) > button{flex:1 1 40% !important;}',
       /* 分類列:[物品分類 + 下拉]一行,[一鍵存入][一鍵排列]整寬第二行;隱藏冗長的共用提示字 */
       'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]){flex-wrap:wrap !important;gap:8px !important;align-items:center !important;}',
       'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > select{flex:1 1 160px !important;}',
