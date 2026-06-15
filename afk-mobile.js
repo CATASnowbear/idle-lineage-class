@@ -269,7 +269,7 @@
     m.id = 'm-logout-modal';
     m.innerHTML =
       '<div id="m-logout-card">' +
-        '<div id="m-logout-msg">登出後會開始離線掛機（上限 24 小時）。<br>確定回首頁？</div>' +
+        '<div id="m-logout-msg">回首頁前會<b>自動幫你存檔</b>，進度不會遺失。<br>登出後會開始離線掛機（上限 24 小時）。<br>確定回首頁？</div>' +
         '<div id="m-logout-btns">' +
           '<button id="m-logout-cancel" type="button">取消</button>' +
           '<button id="m-logout-ok" type="button">確定回首頁</button>' +
