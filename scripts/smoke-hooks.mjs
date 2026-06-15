@@ -1,5 +1,5 @@
 /* ============================================================================
- * smoke-hooks.mjs — 冒煙測試:用無頭瀏覽器載入 index.html,確認三支外掛都 hook 成功
+ * smoke-hooks.mjs — 冒煙測試:用無頭瀏覽器載入 index.html,確認四支外掛都 hook 成功
  *
  * 用途:自動同步原作者 index.html 後,驗證原作者沒有改壞外掛掛點(改 id / DOM 結構)。
  *   - 全部 hooks OK → exit 0(workflow 才會 commit/push)
@@ -42,8 +42,8 @@ await page.waitForTimeout(1500);
 await browser.close();
 server.close();
 
-// 三支外掛各自的開機 log:'[AFK] hooks OK' / '[AFK-mobile] hooks OK' / '[AFK-dex] hooks OK'
-const need = ['[AFK]', '[AFK-mobile]', '[AFK-dex]'];
+// 各外掛的開機 log:'[AFK] hooks OK' / '[AFK-mobile] hooks OK' / '[AFK-dex] hooks OK' / '[AFK-fixes] hooks OK'
+const need = ['[AFK]', '[AFK-mobile]', '[AFK-dex]', '[AFK-fixes]'];
 const okMap = {};
 for (const n of need) okMap[n] = logs.some((l) => l.includes(n) && l.includes('hooks OK'));
 const allOK = Object.values(okMap).every(Boolean);
@@ -53,4 +53,4 @@ if (!allOK) {
   console.error('冒煙測試失敗:有外掛沒有成功 hook(原作者可能改了 DOM / id)。');
   process.exit(1);
 }
-console.log('冒煙測試通過:三支外掛都 hooks OK。');
+console.log('冒煙測試通過:四支外掛都 hooks OK。');
