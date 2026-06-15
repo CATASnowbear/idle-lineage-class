@@ -149,8 +149,7 @@
       }
     }
     items.sort(function (a, b) { return b.d - a.d; });
-    var itemStr = items.slice(0, 12).map(function (it) { return it.n + '×' + it.d; }).join('、');
-    if (items.length > 12) itemStr += ` …等 ${items.length} 種`;
+    var itemStr = items.map(function (it) { return it.n + '×' + it.d; }).join('、');
 
     window.__afk.last = { mins: mins, gold: dGold, exp: dExp, lv: dLv, died: !!died, ticks: doneTicks, items: items.length };
 
