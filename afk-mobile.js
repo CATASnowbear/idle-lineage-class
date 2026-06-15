@@ -546,6 +546,31 @@
       'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:nth-child(2) .overflow-y-auto{overflow:visible !important;max-height:none !important;}',   /* 說明欄不限高、整段顯示 */
       'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:last-child button{width:100% !important;height:auto !important;flex-direction:row !important;gap:8px !important;padding:11px !important;}',   /* 購買鈕整條寬、圖示+字並排 */
 
+      /* 村莊頁頂部:村名(text-3xl)+「安全區域」提示在手機佔掉一截高度 → 縮字級與上下間距 */
+      'body.m-mobile #town-view{padding:10px 12px !important;gap:5px !important;}',
+      'body.m-mobile #town-name{font-size:19px !important;}',
+      'body.m-mobile #town-view > p{font-size:12px !important;line-height:1.35 !important;}',
+      'body.m-mobile #town-npc-container{margin-top:6px !important;}',
+
+      /* 倉庫(warehouse NPC):金幣存取列 + 分類/一鍵列在手機窄寬下擠成一團 → 重排成整齊兩行。
+         用倉庫專屬 id/onclick(#wh-gold-amt、whOneClickDeposit)定位,只命中倉庫;原作改版即失效不影響別頁。 */
+      /* 金幣列:資訊獨佔一行,下一行 [數量輸入][存入][取出] 平均撐開 */
+      'body.m-mobile #interaction-content div:has(> #wh-gold-amt){gap:8px !important;}',
+      'body.m-mobile #interaction-content div:has(> #wh-gold-amt) > span:first-child{flex:1 1 100% !important;}',
+      'body.m-mobile #interaction-content #wh-gold-amt{flex:1 1 90px !important;width:auto !important;margin-left:0 !important;}',
+      'body.m-mobile #interaction-content div:has(> #wh-gold-amt) > button{flex:1 1 auto !important;}',
+      /* 分類列:[物品分類 + 下拉]一行,[一鍵存入][一鍵排列]整寬第二行;隱藏冗長的共用提示字 */
+      'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]){flex-wrap:wrap !important;gap:8px !important;align-items:center !important;}',
+      'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > select{flex:1 1 160px !important;}',
+      'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > span.text-slate-500{display:none !important;}',
+      'body.m-mobile #interaction-content div:has(> button[onclick^="whOneClickDeposit"]) > button{flex:1 1 40% !important;margin-left:0 !important;}',
+
+      /* 血盟 NPC(依詩蒂/特羅斯):桌機 flex-row + 200px 立繪,手機窄寬下右側對話被擠成一字一行。
+         改直向堆疊:立繪縮小置中、對話/按鈕整寬。招募與已加入兩種版面皆適用;原作改版規則自動失效。 */
+      'body.m-mobile #interaction-content > .flex-row{flex-direction:column !important;align-items:center !important;gap:14px !important;padding:12px !important;}',
+      'body.m-mobile #interaction-content > .flex-row > div:first-child{width:150px !important;height:210px !important;}',
+      'body.m-mobile #interaction-content > .flex-row > div:last-child{width:100% !important;}',
+
       /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
          工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
       'body.m-mobile #creation-screen{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;margin:0 !important;width:96vw !important;max-width:96vw !important;height:auto !important;max-height:var(--app-h,94vh) !important;overflow-y:auto !important;padding:16px 16px 28px !important;}',
