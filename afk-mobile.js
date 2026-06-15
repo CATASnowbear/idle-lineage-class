@@ -89,8 +89,10 @@
     var elName = strip.querySelector('#ms-name'),
         elLv = strip.querySelector('#ms-lv'), elHp = strip.querySelector('#ms-hp'),
         elMp = strip.querySelector('#ms-mp'), elGold = strip.querySelector('#ms-gold'),
+        elHpBar = strip.querySelector('#ms-hp-bar'), elMpBar = strip.querySelector('#ms-mp-bar'),
         elExp = strip.querySelector('#ms-exp');
     function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
+    function barW(id) { var e = document.getElementById(id); return e && e.style.width ? e.style.width : '0%'; }
     function mirror() {
       if (!document.body.classList.contains('m-mobile')) return;
       // 暱稱(st-class);沒取名就退回職業(st-classname),都沒有才 '--'
@@ -98,6 +100,8 @@
       if (elLv) elLv.textContent = txt('st-lv') || '--';
       if (elHp) elHp.textContent = txt('txt-hp') || '--';
       if (elMp) elMp.textContent = txt('txt-mp') || '--';
+      if (elHpBar) elHpBar.style.width = barW('bar-hp');   // 跟原版血條同步寬度(讀遊戲自己算好的 %)
+      if (elMpBar) elMpBar.style.width = barW('bar-mp');
       if (elGold) elGold.textContent = txt('st-gold') || '--';
       var be = document.getElementById('bar-exp');
       if (elExp && be) elExp.style.width = be.style.width || '0%';
@@ -155,12 +159,18 @@
       var d = document.createElement('div');
       d.id = 'm-status';
       d.innerHTML =
-        '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
-        '<span class="ms-seg">Lv <b id="ms-lv">--</b></span>' +
-        '<span class="ms-seg ms-hp">HP <span id="ms-hp">--</span></span>' +
-        '<span class="ms-seg ms-mp">MP <span id="ms-mp">--</span></span>' +
-        '<span class="ms-seg ms-gold">💰 <span id="ms-gold">--</span></span>' +
-        '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
+        // 第一列:暱稱 / 等級 / 金幣 / 點我提示
+        '<div class="ms-row ms-row1">' +
+          '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
+          '<span class="ms-seg ms-lv">Lv <b id="ms-lv">--</b></span>' +
+          '<span class="ms-seg ms-gold">💰 <span id="ms-gold">--</span></span>' +
+          '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
+        '</div>' +
+        // 第二列:HP / MP 雙血條(仿原版:底條 + 填色 + 數字疊在上面)
+        '<div class="ms-row ms-row2">' +
+          '<div class="ms-bar ms-hp"><i class="ms-bar-fill" id="ms-hp-bar"></i><span class="ms-bar-txt"><b>HP</b> <span id="ms-hp">--</span></span></div>' +
+          '<div class="ms-bar ms-mp"><i class="ms-bar-fill" id="ms-mp-bar"></i><span class="ms-bar-txt"><b>MP</b> <span id="ms-mp">--</span></span></div>' +
+        '</div>' +
         '<div id="ms-exp"></div>';
       return d;
     }
@@ -327,16 +337,26 @@
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
       '#m-status{display:none;}',
       'body.m-mobile #status-panel{display:none !important;}',
-      'body.m-mobile #m-status{display:flex !important;flex:0 0 auto !important;align-items:center;flex-wrap:wrap;gap:1px 14px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;}',
-      'body.m-mobile #m-status .ms-seg{white-space:nowrap;}',
-      'body.m-mobile #m-status{cursor:pointer;}',
+      'body.m-mobile #m-status{display:flex !important;flex-direction:column;flex:0 0 auto !important;gap:6px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;cursor:pointer;}',
       'body.m-mobile #m-status:active{background:#16233c;}',
+      /* 第一列:暱稱 / 等級 / 金幣 / ⓘ */
+      'body.m-mobile #m-status .ms-row{display:flex;align-items:center;}',
+      'body.m-mobile #m-status .ms-row1{gap:14px;}',
+      'body.m-mobile #m-status .ms-seg{white-space:nowrap;}',
       'body.m-mobile #m-status .ms-name #ms-name{display:inline-block;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;color:#fff;font-weight:bold;font-size:14px;}',
       'body.m-mobile #m-status .ms-info{margin-left:auto;color:#94a3b8;font-size:13px;}',
       'body.m-mobile #m-status #ms-lv{color:#fff;font-size:15px;}',
-      'body.m-mobile #m-status .ms-hp{color:#f87171;font-weight:bold;}',
-      'body.m-mobile #m-status .ms-mp{color:#60a5fa;font-weight:bold;}',
       'body.m-mobile #m-status .ms-gold{color:#fbbf24;font-weight:bold;}',
+      /* 第二列:HP / MP 雙血條(底條 + 填色 + 數字疊上,仿原版) */
+      'body.m-mobile #m-status .ms-row2{gap:8px;}',
+      'body.m-mobile #m-status .ms-bar{position:relative;flex:1 1 0;min-width:0;height:20px;border-radius:5px;overflow:hidden;background:#1e293b;border:1px solid #334155;}',
+      'body.m-mobile #m-status .ms-bar-fill{position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .25s;}',
+      'body.m-mobile #m-status .ms-hp .ms-bar-fill{background:#dc2626;}',
+      'body.m-mobile #m-status .ms-mp .ms-bar-fill{background:#2563eb;}',
+      'body.m-mobile #m-status .ms-bar-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:#fff;font-weight:bold;text-shadow:0 1px 2px rgba(0,0,0,.75);}',
+      'body.m-mobile #m-status .ms-bar-txt b{font-weight:bold;}',
+      'body.m-mobile #m-status .ms-hp .ms-bar-txt b{color:#fecaca;}',
+      'body.m-mobile #m-status .ms-mp .ms-bar-txt b{color:#bfdbfe;}',
       'body.m-mobile #m-status #ms-exp{position:absolute;left:0;bottom:0;height:3px;width:0%;background:#eab308;transition:width .25s;}',
 
       /* 三欄:滿寬,一次只顯示一欄,內部自行捲動 */
