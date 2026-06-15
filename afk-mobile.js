@@ -50,6 +50,15 @@
     var nav = buildNav();
     gs.appendChild(nav);
 
+    // 手機戰鬥畫面:在怪物(#battle-view)正下方插一顆「手動喝水」鈕(桌機隱藏)
+    var battleView = document.getElementById('battle-view');
+    var healBtn = null, elHealCnt = null;
+    if (battleView && battleView.parentNode) {
+      healBtn = buildHealBtn();
+      battleView.parentNode.insertBefore(healBtn, battleView.nextSibling);
+      elHealCnt = healBtn.querySelector('#mh-cnt');
+    }
+
     // 戰鬥日誌 / 系統日誌:手機上做成「底部浮動面板」(從導覽列開,浮在畫面上,不擠壓戰鬥畫面)
     var combatLog = document.getElementById('combat-log-panel');
     var sysPanel = (function () { var s = document.getElementById('sys-log'); return s && s.closest ? s.closest('.panel') : null; })();
@@ -105,6 +114,10 @@
       if (elGold) elGold.textContent = txt('st-gold') || '--';
       var be = document.getElementById('bar-exp');
       if (elExp && be) elExp.style.width = be.style.width || '0%';
+      // 手動喝水鈕:在村莊隱藏(本來就自動回滿)、更新可喝瓶數
+      var townView = document.getElementById('town-view');
+      document.body.classList.toggle('m-intown', !!(townView && !townView.classList.contains('hidden')));
+      if (elHealCnt) { var pot = pickHealPot(); elHealCnt.textContent = '×' + (pot ? (pot.cnt || 0) : 0); if (healBtn) healBtn.classList.toggle('m-empty', !pot); }
       // 村莊時遊戲會給 combat-log-panel 加 hidden(沒有戰鬥日誌):強制切系統日誌、隱藏「切到戰鬥」鈕
       var noCombat = !combatLog || combatLog.classList.contains('hidden');
       document.body.classList.toggle('mlog-nocombat', noCombat);
@@ -287,6 +300,37 @@
     return m;
   }
 
+  // --- 手機戰鬥畫面:怪物下方的「手動喝水」鈕 -------------------------------
+  //   喝設定裡選的治癒藥水(set-pot:紅/橙/白),沒貨就依紅→橙→白往下找;
+  //   走遊戲原生 useItem(uid, false) → 由它處理回血/消耗/CD/UI 刷新(手動=會寫日誌、吃 1 秒共用冷卻)。
+  function buildHealBtn() {
+    var b = document.createElement('button');
+    b.id = 'm-heal-btn';
+    b.type = 'button';
+    b.innerHTML = '<span class="mh-ic">🧪</span><span class="mh-tx">喝水</span><span class="mh-cnt" id="mh-cnt"></span>';
+    b.addEventListener('click', manualDrink);
+    return b;
+  }
+  // 找出「這次手動喝水實際會喝的那瓶」:優先設定選的,其次紅→橙→白,都沒貨回 null。
+  function pickHealPot() {
+    if (typeof player === 'undefined' || !player || !player.inv) return null;
+    var sel = document.getElementById('set-pot');
+    var ids = [];
+    if (sel && sel.value) ids.push(sel.value);
+    ['potion_heal', 'potion_strong', 'potion_ult'].forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
+    for (var i = 0; i < ids.length; i++) {
+      var it = player.inv.find(function (x) { return x.id === ids[i]; });
+      if (it && (it.cnt || 0) > 0) return it;
+    }
+    return null;
+  }
+  function manualDrink() {
+    if (typeof useItem !== 'function') return;
+    var pot = pickHealPot();
+    if (!pot) { if (typeof logSys === 'function') logSys('沒有可用的治癒藥水。'); return; }
+    useItem(pot.uid, false);   // false=手動:回血+消耗+寫日誌,並受 player.cds.pot(1 秒)限制
+  }
+
   // --- 創角面板手機化:原作是 flex-row + 一堆固定寬高,手機會爆寬。標記關鍵子層讓 CSS 改直向堆疊 ---
   function tagCreationPanel() {
     var cp = document.getElementById('creation-panel');
@@ -358,6 +402,15 @@
       'body.m-mobile #m-status .ms-hp .ms-bar-txt b{color:#fecaca;}',
       'body.m-mobile #m-status .ms-mp .ms-bar-txt b{color:#bfdbfe;}',
       'body.m-mobile #m-status #ms-exp{position:absolute;left:0;bottom:0;height:3px;width:0%;background:#eab308;transition:width .25s;}',
+
+      /* 手機戰鬥畫面:怪物下方的手動喝水鈕(桌機與非戰鬥/村莊一律隱藏) */
+      '#m-heal-btn{display:none;}',
+      'body.m-mobile.mview-battle #m-heal-btn{display:flex;align-items:center;justify-content:center;gap:8px;flex:0 0 auto;margin:10px 12px 2px;padding:13px;border-radius:10px;border:1px solid #ef4444;background:linear-gradient(#dc2626,#b91c1c);color:#fff;font-size:16px;font-weight:bold;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);}',
+      'body.m-mobile #m-heal-btn:active{background:#991b1b;transform:translateY(1px);}',
+      'body.m-mobile #m-heal-btn .mh-ic{font-size:20px;line-height:1;}',
+      'body.m-mobile #m-heal-btn .mh-cnt{opacity:.85;font-size:14px;font-weight:normal;}',
+      'body.m-mobile #m-heal-btn.m-empty{filter:grayscale(.65);opacity:.5;}',
+      'body.m-mobile.m-intown #m-heal-btn{display:none !important;}',
 
       /* 三欄:滿寬,一次只顯示一欄,內部自行捲動 */
       'body.m-mobile .m-col-left,body.m-mobile .m-col-center,body.m-mobile .m-col-right{width:100% !important;max-width:none !important;flex:1 1 auto !important;min-height:0 !important;gap:8px !important;overflow:hidden;}',
