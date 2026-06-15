@@ -49,6 +49,7 @@
     strip.addEventListener('click', openStatModal);   // 點整條狀態列 → 彈出桌面版角色資訊塊(內含改名)
     var nav = buildNav();
     gs.appendChild(nav);
+    initTipPeek();   // 手機「長按物品看詳情」(取代桌機 hover tooltip)
 
     // 手機戰鬥畫面:在怪物(#battle-view)正下方插「手動喝水列」(桌機隱藏)
     //   每列 = [藥水圖示][數量][按鈕];背包有安特的水果時自動多出第二列(食用)。
@@ -578,6 +579,16 @@
       'body.m-mobile #interaction-content > .flex-row > div:first-child{width:150px !important;height:210px !important;}',
       'body.m-mobile #interaction-content > .flex-row > div:last-child{width:100% !important;}',
 
+      /* 手機長按看詳情:資訊卡彈窗(取代桌機 hover tooltip);短按維持原動作,長按那下不誤觸 */
+      '#m-tip-modal{display:none;}',
+      'body.m-mobile #m-tip-modal.open{display:flex !important;position:fixed;inset:0;z-index:85;align-items:flex-start;justify-content:center;padding:60px 12px 16px;background:rgba(2,6,23,0.6);}',
+      'body.m-mobile #m-tip-card{position:relative;width:min(94vw,420px);max-height:72vh;overflow-y:auto;background:rgba(15,23,42,0.98);border:1px solid #64748b;border-radius:10px;padding:14px 14px 16px;box-shadow:0 12px 40px rgba(0,0,0,.7);color:#e2e8f0;}',
+      'body.m-mobile #m-tip-card .m-tip-x{position:absolute;top:6px;right:6px;width:32px;height:32px;border:1px solid rgba(100,116,139,.7);background:rgba(30,41,59,.9);color:#e2e8f0;border-radius:7px;font-size:15px;line-height:1;cursor:pointer;font-family:inherit;padding:0;}',
+      'body.m-mobile #m-tip-card .m-tip-x:active{background:rgba(71,85,105,.95);}',
+      'body.m-mobile #m-tip-card .m-tip-name{font-weight:bold;font-size:16px;margin:0 36px 6px 0;}',
+      'body.m-mobile #m-tip-card .m-tip-body{font-size:13px;line-height:1.6;}',
+      'body.m-mobile .tip-host{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}',
+
       /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
          工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
       'body.m-mobile #creation-screen{position:fixed !important;top:0 !important;left:50% !important;transform:translateX(-50%) !important;margin:0 !important;width:96vw !important;max-width:96vw !important;height:auto !important;max-height:var(--app-h,94vh) !important;overflow-y:auto !important;padding:16px 16px 28px !important;}',
@@ -593,6 +604,94 @@
     s.id = 'm-style';
     s.textContent = css;
     document.head.appendChild(s);
+  }
+
+  // --- 手機「長按物品看詳情」:取代桌機 hover tooltip(原作只綁 mousemove,手機觸發不到)。
+  //   長按任一 .tip-host(倉庫/背包/商店/製作/裝備欄的物品)約 350ms → 彈出資訊卡;短按維持原動作。
+  //   內容沿用原作全域函式(getItemFullName/buildItemDescHTML/getItemColor),不重寫資料、不改原作碼。
+  function initTipPeek() {
+    if (document.getElementById('m-tip-modal')) return;
+    var modal = document.createElement('div');
+    modal.id = 'm-tip-modal';
+    var card = document.createElement('div');
+    card.id = 'm-tip-card';
+    modal.appendChild(card);
+    document.body.appendChild(modal);
+
+    var modalOpen = false, swallow = false, swallowTimer = null, ICON2ID = null;
+
+    // 圖示 src → 基底物品 id(商店/製作清單的圖示沒有 data-tip-uid,只能靠圖反查)
+    function iconToId(src) {
+      if (typeof DB === 'undefined' || !DB.items || typeof getIconUrl !== 'function') return null;
+      if (!ICON2ID) { ICON2ID = {}; for (var id in DB.items) { var d = DB.items[id]; if (d) { try { ICON2ID[getIconUrl(d)] = id; } catch (e) {} } } }
+      return ICON2ID[src] || null;
+    }
+    // 解析一個 .tip-host 對應的物品 → {name, body, color};解析不出(非物品)回 null,讓它走一般操作
+    function resolve(host) {
+      var base = null;
+      var uid = host.getAttribute('data-tip-uid');
+      if (uid) {
+        var src = host.getAttribute('data-tip-src') || 'inv';
+        try {
+          if (src === 'wh' && typeof loadWarehouse === 'function') { var w = loadWarehouse(); base = (w && w.items) ? w.items.filter(function (x) { return x.uid === uid; })[0] : null; }
+          else if (typeof player !== 'undefined' && player && player.inv) { base = player.inv.filter(function (x) { return x.uid === uid; })[0]; }
+        } catch (e) {}
+        if (!base) return null;
+      } else {
+        var img = host.querySelector('img');
+        var s = img ? img.getAttribute('src') : null;
+        var rid = s ? iconToId(s) : null;
+        if (!rid) return null;
+        base = { id: rid, en: 0 };
+      }
+      return {
+        name: (typeof getItemFullName === 'function') ? getItemFullName(base) : (base.id || ''),
+        body: (typeof buildItemDescHTML === 'function') ? buildItemDescHTML(base) : '',
+        color: (typeof getItemColor === 'function') ? (getItemColor(base) || '') : ''
+      };
+    }
+    function open(c) {
+      card.innerHTML = '<button type="button" class="m-tip-x">✕</button>'
+        + '<div class="m-tip-name ' + c.color + '">' + c.name + '</div>'
+        + '<div class="m-tip-body">' + c.body + '</div>';
+      card.querySelector('.m-tip-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
+      modal.classList.add('open'); modalOpen = true;
+    }
+    function close() { modal.classList.remove('open'); modalOpen = false; }
+    modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+
+    // 長按開卡後,吞掉緊接而來那一下 click(避免長按結束被當成存入/取出/購買);卡片內的點擊不吞
+    function arm() { swallow = true; clearTimeout(swallowTimer); swallowTimer = setTimeout(function () { swallow = false; }, 800); }
+    document.addEventListener('click', function (e) {
+      if (swallow && !modal.contains(e.target)) { swallow = false; clearTimeout(swallowTimer); e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
+
+    var timer = null, sx = 0, sy = 0, host = null;
+    document.addEventListener('touchstart', function (e) {
+      if (!document.body.classList.contains('m-mobile') || modalOpen) return;
+      var h = (e.target && e.target.closest) ? e.target.closest('.tip-host') : null;
+      if (!h) return;
+      var t = e.touches[0]; sx = t.clientX; sy = t.clientY; host = h;
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        timer = null;
+        var c = resolve(host);
+        if (!c) return;        // 非可解析物品 → 不開卡,維持一般操作
+        open(c); arm();
+      }, 350);
+    }, { passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (timer === null) return;
+      var t = e.touches[0]; if (!t) return;
+      if (Math.abs(t.clientX - sx) > 12 || Math.abs(t.clientY - sy) > 12) { clearTimeout(timer); timer = null; }   // 移動=捲動,取消長按
+    }, { passive: true });
+    function endPress() { clearTimeout(timer); timer = null; }
+    document.addEventListener('touchend', endPress, { passive: true });
+    document.addEventListener('touchcancel', endPress, { passive: true });
+    // 壓抑 Android/iOS 長按在圖示上跳出的選單/儲存圖片 callout
+    document.addEventListener('contextmenu', function (e) {
+      if (document.body.classList.contains('m-mobile') && e.target && e.target.closest && e.target.closest('.tip-host')) e.preventDefault();
+    });
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
