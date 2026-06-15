@@ -447,3 +447,63 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
 })();
+
+/* ============================================================================
+ * renderTabs select-guard — 戰鬥中操作下拉選單不被刷掉
+ *
+ * 問題:「快速強化(批次衝裝)」的目標等級是分頁面板裡的原生 <select>。戰鬥中掉寶/
+ *   扣箭/夥伴耗肉會讓背包內容簽章改變 → renderTabs 重建該分頁 DOM → 開著的 <select>
+ *   連同元素被刪掉,手機點開的選單瞬間被關。
+ * 解法:偵測焦點落在這些分頁的 <select> 上時,延後該次 renderTabs;選單關閉(change/
+ *   blur)後再補繪一次(force,追上延後期間的背包變動)。與手機判定無關,桌機同樣受惠,
+ *   故獨立於 mobile init、永遠生效;原作者程式碼一行未改。
+ *
+ * 何時可移除:若原作者日後把 renderTabs 改成「不整塊重建分頁 DOM」(diff 更新、不刪 select),
+ *   本段即成多餘,可整段刪掉。在那之前留著無害(抓不到掛點會自動 no-op,不會弄壞遊戲)。
+ * ========================================================================== */
+(function () {
+  'use strict';
+  // 三個強化下拉都涵蓋:武器/防具分頁的「快速強化(批次)」+ 物品彈窗的「一鍵強化到指定值」。
+  // 彈窗(#item-modal)雖不被戰鬥重繪、本來就不會被關,一併納入當保險、行為一致。
+  var TAB_SEL = '#tab-weapons,#tab-armors,#tab-items,#tab-equip,#tab-skill,#item-modal';
+
+  function selectOpenInTabs() {
+    var ae = document.activeElement;
+    return !!(ae && ae.tagName === 'SELECT' && ae.closest && ae.closest(TAB_SEL));
+  }
+
+  function install() {
+    if (typeof window.renderTabs !== 'function' || window.renderTabs.__qeGuard) return true;
+    var orig = window.renderTabs;
+    var pending = false, pendingForce = false;
+
+    var guarded = function (force) {
+      if (selectOpenInTabs()) { pending = true; pendingForce = pendingForce || !!force; return; }
+      return orig.apply(this, arguments);
+    };
+    guarded.__qeGuard = true;
+    // orig 內部以全域名稱 renderTabs 讀寫 _sig 快取,改指到 guarded 後快取仍是同一份,無雙快取問題。
+    window.renderTabs = guarded;
+
+    function flush() {
+      if (!pending || selectOpenInTabs()) return;   // 沒延後過、或還停在另一個下拉上就先不補
+      pending = false; pendingForce = false;
+      orig.call(window, true);                       // 一律 force,確保追上延後期間的背包變動
+    }
+    // 用 setTimeout 讓 inline onchange(更新 quickEnh.target)先跑完、選單也確實關閉後再補繪
+    function onSelectDone(e) {
+      var t = e.target;
+      if (t && t.tagName === 'SELECT' && t.closest && t.closest(TAB_SEL)) setTimeout(flush, 0);
+    }
+    document.addEventListener('change', onSelectDone, true);
+    document.addEventListener('blur', onSelectDone, true);
+
+    console.log('[AFK-mobile] renderTabs select-guard hooks OK');
+    return true;
+  }
+
+  if (!install()) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+    else setTimeout(install, 0);
+  }
+})();

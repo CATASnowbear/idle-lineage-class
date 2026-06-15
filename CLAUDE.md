@@ -28,6 +28,9 @@ gh run watch <run_id>   # 或輪詢 gh run view <run_id> --json status,conclusio
 - **跑成功且有推 commit**:同步完成,GitHub Pages 會自動重建;`git pull --ff-only` 把本機同步回來。
 - **開了 issue(外掛掛點失效)**:原作者改了 DOM 害外掛掛不上 → 這時**才**走下面的手動流程,重點是去修「失效的外掛掛點」(改 id / DOM 選擇器),不只是重貼。
 
+> 同步成功後順手檢查一項:`afk-mobile.js` 的「renderTabs select-guard」是補原作者「戰鬥中重刷分頁 DOM 害強化下拉被關」的坑。
+> 若原作者已改成 diff 更新(不整塊重建分頁、不刪 `<select>`),這段就成多餘,可整段刪掉(留著無害,只是死碼)。
+
 > 只有在 workflow 不能用(沒有 `gh` 權限、Actions 被停、或要 debug 合併本身)時,才整套手動跑。手動流程如下,
 > 原則:原版整份覆蓋 `index.html` + 補回外掛 + 補新圖,我們從不改動原作者的遊戲碼。
 
