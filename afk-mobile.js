@@ -587,7 +587,7 @@
       'body.m-mobile #m-tip-card .m-tip-x:active{background:rgba(71,85,105,.95);}',
       'body.m-mobile #m-tip-card .m-tip-name{font-weight:bold;font-size:16px;margin:0 36px 6px 0;}',
       'body.m-mobile #m-tip-card .m-tip-body{font-size:13px;line-height:1.6;}',
-      'body.m-mobile .tip-host{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}',
+      'body.m-mobile .tip-host,body.m-mobile #interaction-content [title]{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}',
 
       /* 創角畫面手機化:外框釘在頂端、用可視高度(--app-h)當上限,避免 94vh 延伸到 Brave 底部
          工具列後面把「開始冒險」鈕蓋住;內層原本 flex-row + 固定寬高(會爆寬)→ 全改直向堆疊、滿版 */
@@ -650,6 +650,13 @@
         color: (typeof getItemColor === 'function') ? (getItemColor(base) || '') : ''
       };
     }
+    // 解析「靠 title 顯示說明」的元素(如 50 等漢的專精選擇按鈕,完整效果說明放在 title)。
+    function resolveTitle(host) {
+      var t = (host.getAttribute('title') || '').trim();
+      if (!t) return null;
+      var nameEl = host.querySelector ? host.querySelector('.font-bold, b, strong') : null;   // 按鈕內粗體=該項名稱(如精通名)
+      return { name: nameEl ? nameEl.textContent.trim() : '', body: t.replace(/\n/g, '<br>'), color: '' };
+    }
     function open(c) {
       card.innerHTML = '<button type="button" class="m-tip-x">✕</button>'
         + '<div class="m-tip-name ' + c.color + '">' + c.name + '</div>'
@@ -666,17 +673,24 @@
       if (swallow && !modal.contains(e.target)) { swallow = false; clearTimeout(swallowTimer); e.preventDefault(); e.stopImmediatePropagation(); }
     }, true);
 
-    var timer = null, sx = 0, sy = 0, host = null;
+    var timer = null, sx = 0, sy = 0, host = null, hostKind = 'item';
     document.addEventListener('touchstart', function (e) {
       if (!document.body.classList.contains('m-mobile') || modalOpen) return;
-      var h = (e.target && e.target.closest) ? e.target.closest('.tip-host') : null;
-      if (!h) return;
-      var t = e.touches[0]; sx = t.clientX; sy = t.clientY; host = h;
+      if (!e.target || !e.target.closest) return;
+      var h = e.target.closest('.tip-host'), titleEl = null;
+      if (!h) {   // 不是物品圖示 → 看是不是 NPC 面板裡「靠 title 顯示說明」的元素(如專精按鈕)
+        var ic = document.getElementById('interaction-content');
+        var te = e.target.closest('[title]');
+        if (te && ic && ic.contains(te) && (te.getAttribute('title') || '').trim()) titleEl = te;
+      }
+      if (!h && !titleEl) return;
+      host = h || titleEl; hostKind = h ? 'item' : 'title';
+      var t = e.touches[0]; sx = t.clientX; sy = t.clientY;
       clearTimeout(timer);
       timer = setTimeout(function () {
         timer = null;
-        var c = resolve(host);
-        if (!c) return;        // 非可解析物品 → 不開卡,維持一般操作
+        var c = (hostKind === 'item') ? resolve(host) : resolveTitle(host);
+        if (!c) return;        // 解析不出內容 → 不開卡,維持一般操作
         open(c); arm();
       }, 350);
     }, { passive: true });
@@ -688,9 +702,11 @@
     function endPress() { clearTimeout(timer); timer = null; }
     document.addEventListener('touchend', endPress, { passive: true });
     document.addEventListener('touchcancel', endPress, { passive: true });
-    // 壓抑 Android/iOS 長按在圖示上跳出的選單/儲存圖片 callout
+    // 壓抑 Android/iOS 長按在圖示/說明按鈕上跳出的選單、儲存圖片 callout、選字
     document.addEventListener('contextmenu', function (e) {
-      if (document.body.classList.contains('m-mobile') && e.target && e.target.closest && e.target.closest('.tip-host')) e.preventDefault();
+      if (!document.body.classList.contains('m-mobile') || !e.target || !e.target.closest) return;
+      var ic = document.getElementById('interaction-content');
+      if (e.target.closest('.tip-host') || (ic && e.target.closest('[title]') && ic.contains(e.target.closest('[title]')))) e.preventDefault();
     });
   }
 
