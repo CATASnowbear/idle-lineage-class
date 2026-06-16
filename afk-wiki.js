@@ -278,7 +278,7 @@
       '<b>祝福／詛咒</b>：祝福給小幅正向（武器額外傷害+1·命中+1·魔力+2；防具防禦+1·減傷+1；飾品防禦+1·魔防+1），詛咒則是等量負向（負鏡像）。'
     ]},
     { t: '詞綴怎麼來', lines: [
-      '<b>祝福</b>：打怪／製作／黑市／血盟有 1% 機率直接帶「祝福的」（在「席琳的世界」擊殺時 ×3＝3%）；強化卷軸取得時也各有 1% 變成祝福／詛咒卷軸。',
+      '<b>祝福</b>：打怪／製作／血盟掉落有 1% 機率直接帶「祝福的」（在「席琳的世界」擊殺時 ×3＝3%）；強化卷軸取得時也各有 1% 變成祝福／詛咒卷軸。（黑市直接購買是「即所見」、不會附帶詞綴）',
       '<b>屬性 與 遠古：現在不會隨機掉到！</b>只能靠象牙塔「碧恩」的『賦予祝福卷軸』施法——每張三選一（屬性／遠古／祝福 各 1/3），隨機改裝備的「一格」：原本沒有→附加、抽到一樣→消失、抽到不同→取代（無法指定）。',
       '『賦予祝福卷軸』哪來：向象牙塔「克里斯特」用 100 萬金幣 ＋ 100 張施法卷軸兌換（飾品版只要 5 張）。',
       '詛咒的裝備不能再被祝福，要先用「解除詛咒的卷軸」（克里斯特兌換、碧恩使用）清除。'
@@ -512,8 +512,10 @@
       '#m-wiki-title{flex:1 1 auto;font-size:17px;font-weight:bold;color:#fff;}',
       '#m-wiki-close{flex:0 0 auto;width:42px;height:38px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-wiki-close:active{background:#334155;}',
-      '#m-wiki-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 4px;flex:0 0 auto;}',
-      '.m-wiki-tab{flex:1 1 auto;min-width:62px;padding:8px 6px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit;}',
+      '#m-wiki-tabs{display:flex;flex-wrap:nowrap;gap:6px;padding:10px 12px 4px;flex:0 0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}',
+      '#m-wiki-tabs::-webkit-scrollbar{height:5px;}',
+      '#m-wiki-tabs::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}',
+      '.m-wiki-tab{flex:0 0 auto;padding:8px 14px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit;white-space:nowrap;}',
       '.m-wiki-tab.on{background:#4338ca;border-color:#6366f1;color:#fff;}',
       '#m-wiki-cls{display:flex;gap:6px;padding:8px 12px;flex:0 0 auto;border-bottom:1px solid #1e293b;flex-wrap:wrap;}',
       '.m-wiki-clsbtn{flex:1 1 auto;padding:7px 4px;border:1px solid #334155;background:#111c30;color:#cbd5e1;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;}',
