@@ -209,41 +209,50 @@
     ['弓 / 遠距', '走遠距離的命中與傷害、可觸發連射，但需要箭矢。']
   ];
 
-  // ===== 任務(本檔維護;依遊戲現行資料整理) ==================================
-  var QUEST_GROUPS = [
-    { t: '⚔️ 騎士試煉', rows: [
-      { n: '紅騎士頭巾', npc: '瑞奇 ＠銀騎士村', req: '黑騎士的誓約 ×1、古老的交易文件 ×1、龍龜甲 ×1', from: '交易文件：黑騎士／黑騎士搜索隊 1%（銀騎士地區、說話之島港口、古魯丁）；龍龜甲：龍龜 1%（銀騎士地區、鏡子森林）；黑騎士的誓約來源未明（待確認）', rw: '紅騎士頭巾' },
-      { n: '紅騎士之劍 / 盾牌', npc: '甘特 ＠說話之島', req: '夏洛伯之爪 ×1（換劍）；蛇女之鱗 ×1（換盾），各自分開兌換', from: '夏洛伯之爪：夏洛伯（蜘蛛）1%；蛇女之鱗：蛇女 1%（海音、鏡子森林、地下通道）', rw: '紅騎士之劍 或 紅騎士盾牌' },
-      { n: '勇敢皮帶', npc: '馬沙 ＠威頓村', req: '夜之視野 ×1、古代鑰匙 ×1', from: '夜之視野：強盜頭目 10%（奇岩）；古代鑰匙：鋼鐵高崙 1%（歐瑞雪原、水晶洞穴、國境要塞、象牙塔4/5樓）', rw: '勇敢皮帶' }
-    ]},
-    { t: '🪄 法師試煉', rows: [
-      { n: '魔法能量之書', npc: '詹姆 ＠說話之島', req: '食屍鬼的指甲 ×1、食屍鬼的牙齒 ×1、骷髏頭 ×1', from: '指甲／牙齒：食屍鬼 各 1%；骷髏頭：骷髏 1%（皆廣布野外/地監）', rw: '魔法能量之書' },
-      { n: '水晶魔杖（水晶試煉）', npc: '塔拉斯 ＠象牙塔', req: '不死族的鑰匙 ×1、不死族的骨頭 ×1', from: '鑰匙：骷髏 1%；骨頭：骷髏神射手 1%／骷髏警衛 0.1%（龍之谷地監1-5樓、龍之谷）', rw: '水晶魔杖' },
-      { n: '瑪那魔杖 / 斗篷（瑪那試煉）', npc: '塔拉斯 ＠象牙塔', req: '變形怪的血 ×1', from: '變形怪 1%／變形怪首領 10%（鏡子森林）', rw: '瑪那魔杖 或 瑪那斗篷' }
-    ]},
-    { t: '🍃 妖精試煉', rows: [
-      { n: '精靈頭盔', npc: '歐斯 ＠燃柳村', req: '四大妖魔魔法書（都達瑪拉／那魯加／甘地／阿吐巴）各 ×1', from: '對應四種妖魔 各 1%（妖魔森林、妖精森林周邊、眠龍洞穴）', rw: '精靈敏捷頭盔 或 精靈體質頭盔' },
-      { n: '精靈水晶 / 精靈T恤', npc: '迷幻森林之母 ＠妖精森林', req: '受詛咒的精靈書 ×1', from: '希爾黛斯 1%（伊娃王國）', rw: '精靈水晶(召喚屬性精靈) 或 精靈T恤' },
-      { n: '保護者手套 / 精靈水晶', npc: '馬沙 ＠威頓村', req: '藍色長笛 ×1、古代鑰匙 ×1', from: '藍色長笛：黑暗精靈 1%（妖魔森林、龍之谷、奇岩、奇岩地監4樓）；古代鑰匙：鋼鐵高崙 1%', rw: '保護者手套 或 精靈水晶(召喚強力屬性精靈)' }
-    ]},
-    { t: '🗡 黑暗妖精試煉（限黑暗妖精）', rows: [
-      { n: '影子手套', npc: '倫得 ＠沉默洞穴', req: '死亡誓約 ×1', from: '強盜 1%（奇岩）', rw: '影子手套' },
-      { n: '影子面具', npc: '康 ＠沉默洞穴', req: '妖魔長老首級 ×1', from: '妖魔法師 1%（低階區廣布）', rw: '影子面具' },
-      { n: '影子長靴', npc: '布魯迪卡 ＠沉默洞穴', req: '雪怪首級 ×1', from: '雪怪 1%（歐瑞、歐瑞雪原、水晶洞穴、國境要塞）', rw: '影子長靴' }
-    ]},
-    { t: '👥 全職業任務', rows: [
-      { n: '雷德的復仇', npc: '雷德 ＠銀騎士村', req: '魔法寶石 ×100，以及五枚部下證明戒指各 ×1（黑暗棲林者／馴獸師／精靈使／喚獸師／黑暗法師戒指）', from: '五戒指皆出自拉斯塔巴德區（黑暗棲林者 0.1%、馴獸師 0.05%、精靈使 0.001%、喚獸師 0.01%、黑暗法師 0.01%；機率極低、相當硬核）', rw: '召喚控制戒指' }
-    ]},
-    { t: '🏅 精通任務（50 級開放）', rows: [
-      { n: '職業精通', npc: '漢 ＠威頓村', req: '50 級以上接任務 → 擊敗「職業專屬頭目」必得『精通之證』→ 回威頓村交給漢', from: '頭目：騎士＝飛龍（龍之谷）、法師＝黑長者（龍之谷／古魯丁地監6樓）、妖精＝變形怪首領（鏡子森林）、黑暗妖精＝巴風特（奇岩地監1樓）', rw: '四選一精通能力（初次免費，之後更換要付費）。各精通內容見「職業專精」分頁' }
-    ]},
-    { t: '🌿 妖精屬性學習', rows: [
-      { n: '選定屬性魔法', npc: '艾利溫 ＠妖精森林', req: '妖精職業；四種屬性（火／水／風／地）四選一', from: '—', rw: '開啟所選屬性的魔法路線。注意：只能選一種、選了就固定' }
-    ]},
-    { t: '🐉 隱藏 / 傳說', rows: [
-      { n: '屠龍劍（卡瑞）', npc: '無 NPC，隱藏 BOSS', req: '同時帶齊四樣任務道具：飛龍的爪子、蜥蜴的角、水晶球、妖魔戰士護身符', from: '飛龍的爪子：飛龍 1%（龍之谷）；蜥蜴的角：邪惡蜥蜴 0.01%（沙漠）；水晶球：巫師 0.01%（古魯丁地監6樓）；妖魔戰士護身符：五種妖魔 各 0.01%。集齊四樣後，在「龍之谷地監6樓」有 1% 機率出現卡瑞', rw: '擊殺卡瑞 100% 掉屠龍劍（並消耗四道具各一）' },
-      { n: '巴列斯魔杖', npc: '無 NPC，道具喚醒', req: '失去魔力的巴列斯魔杖 ×1、靈魂之球 ×1', from: '失去魔力的魔杖：BOSS 巴列斯 100%（風木城地監）；靈魂之球：鬼魂／紅鬼魂 0.01%（象牙塔6/7/8樓）', rw: '帶著失魔魔杖使用靈魂之球 → 喚回成「巴列斯魔杖」' }
-    ]}
+  // ===== 任務(本檔維護;依職業分類) =========================================
+  var QUEST_BY_CLASS = {
+    knight: {
+      icon: '⚔️', name: '騎士', masteryBoss: '飛龍（龍之谷）',
+      trials: [
+        { n: '紅騎士頭巾', npc: '瑞奇 ＠銀騎士村', req: '黑騎士的誓約 ×1、古老的交易文件 ×1、龍龜甲 ×1', from: '交易文件：黑騎士／黑騎士搜索隊 1%（銀騎士地區、說話之島港口、古魯丁）；龍龜甲：龍龜 1%（銀騎士地區、鏡子森林）；黑騎士的誓約來源未明（待確認）', rw: '紅騎士頭巾' },
+        { n: '紅騎士之劍 / 盾牌', npc: '甘特 ＠說話之島', req: '夏洛伯之爪 ×1（換劍）；蛇女之鱗 ×1（換盾），各自分開兌換', from: '夏洛伯之爪：夏洛伯（蜘蛛）1%；蛇女之鱗：蛇女 1%（海音、鏡子森林、地下通道）', rw: '紅騎士之劍 或 紅騎士盾牌' },
+        { n: '勇敢皮帶', npc: '馬沙 ＠威頓村', req: '夜之視野 ×1、古代鑰匙 ×1', from: '夜之視野：強盜頭目 10%（奇岩）；古代鑰匙：鋼鐵高崙 1%（歐瑞雪原、水晶洞穴、國境要塞、象牙塔4/5樓）', rw: '勇敢皮帶' }
+      ],
+      legend: [
+        { n: '屠龍劍（卡瑞）', npc: '無 NPC，隱藏 BOSS', req: '同時帶齊四樣任務道具：飛龍的爪子、蜥蜴的角、水晶球、妖魔戰士護身符', from: '飛龍的爪子：飛龍 1%（龍之谷）；蜥蜴的角：邪惡蜥蜴 0.01%（沙漠）；水晶球：巫師 0.01%（古魯丁地監6樓）；妖魔戰士護身符：五種妖魔 各 0.01%。集齊四樣後，在「龍之谷地監6樓」有 1% 機率出現卡瑞', rw: '擊殺卡瑞 100% 掉屠龍劍（並消耗四道具各一）' }
+      ]
+    },
+    mage: {
+      icon: '🪄', name: '法師', masteryBoss: '黑長者（龍之谷／古魯丁地監6樓）',
+      trials: [
+        { n: '魔法能量之書', npc: '詹姆 ＠說話之島', req: '食屍鬼的指甲 ×1、食屍鬼的牙齒 ×1、骷髏頭 ×1', from: '指甲／牙齒：食屍鬼 各 1%；骷髏頭：骷髏 1%（皆廣布野外/地監）', rw: '魔法能量之書' },
+        { n: '水晶魔杖（水晶試煉）', npc: '塔拉斯 ＠象牙塔', req: '不死族的鑰匙 ×1、不死族的骨頭 ×1', from: '鑰匙：骷髏 1%；骨頭：骷髏神射手 1%／骷髏警衛 0.1%（龍之谷地監1-5樓、龍之谷）', rw: '水晶魔杖' },
+        { n: '瑪那魔杖 / 斗篷（瑪那試煉）', npc: '塔拉斯 ＠象牙塔', req: '變形怪的血 ×1', from: '變形怪 1%／變形怪首領 10%（鏡子森林）', rw: '瑪那魔杖 或 瑪那斗篷' }
+      ],
+      legend: [
+        { n: '巴列斯魔杖', npc: '無 NPC，道具喚醒', req: '失去魔力的巴列斯魔杖 ×1、靈魂之球 ×1', from: '失去魔力的魔杖：BOSS 巴列斯 100%（風木城地監）；靈魂之球：鬼魂／紅鬼魂 0.01%（象牙塔6/7/8樓）', rw: '帶著失魔魔杖使用靈魂之球 → 喚回成「巴列斯魔杖」' }
+      ]
+    },
+    elf: {
+      icon: '🍃', name: '妖精', masteryBoss: '變形怪首領（鏡子森林）',
+      trials: [
+        { n: '精靈頭盔', npc: '歐斯 ＠燃柳村', req: '四大妖魔魔法書（都達瑪拉／那魯加／甘地／阿吐巴）各 ×1', from: '對應四種妖魔 各 1%（妖魔森林、妖精森林周邊、眠龍洞穴）', rw: '精靈敏捷頭盔 或 精靈體質頭盔' },
+        { n: '精靈水晶 / 精靈T恤', npc: '迷幻森林之母 ＠妖精森林', req: '受詛咒的精靈書 ×1', from: '希爾黛斯 1%（伊娃王國）', rw: '精靈水晶(召喚屬性精靈) 或 精靈T恤' },
+        { n: '保護者手套 / 精靈水晶', npc: '馬沙 ＠威頓村', req: '藍色長笛 ×1、古代鑰匙 ×1', from: '藍色長笛：黑暗精靈 1%（妖魔森林、龍之谷、奇岩、奇岩地監4樓）；古代鑰匙：鋼鐵高崙 1%', rw: '保護者手套 或 精靈水晶(召喚強力屬性精靈)' }
+      ],
+      attr: { n: '選定屬性魔法', npc: '艾利溫 ＠妖精森林', req: '四種屬性（火／水／風／地）四選一', from: '—', rw: '開啟所選屬性的魔法路線。注意：只能選一種、選了就固定' }
+    },
+    dark: {
+      icon: '🗡', name: '黑暗妖精', masteryBoss: '巴風特（奇岩地監1樓）',
+      trials: [
+        { n: '影子手套', npc: '倫得 ＠沉默洞穴', req: '死亡誓約 ×1', from: '強盜 1%（奇岩）', rw: '影子手套' },
+        { n: '影子面具', npc: '康 ＠沉默洞穴', req: '妖魔長老首級 ×1', from: '妖魔法師 1%（低階區廣布）', rw: '影子面具' },
+        { n: '影子長靴', npc: '布魯迪卡 ＠沉默洞穴', req: '雪怪首級 ×1', from: '雪怪 1%（歐瑞、歐瑞雪原、水晶洞穴、國境要塞）', rw: '影子長靴' }
+      ]
+    }
+  };
+  var QUEST_COMMON = [
+    { n: '雷德的復仇', npc: '雷德 ＠銀騎士村', req: '魔法寶石 ×100，以及五枚部下證明戒指各 ×1（黑暗棲林者／馴獸師／精靈使／喚獸師／黑暗法師戒指）', from: '五戒指皆出自拉斯塔巴德區（黑暗棲林者 0.1%、馴獸師 0.05%、精靈使 0.001%、喚獸師 0.01%、黑暗法師 0.01%；機率極低、相當硬核）', rw: '召喚控制戒指' }
   ];
 
   // ===== 套裝(本檔維護) ====================================================
@@ -298,12 +307,10 @@
       '取得：席琳世界打怪固定機率掉（一般怪約萬分之一級距、一般 BOSS 0.1%、三大龍 10%、夢幻之島 BOSS 0.01%；20 級以下與血盟怪不掉）。',
       '用途：做「席琳製作」或「席琳兌換」時，各額外消耗 1 個，讓成品必帶一種套裝效果。'
     ]},
-    { t: '席琳套裝（綠光，獨立於一般套裝）', lines: [
+    { t: '席琳套裝（綠光，獨立於一般套裝）', groups: true, lines: [
       '裝備可帶一個「席琳套裝效果」，同一組湊到 2／3／5 件解鎖遞增加成。可裝部位：武器／頭盔／盔甲／手套／長靴／斗篷／腰帶。',
       '湊 5/5 要同組「5 種不同效果」各一件——同名效果疊不上去。',
-      '各組「2 件」效果：紅獅（額外傷害+5、魔力+3）、白鳥（命中+5）、鐵衛（防禦+3、減傷+5）、麗人（近距傷害+3·命中+3）、疾風（遠距傷害+3·命中+3）、月光（傷害+2·命中+2）、學徒（MP恢復+5·魔力+6）、魔女（魔法傷害+2）、暗影（傷害+7）。',
-      '3／5 件另有更強加成與專屬能力（例：紅獅5 攻擊技能最終傷害 +20%、白鳥5 普攻附「脆弱」、鐵衛5 反擊橫掃全體、暗影5 連擊追加擊傷害變 100%…）。',
-      '取得帶套裝效果的裝備：席琳世界擊殺掉落（一般怪 0.1%、恩賜怪 0.5%、BOSS 5%）、席琳製作（必帶）、席琳兌換（必帶）。'
+      '取得帶套裝效果的裝備：席琳世界擊殺掉落（一般怪 0.1%、恩賜怪 0.5%、BOSS 5%）、席琳製作（必帶）、席琳兌換（必帶）。各組完整加成如下：'
     ]},
     { t: '席琳恩賜（精英怪）', lines: [
       '席琳世界中每次刷怪有 1% 機率（每 3 分鐘最多一次），場上隨機一隻普通怪變成「恩賜精英」。',
@@ -315,6 +322,27 @@
       '它會額外花 1 個席琳結晶，但換到的裝備<b>必定附帶一個隨機席琳套裝效果</b>（身上＋倉庫沒有結晶時不能用）。'
     ]}
   ];
+  // 各組套裝加成:優先讀遊戲的 SHERINE_SET_TEXT(作者更新自動同步);讀不到才用本檔備援
+  var SHERINE_SET_FALLBACK = {
+    '紅獅': ['2件：額外傷害+5、額外魔法點數+3', '3件：傷害減免+10', '5件：攻擊技能最終傷害+20%'],
+    '白鳥': ['2件：額外命中+5', '3件：魅力+10', '5件：一般攻擊命中時使目標「脆弱」3秒（受所有傷害+20%，重複觸發刷新）'],
+    '鐵衛': ['2件：防禦+3、傷害減免+5', '3件：受到傷害減少20%', '5件：觸發反擊或居合時，額外對全體敵人橫掃一次一般攻擊'],
+    '麗人': ['2件：近距離傷害+3、近距離命中+3', '3件：近距離爆擊率+2%', '5件：觸發重擊後，下一次一般攻擊100%命中'],
+    '疾風': ['2件：遠距離傷害+3、遠距離命中+3', '3件：遠距離爆擊率+2%', '5件：連射傷害由30%提升為80%'],
+    '月光': ['2件：額外傷害+2、額外命中+2', '3件：迴避+5、魔防+10', '5件：迴避也能閃避魔法攻擊（必中技能改為先判定迴避）'],
+    '學徒': ['2件：MP自然恢復+5、額外魔法點數+6', '3件：魔法爆擊率+2%', '5件：MP 低於最大值30%時，所有技能 MP 消耗減半'],
+    '魔女': ['2件：魔法傷害+2', '3件：水屬性抗性+10、額外魔法點數+5', '5件：每觸發 5 次共鳴，免費施放一次冰矛圍籬（無需學會）'],
+    '暗影': ['2件：額外傷害+7', '3件：觸發迴避時恢復 20 HP', '5件：連擊額外施展的一般攻擊，傷害變成原本的100%']
+  };
+  function sherineSetText() {
+    return (typeof SHERINE_SET_TEXT !== 'undefined' && SHERINE_SET_TEXT) ? SHERINE_SET_TEXT : SHERINE_SET_FALLBACK;
+  }
+  // 把遊戲原文的縮寫換成白話(AC 越低越強 → 改寫成防禦+;ER/MR 直接翻中文)
+  function friendly(s) {
+    return String(s)
+      .replace(/AC-(\d+)/g, '防禦+$1').replace(/AC\+(\d+)/g, '防禦-$1')
+      .replace(/\bER\b/g, '迴避').replace(/\bMR\b/g, '魔防');
+  }
 
   // ===== 入口按鈕 =========================================================
   function injectButton(menu) {
@@ -386,13 +414,13 @@
     if (!body) return;
     document.querySelectorAll('#m-wiki-tabs .m-wiki-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === state.tab); });
     var clsRow = document.getElementById('m-wiki-cls');
-    var showCls = (state.tab === 'mastery' || state.tab === 'magic');
+    var showCls = (state.tab === 'mastery' || state.tab === 'magic' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
     body.scrollTop = 0;
     if (state.tab === 'mastery') body.innerHTML = renderMastery(state.cls);
     else if (state.tab === 'weapon') body.innerHTML = renderWeapon();
-    else if (state.tab === 'quest') body.innerHTML = renderQuest();
+    else if (state.tab === 'quest') body.innerHTML = renderQuest(state.cls);
     else if (state.tab === 'set') body.innerHTML = renderSet();
     else if (state.tab === 'enhance') body.innerHTML = renderEnhance();
     else if (state.tab === 'sherine') body.innerHTML = renderSherine();
@@ -423,21 +451,30 @@
     return traits + basics;
   }
 
-  function renderQuest() {
-    var note = '<div class="m-wiki-note">遊戲裡的試煉／任務一覽：找對 NPC、帶齊材料即可兌換。材料多半要打特定怪掉落，「去哪打」欄已列出主要怪與機率。職業試煉只有對應職業能接。</div>';
-    var groups = QUEST_GROUPS.map(function (g) {
-      var rows = g.rows.map(function (r) {
-        return '<div class="m-wiki-card">' +
-          '<div class="m-wiki-name">' + esc(r.n) + '</div>' +
-          '<div class="m-wiki-msg">' + esc(r.npc) + '</div>' +
-          '<div class="m-wiki-desc"><b>需要：</b>' + esc(r.req) + '</div>' +
-          (r.from !== '—' ? '<div class="m-wiki-desc"><b>去哪打：</b>' + esc(r.from) + '</div>' : '') +
-          '<div class="m-wiki-desc"><b>獎勵：</b>' + esc(r.rw) + '</div>' +
-        '</div>';
-      }).join('');
-      return '<div class="m-wiki-sub">' + esc(g.t) + '</div>' + rows;
-    }).join('');
-    return note + groups;
+  function questCard(r) {
+    return '<div class="m-wiki-card">' +
+      '<div class="m-wiki-name">' + esc(r.n) + '</div>' +
+      '<div class="m-wiki-msg">' + esc(r.npc) + '</div>' +
+      '<div class="m-wiki-desc"><b>需要：</b>' + esc(r.req) + '</div>' +
+      (r.from && r.from !== '—' ? '<div class="m-wiki-desc"><b>去哪打：</b>' + esc(r.from) + '</div>' : '') +
+      '<div class="m-wiki-desc"><b>獎勵：</b>' + esc(r.rw) + '</div>' +
+    '</div>';
+  }
+  function renderQuest(cls) {
+    var q = QUEST_BY_CLASS[cls];
+    if (!q) return '<div class="m-wiki-hint">查無此職業的任務資料。</div>';
+    var html = '<div class="m-wiki-note">依「上方選的職業」顯示該職業的試煉／任務。試煉只有對應職業能接，材料多半要打特定怪掉落，「去哪打」欄已列出主要怪與機率。</div>';
+    html += '<div class="m-wiki-sub">' + q.icon + ' ' + esc(q.name) + '試煉</div>' + q.trials.map(questCard).join('');
+    if (q.attr) html += '<div class="m-wiki-sub">🌿 妖精屬性學習</div>' + questCard(q.attr);
+    html += '<div class="m-wiki-sub">🏅 精通任務（50 級開放）</div>' + questCard({
+      n: '職業精通', npc: '漢 ＠威頓村',
+      req: '50 級以上接任務 → 擊敗你的職業頭目取得「精通之證」→ 回威頓村交給漢',
+      from: '你（' + q.name + '）的職業頭目：' + q.masteryBoss,
+      rw: '四選一精通能力（初次免費，之後更換要付費）；各精通內容見「職業專精」分頁'
+    });
+    if (q.legend) html += '<div class="m-wiki-sub">🐉 ' + esc(q.name) + '隱藏 / 傳說</div>' + q.legend.map(questCard).join('');
+    html += '<div class="m-wiki-sub">👥 全職業共通</div>' + QUEST_COMMON.map(questCard).join('');
+    return html;
   }
 
   function renderSet() {
@@ -465,7 +502,20 @@
     var note = '<div class="m-wiki-note">「席琳」是一整套困難模式系統：開啟世界 → 怪變強但報酬翻倍 → 掉席琳結晶 → 做／換席琳套裝。以下為各部分說明。</div>';
     var secs = SHERINE_SECTIONS.map(function (s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+      var extra = '';
+      if (s.groups) {
+        var st = sherineSetText();
+        extra = Object.keys(st).map(function (g) {
+          var rows = st[g].map(function (line) {
+            var parts = String(line).split(/：(.+)/);   // 「2件：xxx」→ 標籤 + 內容
+            var lbl = parts[1] !== undefined ? parts[0] : '';
+            var val = friendly(parts[1] !== undefined ? parts[1] : line);
+            return '<div class="m-wiki-desc" style="margin-top:2px;">' + (lbl ? '<b style="color:#7dd3fc;">' + esc(lbl) + '</b>　' : '') + esc(val) + '</div>';
+          }).join('');
+          return '<div style="margin-top:8px;padding-top:7px;border-top:1px solid #1e293b;"><div style="color:#86efac;font-weight:bold;font-size:13.5px;">' + esc(g) + '</div>' + rows + '</div>';
+        }).join('');
+      }
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + extra + '</div>';
     }).join('');
     return note + secs;
   }
