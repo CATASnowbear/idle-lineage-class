@@ -9,7 +9,7 @@
 ## 「合併原版」= 從原作者站台抓最新 `index.html` 更新本專案
 
 > **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
-> ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖,
+> ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖、**重抓被作者換掉內容的既有圖**(比對 git blob SHA),
 > 再用 `scripts/smoke-hooks.mjs`(Playwright)驗五支外掛 `hooks OK`,**通過才自動 commit/push**;
 > 推送成功後再**打 tag(台灣時間 `v YYYYMMDD-HHMM`)+ 開 GitHub Release**(Release 自動附原始碼 zip/tar.gz 供下載)。
 > 掛點被原作者改壞時不會推壞版本,改開一個 issue 通知人工處理。
@@ -101,7 +101,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 > 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
 > `afk-sw.js` + 根目錄 `sw.js`:只對 `/assets/background/` 的場景大圖做 cache-first(回訪/重整/改版都秒出、
 > 不受 GitHub Pages 10 分鐘快取與每次部署換 ETag 影響);**絕不快取 index.html / 任何 *.js**,所以遊戲碼與外掛永遠拿最新。
-> 原作者換掉「既有同名」背景圖時,bump `sw.js` 的 `CACHE_VERSION`(新檔名的新圖不必)。afk-sw 無 DOM 掛點,故不列入 smoke 冒煙檢查。
+> 原作者換掉「既有同名」背景圖時,**自動同步會偵測(比對 blob SHA)、重抓並自動 bump `sw.js` 的 `CACHE_VERSION`**,且在該次 commit message／Release 說明註明,不必手動處理(新檔名的新圖不需 bump)。afk-sw 無 DOM 掛點,故不列入 smoke 冒煙檢查。
 > `afk-fixes.js` 收「不綁手機/離線/查詢」的通用補坑碼:會主動執行(包核心函式/長駐監聽)的補坑放這,
 > 不是放手機/離線檔裡(放錯檔名實不符);純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。
 > (存檔匯入/匯出原本有 `afk-savedata.js`,原作者已內建匯出入功能後移除。)
