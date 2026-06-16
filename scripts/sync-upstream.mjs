@@ -3,7 +3,7 @@
  *
  * 做的事(等同手動「合併原版」流程,跑在 Linux runner 上,中文檔名直接用 URL 不必走 blob SHA):
  *   1. 抓原作者 GitHub Pages 的最新 index.html
- *   2. 把本專案五支外掛的 <script>(保留各自現有的 ?v= 版本號)插回 </body> 前
+ *   2. 把本專案六支外掛的 <script>(保留各自現有的 ?v= 版本號)插回 </body> 前
  *   3. 跟現有 index.html 比對 → 一模一樣就什麼都不做(changed=false)
  *   4. 比對原作者 repo 檔案樹,補下載本地缺少的 assets 新圖
  *   5. 把結果寫進 GITHUB_OUTPUT(changed / assets_added),由 workflow 決定要不要推
@@ -26,6 +26,7 @@ const PLUGINS = [
   { file: 'afk-dex.js',     comment: '怪物/掉落查詢外掛(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-wiki.js',    comment: '小百科外掛(專精/武器特性/職業魔法;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-fixes.js',   comment: '通用修正外掛(補原作者坑,桌機/手機通用;可獨立維護,原作者更新後重新加回此行即可)' },
+  { file: 'afk-sw.js',      comment: '背景大圖快取 Service Worker 註冊(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {

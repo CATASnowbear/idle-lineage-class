@@ -96,8 +96,12 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用) |
 | `afk-wiki.js` | 小百科(首頁入口;三分頁:職業專精/武器特性/職業魔法;專精讀 MASTERY_DATA、魔法讀 DB.skills 依 skillReqLv 分級即時渲染,武器特性說明寫在檔內;桌機手機共用) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
+| `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 
-> 四者互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
+> 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
+> `afk-sw.js` + 根目錄 `sw.js`:只對 `/assets/background/` 的場景大圖做 cache-first(回訪/重整/改版都秒出、
+> 不受 GitHub Pages 10 分鐘快取與每次部署換 ETag 影響);**絕不快取 index.html / 任何 *.js**,所以遊戲碼與外掛永遠拿最新。
+> 原作者換掉「既有同名」背景圖時,bump `sw.js` 的 `CACHE_VERSION`(新檔名的新圖不必)。afk-sw 無 DOM 掛點,故不列入 smoke 冒煙檢查。
 > `afk-fixes.js` 收「不綁手機/離線/查詢」的通用補坑碼:會主動執行(包核心函式/長駐監聽)的補坑放這,
 > 不是放手機/離線檔裡(放錯檔名實不符);純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。
 > (存檔匯入/匯出原本有 `afk-savedata.js`,原作者已內建匯出入功能後移除。)
@@ -111,8 +115,9 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    <script src="afk-dex.js?v=YYYYMMDDx"></script>
    <script src="afk-wiki.js?v=YYYYMMDDx"></script>
    <script src="afk-fixes.js?v=YYYYMMDDx"></script>
+   <script src="afk-sw.js?v=YYYYMMDDx"></script>
    ```
-   - 新增外掛時,**務必同時**加上對應的 `<script>` 行(並同步加進 `scripts/sync-upstream.mjs` 的 `PLUGINS`、`scripts/smoke-hooks.mjs` 的 `need`),否則功能不會生效、或下次自動同步會被原版覆蓋掉。
+   - 新增外掛時,**務必同時**加上對應的 `<script>` 行(並同步加進 `scripts/sync-upstream.mjs` 的 `PLUGINS`;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`——像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或下次自動同步會被原版覆蓋掉。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。
 2. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;
    只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS。
