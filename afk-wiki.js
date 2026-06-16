@@ -422,17 +422,16 @@
   }
   function closeModal() { var m = document.getElementById('m-wiki-modal'); if (m) m.classList.remove('open'); }
 
-  function tabHTML(key) {
-    if (key === 'mastery') return renderMastery(state.cls);
+  function tabHTML(key, cls) {
+    if (key === 'mastery') return renderMastery(cls);
     if (key === 'weapon') return renderWeapon();
-    if (key === 'magic') return renderMagic(state.cls);
-    if (key === 'quest') return renderQuest(state.cls);
+    if (key === 'magic') return renderMagic(cls);
+    if (key === 'quest') return renderQuest(cls);
     if (key === 'set') return renderSet();
     if (key === 'enhance') return renderEnhance();
     if (key === 'sherine') return renderSherine();
     return '';
   }
-  function tabHasMatch(key, q) { return tabHTML(key).replace(/<[^>]+>/g, ' ').toLowerCase().indexOf(q) >= 0; }
 
   // 高亮元素內所有符合 q 的文字(走訪 text node,不破壞既有 HTML 結構)
   function highlightEl(root, q) {
@@ -451,55 +450,58 @@
       tn.parentNode.replaceChild(frag, tn);
     });
   }
-  // 搜尋模式:只留符合的小區塊與其標題,其餘隱藏,並把關鍵字變色
-  function filterAndHighlight(body, q) {
-    var kids = [].slice.call(body.children);
-    kids.forEach(function (el) { el._hdr = el.classList.contains('m-wiki-sub') || el.classList.contains('m-wiki-lv'); el._note = el.classList.contains('m-wiki-note'); });
-    var groups = [], cur = { header: null, items: [] };
-    kids.forEach(function (el) {
-      if (el._note) { el.style.display = 'none'; return; }
-      if (el._hdr) { groups.push(cur); cur = { header: el, items: [] }; }
-      else cur.items.push(el);
-    });
-    groups.push(cur);
-    groups.forEach(function (g) {
-      var headerMatch = !!(g.header && g.header.textContent.toLowerCase().indexOf(q) >= 0), anyItem = false;
-      g.items.forEach(function (it) {
-        var m = headerMatch || it.textContent.toLowerCase().indexOf(q) >= 0;
-        it.style.display = m ? '' : 'none';
-        if (m) { anyItem = true; highlightEl(it, q); }
+
+  // 搜尋來源:職業相關分頁(cls:true)逐職業各搜一次,其餘整頁搜一次
+  var SEARCH_SOURCES = [
+    { key: 'mastery', cls: true, label: '職業專精' },
+    { key: 'weapon', cls: false, label: '武器特性' },
+    { key: 'magic', cls: true, label: '職業魔法' },
+    { key: 'quest', cls: true, label: '任務' },
+    { key: 'set', cls: false, label: '套裝' },
+    { key: 'enhance', cls: false, label: '強化' },
+    { key: 'sherine', cls: false, label: '席琳' }
+  ];
+  // 統一搜尋:跨「所有分頁 + 所有職業」收集符合的小區塊,依來源分組列出。
+  //   搜尋時不再切換/隱藏分頁(避免切職業整頁消失的怪現象),一次看到全部命中的結果。
+  function renderSearch(q) {
+    var parts = [];
+    SEARCH_SOURCES.forEach(function (s) {
+      var clsList = s.cls ? CLASSES : [null];
+      clsList.forEach(function (c) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = tabHTML(s.key, c ? c.k : state.cls);
+        var blocks = [].slice.call(tmp.querySelectorAll('.m-wiki-card,.m-wiki-spell,.m-wiki-kv'))
+          .filter(function (el) { return el.textContent.toLowerCase().indexOf(q) >= 0; });
+        if (blocks.length) {
+          parts.push('<div class="m-wiki-sub">' + esc(s.label + (c ? '・' + c.n : '')) +
+            ' <span class="m-wiki-cnt">' + blocks.length + '</span></div>' +
+            blocks.map(function (el) { return el.outerHTML; }).join(''));
+        }
       });
-      if (g.header) {
-        var show = headerMatch || anyItem;
-        g.header.style.display = show ? '' : 'none';
-        if (show && headerMatch) highlightEl(g.header, q);
-      }
     });
+    return parts.length ? parts.join('') : '<div class="m-wiki-hint">找不到含「' + esc(state.q.trim()) + '」的內容。</div>';
   }
 
   function render() {
     var body = document.getElementById('m-wiki-body');
     if (!body) return;
-    var q = (state.q || '').trim().toLowerCase();
-    var tabBtns = document.querySelectorAll('#m-wiki-tabs .m-wiki-tab');
-    var matchMap = {}, anyTab = false;
-    if (q) {
-      TABS.forEach(function (t) { matchMap[t.k] = tabHasMatch(t.k, q); if (matchMap[t.k]) anyTab = true; });
-      if (anyTab && !matchMap[state.tab]) { for (var i = 0; i < TABS.length; i++) if (matchMap[TABS[i].k]) { state.tab = TABS[i].k; break; } }
-    }
-    tabBtns.forEach(function (b) {
-      var k = b.getAttribute('data-tab');
-      b.style.display = (q && !matchMap[k]) ? 'none' : '';
-      b.classList.toggle('on', k === state.tab);
-    });
+    var tabsEl = document.getElementById('m-wiki-tabs');
     var clsRow = document.getElementById('m-wiki-cls');
+    var q = (state.q || '').trim().toLowerCase();
+    body.scrollTop = 0;
+    if (q) {   // 搜尋模式:收起分頁/職業列,顯示跨全部分頁與職業的結果
+      tabsEl.style.display = 'none';
+      clsRow.style.display = 'none';
+      body.innerHTML = renderSearch(q);
+      highlightEl(body, q);
+      return;
+    }
+    tabsEl.style.display = '';
+    document.querySelectorAll('#m-wiki-tabs .m-wiki-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === state.tab); });
     var showCls = (state.tab === 'mastery' || state.tab === 'magic' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.scrollTop = 0;
-    if (q && !anyTab) { body.innerHTML = '<div class="m-wiki-hint">找不到含「' + esc(state.q.trim()) + '」的內容（已搜尋全部分頁；職業相關分頁只搜目前選的職業）。</div>'; return; }
-    body.innerHTML = tabHTML(state.tab);
-    if (q) filterAndHighlight(body, q);
+    body.innerHTML = tabHTML(state.tab, state.cls);
   }
 
   function renderMastery(cls) {
@@ -644,6 +646,7 @@
       '#m-wiki-clear.show{display:block;}',
       '#m-wiki-clear:active{background:#64748b;}',
       'mark.m-wiki-hl{background:#fde047;color:#1e293b;border-radius:2px;padding:0 1px;}',
+      '.m-wiki-cnt{color:#7dd3fc;font-size:12px;font-weight:normal;}',
       '#m-wiki-tabs{display:flex;flex-wrap:nowrap;gap:6px;padding:10px 12px 4px;flex:0 0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}',
       '#m-wiki-tabs::-webkit-scrollbar{height:5px;}',
       '#m-wiki-tabs::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}',

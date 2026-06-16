@@ -217,7 +217,6 @@
           '<span class="ms-seg ms-ac">防 <b id="ms-ac">--</b></span>' +
           '<span class="ms-seg ms-mr">魔防 <b id="ms-mr">--</b></span>' +
           '<span class="ms-seg ms-gold">💰 <span id="ms-gold">--</span></span>' +
-          '<span class="ms-seg ms-sherine" id="ms-sherine">🔮 席琳</span>' +    // 🔮 席琳的世界開啟時才顯示(CSS 控制),放金幣右邊
           '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
         '</div>' +
         // 第二列:HP / MP 雙血條(仿原版:底條 + 填色 + 數字疊在上面)
@@ -477,9 +476,9 @@
       'body.m-mobile #game-screen{position:fixed !important;top:0 !important;left:0 !important;flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
 
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
-      /* 🔮 席琳的世界:金幣右邊的小 tag,只在手機+席琳世界開啟時顯示(桌機/未開啟皆隱藏) */
-      '#m-status .ms-sherine{display:none;}',
-      'body.m-mobile.sherine-world #m-status .ms-sherine{display:inline-block !important;color:#fecaca;background:rgba(127,29,29,.6);border:1px solid #ef4444;border-radius:5px;padding:0 6px;font-weight:bold;font-size:12px;}',
+      /* 🔮 席琳的世界:整條頂部狀態列染紅當標示(桌機是底圖變紅,手機底圖被面板蓋住改染這條)。
+         不另加元素 → 不會被金幣位數撐高。只在手機+席琳世界開啟時生效。 */
+      'body.m-mobile.sherine-world #m-status{background:linear-gradient(#3a0d12,#1f0508) !important;border-bottom-color:#b91c1c !important;}',
       '#m-status{display:none;}',
       'body.m-mobile #status-panel{display:none !important;}',
       'body.m-mobile #m-status{display:flex !important;flex-direction:column;flex:0 0 auto !important;gap:6px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;cursor:pointer;}',
