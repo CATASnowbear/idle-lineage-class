@@ -367,7 +367,7 @@
     { k: 'enhance', n: '強化' },
     { k: 'sherine', n: '席琳' }
   ];
-  var state = { tab: 'mastery', cls: 'knight' };
+  var state = { tab: 'mastery', cls: 'knight', q: '' };
 
   function buildModal() {
     if (document.getElementById('m-wiki-modal')) return;
@@ -379,6 +379,7 @@
           '<span id="m-wiki-title">📚 小百科</span>' +
           '<button id="m-wiki-close" type="button" title="關閉">✕</button>' +
         '</div>' +
+        '<div id="m-wiki-searchrow"><input id="m-wiki-input" type="text" placeholder="搜尋關鍵字（例:出血、套裝、屠龍劍）…" autocomplete="off"><button id="m-wiki-clear" type="button" title="清除">✕</button></div>' +
         '<div id="m-wiki-tabs"></div>' +
         '<div id="m-wiki-cls"></div>' +
         '<div id="m-wiki-body"></div>' +
@@ -398,6 +399,14 @@
       b.addEventListener('click', function () { state.cls = c.k; render(); });
       clsRow.appendChild(b);
     });
+    var input = document.getElementById('m-wiki-input');
+    var clearBtn = document.getElementById('m-wiki-clear');
+    input.addEventListener('input', function () {
+      state.q = input.value;
+      clearBtn.classList.toggle('show', !!input.value);
+      render();
+    });
+    clearBtn.addEventListener('click', function () { input.value = ''; state.q = ''; clearBtn.classList.remove('show'); render(); input.focus(); });
     document.getElementById('m-wiki-close').addEventListener('click', closeModal);
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });
   }
@@ -405,27 +414,92 @@
     var m = document.getElementById('m-wiki-modal');
     if (!m) return;
     if (typeof player !== 'undefined' && player && player.cls) state.cls = player.cls;   // 已進遊戲就預設自己的職業
+    state.q = '';   // 每次開啟清空搜尋
+    var input = document.getElementById('m-wiki-input'); if (input) input.value = '';
+    var clearBtn = document.getElementById('m-wiki-clear'); if (clearBtn) clearBtn.classList.remove('show');
     m.classList.add('open');
     render();
   }
   function closeModal() { var m = document.getElementById('m-wiki-modal'); if (m) m.classList.remove('open'); }
 
+  function tabHTML(key) {
+    if (key === 'mastery') return renderMastery(state.cls);
+    if (key === 'weapon') return renderWeapon();
+    if (key === 'magic') return renderMagic(state.cls);
+    if (key === 'quest') return renderQuest(state.cls);
+    if (key === 'set') return renderSet();
+    if (key === 'enhance') return renderEnhance();
+    if (key === 'sherine') return renderSherine();
+    return '';
+  }
+  function tabHasMatch(key, q) { return tabHTML(key).replace(/<[^>]+>/g, ' ').toLowerCase().indexOf(q) >= 0; }
+
+  // 高亮元素內所有符合 q 的文字(走訪 text node,不破壞既有 HTML 結構)
+  function highlightEl(root, q) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function (tn) {
+      var s = tn.nodeValue, low = s.toLowerCase(), idx = low.indexOf(q);
+      if (idx < 0) return;
+      var frag = document.createDocumentFragment(), i = 0;
+      while ((idx = low.indexOf(q, i)) >= 0) {
+        if (idx > i) frag.appendChild(document.createTextNode(s.slice(i, idx)));
+        var mk = document.createElement('mark'); mk.className = 'm-wiki-hl'; mk.textContent = s.slice(idx, idx + q.length);
+        frag.appendChild(mk); i = idx + q.length;
+      }
+      if (i < s.length) frag.appendChild(document.createTextNode(s.slice(i)));
+      tn.parentNode.replaceChild(frag, tn);
+    });
+  }
+  // 搜尋模式:只留符合的小區塊與其標題,其餘隱藏,並把關鍵字變色
+  function filterAndHighlight(body, q) {
+    var kids = [].slice.call(body.children);
+    kids.forEach(function (el) { el._hdr = el.classList.contains('m-wiki-sub') || el.classList.contains('m-wiki-lv'); el._note = el.classList.contains('m-wiki-note'); });
+    var groups = [], cur = { header: null, items: [] };
+    kids.forEach(function (el) {
+      if (el._note) { el.style.display = 'none'; return; }
+      if (el._hdr) { groups.push(cur); cur = { header: el, items: [] }; }
+      else cur.items.push(el);
+    });
+    groups.push(cur);
+    groups.forEach(function (g) {
+      var headerMatch = !!(g.header && g.header.textContent.toLowerCase().indexOf(q) >= 0), anyItem = false;
+      g.items.forEach(function (it) {
+        var m = headerMatch || it.textContent.toLowerCase().indexOf(q) >= 0;
+        it.style.display = m ? '' : 'none';
+        if (m) { anyItem = true; highlightEl(it, q); }
+      });
+      if (g.header) {
+        var show = headerMatch || anyItem;
+        g.header.style.display = show ? '' : 'none';
+        if (show && headerMatch) highlightEl(g.header, q);
+      }
+    });
+  }
+
   function render() {
     var body = document.getElementById('m-wiki-body');
     if (!body) return;
-    document.querySelectorAll('#m-wiki-tabs .m-wiki-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === state.tab); });
+    var q = (state.q || '').trim().toLowerCase();
+    var tabBtns = document.querySelectorAll('#m-wiki-tabs .m-wiki-tab');
+    var matchMap = {}, anyTab = false;
+    if (q) {
+      TABS.forEach(function (t) { matchMap[t.k] = tabHasMatch(t.k, q); if (matchMap[t.k]) anyTab = true; });
+      if (anyTab && !matchMap[state.tab]) { for (var i = 0; i < TABS.length; i++) if (matchMap[TABS[i].k]) { state.tab = TABS[i].k; break; } }
+    }
+    tabBtns.forEach(function (b) {
+      var k = b.getAttribute('data-tab');
+      b.style.display = (q && !matchMap[k]) ? 'none' : '';
+      b.classList.toggle('on', k === state.tab);
+    });
     var clsRow = document.getElementById('m-wiki-cls');
     var showCls = (state.tab === 'mastery' || state.tab === 'magic' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
     body.scrollTop = 0;
-    if (state.tab === 'mastery') body.innerHTML = renderMastery(state.cls);
-    else if (state.tab === 'weapon') body.innerHTML = renderWeapon();
-    else if (state.tab === 'quest') body.innerHTML = renderQuest(state.cls);
-    else if (state.tab === 'set') body.innerHTML = renderSet();
-    else if (state.tab === 'enhance') body.innerHTML = renderEnhance();
-    else if (state.tab === 'sherine') body.innerHTML = renderSherine();
-    else body.innerHTML = renderMagic(state.cls);
+    if (q && !anyTab) { body.innerHTML = '<div class="m-wiki-hint">找不到含「' + esc(state.q.trim()) + '」的內容（已搜尋全部分頁；職業相關分頁只搜目前選的職業）。</div>'; return; }
+    body.innerHTML = tabHTML(state.tab);
+    if (q) filterAndHighlight(body, q);
   }
 
   function renderMastery(cls) {
@@ -563,6 +637,13 @@
       '#m-wiki-title{flex:1 1 auto;font-size:17px;font-weight:bold;color:#fff;}',
       '#m-wiki-close{flex:0 0 auto;width:42px;height:38px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-wiki-close:active{background:#334155;}',
+      '#m-wiki-searchrow{position:relative;display:flex;padding:10px 12px 2px;flex:0 0 auto;}',
+      '#m-wiki-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:9px 34px 9px 12px;font-size:14px;outline:none;font-family:inherit;}',
+      '#m-wiki-input:focus{border-color:#6366f1;}',
+      '#m-wiki-clear{display:none;position:absolute;right:19px;top:calc(50% + 4px);transform:translateY(-50%);width:24px;height:24px;border:none;background:#475569;color:#e2e8f0;border-radius:50%;font-size:11px;line-height:1;cursor:pointer;padding:0;}',
+      '#m-wiki-clear.show{display:block;}',
+      '#m-wiki-clear:active{background:#64748b;}',
+      'mark.m-wiki-hl{background:#fde047;color:#1e293b;border-radius:2px;padding:0 1px;}',
       '#m-wiki-tabs{display:flex;flex-wrap:nowrap;gap:6px;padding:10px 12px 4px;flex:0 0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;}',
       '#m-wiki-tabs::-webkit-scrollbar{height:5px;}',
       '#m-wiki-tabs::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}',
