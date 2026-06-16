@@ -2769,7 +2769,7 @@ function recomputeStats() {
     // ===== Phase 1：先把所有「屬性(STR/DEX/INT/CON/WIS)」來源加總完畢 =====
     // 【修正】裝備與增益提供的屬性，必須在換算戰鬥數值「之前」全部計入，
     //         否則屬性數字會變，但近/遠/魔法傷害·命中·爆擊·AC·ER·HP·MP 不會跟著變。
-    if (p.eq.wpn) { let w = DB.items[p.eq.wpn.id]; if (w.str) d.str += w.str; if (w.dex) d.dex += w.dex; if (w.int) d.int += w.int; if (w.con) d.con += w.con; if (w.wis) d.wis += w.wis; }   // 🔧 與防具迴圈一致讀取五項屬性（先前只讀 str，日後武器若帶 dex/int 會無聲消失）
+    if (p.eq.wpn) { let w = DB.items[p.eq.wpn.id]; if (w.str) d.str += w.str; if (w.dex) d.dex += w.dex; if (w.int) d.int += w.int; if (w.con) d.con += w.con; if (w.wis) d.wis += w.wis; if (w.cha) d.cha += w.cha; }   // 🔧 與防具迴圈一致讀取六項屬性（含魅力 cha）
     for (let k in p.eq) {
         let e = p.eq[k];
         if (!e || k === 'wpn') continue;
@@ -2779,6 +2779,7 @@ function recomputeStats() {
         if (ed.int) d.int += ed.int;
         if (ed.con) d.con += ed.con;
         if (ed.wis) d.wis += ed.wis;
+        if (ed.cha) d.cha += ed.cha;   // 🔧 裝備魅力(cha)：可突破 60 上限
     }
     for (let k in p.buffs) {
         if (p.buffs[k] > 0 && DB.skills[k] && DB.skills[k].d) {
@@ -2788,6 +2789,7 @@ function recomputeStats() {
             if (bd.int) d.int += bd.int;
             if (bd.con) d.con += bd.con;
             if (bd.wis) d.wis += bd.wis;   // 淨化精神
+            if (bd.cha) d.cha += bd.cha;   // 🔧 魅力增益(cha)
         }
     }
 
@@ -4586,7 +4588,7 @@ function dragonStrikeProc() {
 }
 
 // ===== 🔧 武器附魔施放（spellProc）：發動一般攻擊時依機率「額外施放」武器內建的魔法（不需學會該技能）=====
-// 機率 = (1 + 武器強化值)%；必定命中；基礎傷害 = 骰值 ×(1+強化/10)，受魔法傷害(magicDmg)影響，再經怪物魔防(MR)折減與屬性剋制(+6)。
+// 機率 = (1 + 武器強化值)%；必定命中；基礎傷害 = 骰值 ×(1+強化/20)，受魔法傷害(magicDmg)影響，再經怪物魔防(MR)折減與屬性剋制(+6)。
 const ELE_CN = { fire: '火', water: '水', wind: '風', earth: '地', none: '無' };
 function weaponSpellProc(target) {
     let inst = player.eq.wpn;
@@ -4601,10 +4603,10 @@ function weaponSpellProc(target) {
         t = alive[Math.floor(Math.random() * alive.length)];
     }
     if (wpn.spellProc) procWeaponSpell(t, wpn.spellProc, en);
-    else if (wpn.procSkill) procFreeMagicSkill(t, wpn.procSkill);   // 🔧 冰之女王魔杖：免費施放法師技能（冰錐）
+    else if (wpn.procSkill) procFreeMagicSkill(t, wpn.procSkill, en);   // 🔧 冰之女王魔杖：免費施放法師技能（冰錐），傷害依強化值 ×(1+強化/20)
 }
-// 🔧 免費施放法師單體傷害魔法（不耗MP/不需學習）：套用與一般魔法相同的魔攻係數/法師加成/屬性剋制/魔防
-function procFreeMagicSkill(t, skId) {
+// 🔧 免費施放法師單體傷害魔法（不耗MP/不需學習）：套用與一般魔法相同的魔攻係數/法師加成/屬性剋制/魔防；並依武器強化值 ×(1+強化/20)
+function procFreeMagicSkill(t, skId, en) {
     let sk = DB.skills[skId];
     if (!sk || !t || t.curHp <= 0) return;
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
@@ -4617,7 +4619,7 @@ function procFreeMagicSkill(t, skId) {
     let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
     let total = 0;
     dmgArray.forEach((dc, idx) => {
-        let core = roll(dc[0], dc[1]) * spCoef * critMult;
+        let core = roll(dc[0], dc[1]) * (1 + (en || 0) / 20) * spCoef * critMult;   // 🔧 依武器強化值 ×(1+強化/20)
         let fixed = 0, extra = 0;
         if (idx === dmgArray.length - 1) {
             extra = player.d.extraMp;
@@ -4651,7 +4653,7 @@ function playerStunResisted() {
 }
 function procWeaponSpell(t, sp, en) {
     if (!t || t.curHp <= 0) return;
-    let base = roll(sp.dice[0], sp.dice[1]) * (1 + en / 10);              // 基礎傷害 ×(1+強化/10)
+    let base = roll(sp.dice[0], sp.dice[1]) * (1 + en / 20);              // 基礎傷害 ×(1+強化/20)
     let core = base * (1 + 3 * (player.d.magicDmg || 0) / 16);            // 受魔法傷害影響（同一般魔法的魔攻係數）
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = effMr <= 100 ? (100 - (effMr / 2)) / 100 : (50 - ((effMr - 100) / 10)) / 100;
@@ -8470,6 +8472,7 @@ function buildItemDescHTML(item) {
     if(d.con) statsArr.push(`體質(CON)${formatBonus(d.con)}`);
     if(d.int) statsArr.push(`智力(INT)${formatBonus(d.int)}`);
     if(d.wis) statsArr.push(`精神(WIS)${formatBonus(d.wis)}`);
+    if(d.cha) statsArr.push(`魅力(CHA)${formatBonus(d.cha)}`);
     if(d.mhp) statsArr.push(`HP上限${formatBonus(d.mhp)}`);
     if(d.mmp) statsArr.push(`MP上限${formatBonus(d.mmp)}`);
     if(d.hpR) statsArr.push(`HP恢復${formatBonus(d.hpR)}`);
