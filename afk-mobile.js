@@ -603,7 +603,10 @@
       /* 載入進度畫面(#slot-list):原作每列是 [載入存檔 flex-1][動作區固定 w-56=224px → 匯入進度(+復原備份)]。
          手機窄寬下 224px 的動作區吃掉約 6 成,左側真正要點的「載入存檔」被擠成細條、存檔名稱被迫折成多行。
          改成左 2/3 給載入存檔、右 1/3 放動作區,匯入/復原在右側上下堆疊。scope 在 #slot-list 直接子層,
-         原作改版(換 id / 重排)規則自動失效、桌機不受影響。 */
+         原作改版(換 id / 重排)規則自動失效、桌機不受影響。
+         #slot-list 改 grid + grid-auto-rows:1fr → 每列自動拉成跟最高那列等高(有/無備份、名稱折一行或兩行都一致),
+         不寫死高度、名稱變長也會自己同步。 */
+      'body.m-mobile #slot-list{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:1fr !important;}',
       'body.m-mobile #slot-list > div{flex-wrap:nowrap !important;align-items:stretch !important;}',
       'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;}',   /* 載入存檔鈕:左 2/3 */
       'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
