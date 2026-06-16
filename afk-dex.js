@@ -42,6 +42,9 @@
   function mapNameOf(id) {
     try {
       if (EXTRA_MAP_NAMES[id]) return EXTRA_MAP_NAMES[id];
+      // 🗼 傲慢之塔:樓層(pride_fN)與區間(pride_a_b)地圖無靜態中文名,比照遊戲內命名動態產生
+      var _pf = /^pride_f(\d+)$/.exec(id); if (_pf) return '傲慢之塔 ' + _pf[1] + 'F';
+      var _pr = /^pride_(\d+)_(\d+)$/.exec(id); if (_pr) return '傲慢之塔 ' + _pr[1] + '~' + _pr[2] + '樓（直接挑戰）';
       if (typeof MAP_CATEGORIES !== 'undefined') {
         for (var c in MAP_CATEGORIES) {
           for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
