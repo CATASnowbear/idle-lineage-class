@@ -307,7 +307,7 @@
     }).join('');
     var basics = '<div class="m-wiki-sub">武器數值怎麼看</div>' +
       WEAPON_BASICS.map(function (b) { return '<div class="m-wiki-kv"><b>' + esc(b[0]) + '</b>' + esc(b[1]) + '</div>'; }).join('');
-    return '<div class="m-wiki-note">武器上常看到的特殊效果，這裡用白話說明。</div>' + traits + basics;
+    return traits + basics;
   }
 
   function renderMagic(cls) {
