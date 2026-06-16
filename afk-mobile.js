@@ -44,6 +44,12 @@
     injectCSS();
     var strip = buildStatusStrip();
     gs.insertBefore(strip, gs.firstChild);
+    // 🔮 席琳的世界提示條:桌機是整個底圖變紅,手機底圖被面板蓋住、在村莊看不出來 →
+    //   置頂一條紅色橫幅,只在 body.sherine-world(遊戲開啟席琳世界時自動加的 class)時顯示,各畫面都看得到。
+    var sherineBar = document.createElement('div');
+    sherineBar.id = 'm-sherine-bar';
+    sherineBar.textContent = '🔮 席琳的世界開啟中 — 怪物強化、報酬翻倍';
+    gs.insertBefore(sherineBar, strip);   // 置於 #m-status 之上(最頂)
     var statModal = buildStatModal();
     gs.appendChild(statModal);
     strip.addEventListener('click', openStatModal);   // 點整條狀態列 → 彈出桌面版角色資訊塊(內含改名)
@@ -476,6 +482,9 @@
       'body.m-mobile #game-screen{position:fixed !important;top:0 !important;left:0 !important;flex-direction:column !important;gap:0 !important;max-width:none !important;width:100vw !important;height:100vh !important;height:100dvh !important;height:var(--app-h,100dvh) !important;margin:0 !important;padding:0 !important;}',
 
       /* 精簡一行式狀態列(取代原本佔 1/3 高的大面板;原面板在手機隱藏) */
+      /* 🔮 席琳的世界置頂提示條:只在手機+席琳世界開啟時顯示(桌機/未開啟皆隱藏) */
+      '#m-sherine-bar{display:none;}',
+      'body.m-mobile.sherine-world #m-sherine-bar{display:flex !important;align-items:center;justify-content:center;flex:0 0 auto;gap:6px;padding:5px 10px;font-size:12.5px;font-weight:bold;color:#fecaca;background:linear-gradient(90deg,#7f1d1d,#dc2626,#7f1d1d);border-bottom:1px solid #ef4444;letter-spacing:.5px;text-shadow:0 1px 2px rgba(0,0,0,.6);}',
       '#m-status{display:none;}',
       'body.m-mobile #status-panel{display:none !important;}',
       'body.m-mobile #m-status{display:flex !important;flex-direction:column;flex:0 0 auto !important;gap:6px;padding:7px 12px 9px;position:relative;background:#0f172a;border-bottom:1px solid #334155;font-size:13px;color:#e2e8f0;line-height:1.2;cursor:pointer;}',
