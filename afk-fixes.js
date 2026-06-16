@@ -75,5 +75,59 @@
     }
   })();
 
+  /* --------------------------------------------------------------------------
+   * 修正#2:戰鬥 / 系統日誌「鎖定捲動」防飄移(桌機 / 手機皆然,與裝置無關)
+   *
+   * 問題:鎖定捲動(向上看舊訊息)時,新訊息進來仍會把超量的舊行從「頂端」裁掉
+   *   (logCombat / logSys 內 while removeChild firstChild)。頂端一被移除,整個內容往上
+   *   位移 → 即使沒自動捲到底,畫面仍一直飄,鎖定形同無效。
+   * 解法:包住 logCombat / logSys,鎖定時錨定「視窗頂端那則訊息」,原函式跑完後依錨點的位移
+   *   把 scrollTop 補回去,讓使用者正在看的那段完全不動。未鎖定時走原行為(自動捲到底)。
+   * 何時可移除:原作者改成「鎖定時不裁頂端」或自行做了捲動錨定時,本段可整段刪。
+   * ------------------------------------------------------------------------ */
+  (function () {
+    // 「使用者已往上捲離底部」= 遊戲的鎖定條件(同 _combatLogIsAtBottom 的反向)。直接看 DOM,
+    //  不依賴 index.html 的內部變數(跨腳本讀 let 不可靠),自成一格、最穩。
+    function scrolledUp(el) { return (el.scrollHeight - el.scrollTop - el.clientHeight) >= 24; }
+    function patch(fnName, elId) {
+      var orig = window[fnName];
+      if (typeof orig !== 'function' || orig.__lockAnchor) return false;
+      var wrapped = function () {
+        var el = document.getElementById(elId);
+        if (!el || !scrolledUp(el)) return orig.apply(this, arguments);   // 在底部(未鎖定):原行為(自動捲到底)
+        // 已往上看舊訊息:錨定視窗頂端那則訊息。原函式用 innerHTML+= 會「重建全部子節點」,故不能持有
+        //   元素參照(會變 stale),改記「索引 + 與視窗頂的像素差」,事後依被裁掉的數量重算索引、補回 scrollTop。
+        var st = el.scrollTop, kids = el.children, n = kids.length, anchorIndex = -1, delta = 0;
+        for (var i = 0; i < n; i++) {
+          if (kids[i].offsetTop + kids[i].offsetHeight > st) { anchorIndex = i; delta = st - kids[i].offsetTop; break; }
+        }
+        var r = orig.apply(this, arguments);
+        try {
+          if (anchorIndex >= 0) {
+            var after = el.children, trimmed = (n + 1) - after.length;   // logCombat/logSys 每次固定新增 1 則
+            var ni = anchorIndex - trimmed;
+            if (ni >= 0 && ni < after.length) el.scrollTop = after[ni].offsetTop + delta;
+          }
+        } catch (e) {}
+        return r;
+      };
+      wrapped.__lockAnchor = true;
+      window[fnName] = wrapped;
+      return true;
+    }
+    function install() {
+      var a = patch('logCombat', 'combat-log');
+      var b = patch('logSys', 'sys-log');
+      if (a || b) console.log('[AFK-fixes] 日誌鎖定捲動防飄移 已掛上');
+      return typeof window.logCombat === 'function' && window.logCombat.__lockAnchor;
+    }
+    try {
+      if (!install()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+        else setTimeout(install, 0);
+      }
+    } catch (e) { console.warn('[AFK-fixes] 日誌鎖定捲動防飄移 安裝失敗,已略過:', e); }
+  })();
+
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
 })();

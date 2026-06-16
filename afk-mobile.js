@@ -532,6 +532,10 @@
          scope 在 body.m-mobile 的 #mob-list,桌機維持原本單行固定高;原作改掉 height:18px 寫法即自動失效。 */
       'body.m-mobile #mob-list .mob-target > div[style*="height:18px"]{height:auto !important;min-height:18px !important;flex-wrap:wrap !important;overflow:visible !important;row-gap:2px !important;}',
       'body.m-mobile #mob-list .mob-target > div[style*="height:18px"] > span{flex:0 0 auto !important;}',
+      /* 怪物卡原作固定 height:224px + overflow:hidden + 內容置中:手機窄欄怪名常折成兩行,內容超過 224
+         被裁掉 → 最底的血條看不見。手機改成 min-height + 高度自動長、不裁切,血條一定看得到
+         (同列三張 align stretch 會一起對齊到最高張)。原作改掉固定高即自動失效。 */
+      'body.m-mobile #mob-list .mob-target{height:auto !important;min-height:224px !important;overflow:visible !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
