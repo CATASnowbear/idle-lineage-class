@@ -189,6 +189,9 @@
     else if (mql.addListener) mql.addListener(function (e) { apply(e.matches); });
 
     window.__afkm = { version: '1.0.0', apply: apply, setView: setView, setLog: setLog, openLog: openLog, closeLog: closeLog, toggleLog: toggleLog, isMobile: function () { return mql.matches; } };
+
+    wrapSlotSelect(mql);   // 手機:把存檔鈕單行文字重排成兩行(編號+職業 / 等級+暱稱)
+
     console.log('[AFK-mobile] hooks OK — 手機版面已啟用(目前:' + (mql.matches ? '手機' : '桌機') + ')。');
 
     // --- 精簡一行式狀態列 --------------------------------------------------
@@ -412,6 +415,33 @@
     if (vv) vv.addEventListener('resize', set);
   }
 
+  // --- 手機載入/創角畫面:把存檔鈕的單行文字重排成兩行 ---------------------------
+  //   原作 label 是一整串「存檔 N　職業 Lv.X　暱稱」塞進按鈕,手機 2/3 寬會折得參差。
+  //   包住 openSlotSelect:原函式渲染後,在手機用 slotSummary(n) 的原始資料把每個存檔鈕重排成
+  //   兩行(第一行 編號+職業、第二行 等級+暱稱)。用 textContent 寫入,暱稱不會被當 HTML(防 XSS)。
+  //   桌機(mql 不命中)維持原樣不動;原作改掉 openSlotSelect / slotSummary 即自動失效(優雅降級,不弄壞畫面)。
+  function wrapSlotSelect(mql) {
+    if (typeof window.openSlotSelect !== 'function' || window.openSlotSelect.__afkmWrapped) return;
+    var orig = window.openSlotSelect;
+    function reformat() {
+      var list = document.getElementById('slot-list');
+      if (!list || typeof slotSummary !== 'function') return;
+      var rows = list.children;
+      for (var i = 0; i < rows.length; i++) {
+        var btn = rows[i].children[0];
+        if (!btn) continue;
+        var sum = slotSummary(i + 1);
+        if (!sum) continue;   // 空存檔位維持原本單行「存檔 N　（空）」
+        var l1 = document.createElement('span'); l1.className = 'm-slot-l1'; l1.textContent = '存檔 ' + (i + 1) + '　' + sum.cls;
+        var l2 = document.createElement('span'); l2.className = 'm-slot-l2'; l2.textContent = 'Lv.' + sum.lv + '　' + sum.name;
+        btn.textContent = ''; btn.appendChild(l1); btn.appendChild(l2);
+      }
+    }
+    var wrapped = function () { orig.apply(this, arguments); if (mql.matches) reformat(); };
+    wrapped.__afkmWrapped = true;
+    window.openSlotSelect = wrapped;
+  }
+
   // --- 注入手機版 CSS(全部掛在 body.m-mobile 之下)--------------------------
   function injectCSS() {
     if (document.getElementById('m-style')) return;
@@ -608,7 +638,9 @@
          不寫死高度、名稱變長也會自己同步。 */
       'body.m-mobile #slot-list{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:1fr !important;}',
       'body.m-mobile #slot-list > div{flex-wrap:nowrap !important;align-items:stretch !important;}',
-      'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;}',   /* 載入存檔鈕:左 2/3 */
+      'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:3px !important;line-height:1.25 !important;}',   /* 載入存檔鈕:左 2/3,文字直向兩行 */
+      'body.m-mobile #slot-list .m-slot-l1{font-size:1rem;}',   /* 第一行:存檔編號 + 職業 */
+      'body.m-mobile #slot-list .m-slot-l2{font-size:.9rem;font-weight:bold;color:#cbd5e1;}',   /* 第二行:等級 + 暱稱 */
       'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
       'body.m-mobile #slot-list > div > div > button{flex:1 1 0 !important;padding:.5rem .25rem !important;font-size:.8rem !important;}'   /* 匯入/復原:各佔右側一半高 */
     ].join('\n');
