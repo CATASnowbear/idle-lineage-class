@@ -602,12 +602,12 @@
 
       /* 載入進度畫面(#slot-list):原作每列是 [載入存檔 flex-1][動作區固定 w-56=224px → 匯入進度(+復原備份)]。
          手機窄寬下 224px 的動作區吃掉約 6 成,左側真正要點的「載入存檔」被擠成細條、存檔名稱被迫折成多行。
-         改成上下兩段:主要的「載入存檔」鈕獨佔整行(名稱不再折行),匯入/復原這種少用動作降成下方一條較矮的
-         次要列、各佔一半。scope 在 #slot-list 直接子層,原作改版(換 id / 重排)規則自動失效、桌機不受影響。 */
-      'body.m-mobile #slot-list > div{flex-wrap:wrap !important;}',
-      'body.m-mobile #slot-list > div > button:first-child{flex:1 1 100% !important;}',   /* 載入存檔鈕:整行 */
-      'body.m-mobile #slot-list > div > div{width:100% !important;flex:1 1 100% !important;}',   /* 動作區:整行第二列,蓋掉固定 w-56 */
-      'body.m-mobile #slot-list > div > div > button{padding-top:.55rem !important;padding-bottom:.55rem !important;font-size:.9rem !important;}'   /* 匯入/復原:壓矮成次要鈕 */
+         改成左 2/3 給載入存檔、右 1/3 放動作區,匯入/復原在右側上下堆疊。scope 在 #slot-list 直接子層,
+         原作改版(換 id / 重排)規則自動失效、桌機不受影響。 */
+      'body.m-mobile #slot-list > div{flex-wrap:nowrap !important;align-items:stretch !important;}',
+      'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;}',   /* 載入存檔鈕:左 2/3 */
+      'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
+      'body.m-mobile #slot-list > div > div > button{flex:1 1 0 !important;padding:.5rem .25rem !important;font-size:.8rem !important;}'   /* 匯入/復原:各佔右側一半高 */
     ].join('\n');
     var s = document.createElement('style');
     s.id = 'm-style';
