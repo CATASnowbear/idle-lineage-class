@@ -161,6 +161,17 @@
     if (sk.reqK !== undefined) return 'knight';
     return null;
   }
+  // 某職業到幾級可學此技能(規則同遊戲 skillReqLv);學不到回 undefined
+  function reqLvForClass(cls, id, sk) {
+    if (cls === 'dark') {
+      if (sk.reqD !== undefined) return sk.reqD;
+      if (sk.reqM !== undefined && (sk.tier === 1 || sk.tier === 2)) return sk.tier === 1 ? 12 : 24;
+      return undefined;
+    }
+    var lv = cls === 'mage' ? sk.reqM : (cls === 'knight' ? sk.reqK : sk.reqE);
+    if (lv === undefined && cls === 'elf' && typeof MAGIC_MASTERY_SKILLS !== 'undefined' && MAGIC_MASTERY_SKILLS.indexOf(id) >= 0) return sk.reqM;
+    return lv;
+  }
   // 法師魔法的「可學」清單:哪個職業到幾級可學(規則同遊戲 skillReqLv)
   function learnLine(id, sk) {
     var p = ['法師 ' + sk.reqM];
@@ -362,7 +373,7 @@
     { k: 'enhance', n: '強化' },
     { k: 'sherine', n: '席琳' }
   ];
-  var state = { tab: 'mastery', cls: 'knight', q: '' };
+  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all' };
 
   function buildModal() {
     if (document.getElementById('m-wiki-modal')) return;
@@ -402,6 +413,13 @@
       render();
     });
     clearBtn.addEventListener('click', function () { input.value = ''; state.q = ''; clearBtn.classList.remove('show'); render(); input.focus(); });
+    // 職業魔法分頁的「職業篩選」按鈕(事件委派;body innerHTML 重繪後仍有效)
+    document.getElementById('m-wiki-body').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-magiccls]') : null;
+      if (!b) return;
+      state.magicCls = b.getAttribute('data-magiccls');
+      render();
+    });
     document.getElementById('m-wiki-close').addEventListener('click', closeModal);
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });
   }
@@ -496,7 +514,7 @@
     var showCls = (state.tab === 'mastery' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.innerHTML = tabHTML(state.tab, state.cls);
+    body.innerHTML = (state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls);
   }
 
   function renderMastery(cls) {
@@ -605,15 +623,44 @@
       (lvLabel ? '<div class="m-wiki-spell-lv">' + esc(lvLabel) + '</div>' : '') +
     '</div>';
   }
-  // 依魔法的「真正分類」呈現:法師魔法只列一次(其他職業到等級也能學,標在「可學」),
-  //   再列妖精／黑暗妖精／騎士各自的專屬魔法。不再每個職業重複跳同一個法師魔法。
-  function renderMagic() {
-    var cats = { mage: [], elf: [], dark: [], knight: [] };
-    for (var id in DB.skills) {
-      var sk = DB.skills[id]; if (!sk || !sk.n) continue;
-      var c = magicCat(id, sk); if (c) cats[c].push({ id: id, sk: sk });
+  var MAGIC_FILTERS = [['all', '全部'], ['mage', '法師'], ['elf', '妖精'], ['knight', '騎士'], ['dark', '黑暗妖精']];
+  function magicFilterRow(sel) {
+    return '<div class="m-wiki-mfilter">' + MAGIC_FILTERS.map(function (f) {
+      return '<button type="button" class="m-wiki-mfbtn' + (f[0] === sel ? ' on' : '') + '" data-magiccls="' + f[0] + '">' + f[1] + '</button>';
+    }).join('') + '</div>';
+  }
+  // magicCls='all':依真正分類呈現(法師魔法只列一次標各職業可學+各專屬);
+  //   ='mage/elf/knight/dark':只列「該職業學得到的魔法」,依可學等級排序。
+  function renderMagic(magicCls) {
+    magicCls = magicCls || 'all';
+    var html = magicFilterRow(magicCls);
+    if (magicCls !== 'all') {
+      var rows = [];
+      for (var id in DB.skills) {
+        var sk = DB.skills[id]; if (!sk || !sk.n) continue;
+        var lv = reqLvForClass(magicCls, id, sk);
+        if (lv === undefined) continue;
+        var needMastery = (magicCls === 'elf' && sk.reqE === undefined && typeof MAGIC_MASTERY_SKILLS !== 'undefined' && MAGIC_MASTERY_SKILLS.indexOf(id) >= 0);
+        rows.push({ id: id, sk: sk, lv: lv, needMastery: needMastery });
+      }
+      rows.sort(function (a, b) { return (a.lv - b.lv) || ((a.sk.tier || 0) - (b.sk.tier || 0)) || a.sk.n.localeCompare(b.sk.n); });
+      var clsName = (CLASSES.filter(function (c) { return c.k === magicCls; })[0] || {}).n || '';
+      html += '<div class="m-wiki-note">' + esc(clsName) + '學得到的魔法，依可學等級排序（含可學的法師魔法）。</div>';
+      if (!rows.length) html += '<div class="m-wiki-hint">這個職業沒有可學的魔法。</div>';
+      var curLv = null;
+      rows.forEach(function (r) {
+        if (r.lv !== curLv) { curLv = r.lv; html += '<div class="m-wiki-lv">Lv ' + r.lv + '</div>'; }
+        html += magicSpellHTML(r.id, r.sk, r.needMastery ? '需魔導精通' : '');
+      });
+      if (magicCls === 'knight') html += '<div class="m-wiki-note">騎士裝備「治癒／敏捷／力量魔法頭盔」時，額外獲得頭盔自帶的魔法（持有即可用、卸下就消失），不受等級限制。</div>';
+      return html;
     }
-    var html = '<div class="m-wiki-note">魔法分「<b>法師魔法</b>」（法師的本職法術，共 1~10 階）與各職業<b>專屬魔法</b>。法師魔法其他職業到對應等級也能學低階——每條都標「<b>可學</b>」＝哪個職業幾級可學。攻擊魔法「威力」為基礎值，實際傷害再隨智力與魔法傷害提升。</div>';
+    var cats = { mage: [], elf: [], dark: [], knight: [] };
+    for (var id2 in DB.skills) {
+      var sk2 = DB.skills[id2]; if (!sk2 || !sk2.n) continue;
+      var c = magicCat(id2, sk2); if (c) cats[c].push({ id: id2, sk: sk2 });
+    }
+    html += '<div class="m-wiki-note">魔法分「<b>法師魔法</b>」（法師的本職法術，共 1~10 階）與各職業<b>專屬魔法</b>。法師魔法其他職業到對應等級也能學低階——每條都標「<b>可學</b>」＝哪個職業幾級可學。攻擊魔法「威力」為基礎值，實際傷害再隨智力與魔法傷害提升。</div>';
     cats.mage.sort(function (a, b) { return (a.sk.tier - b.sk.tier) || a.sk.n.localeCompare(b.sk.n); });
     html += '<div class="m-wiki-sub">🪄 法師魔法（1~10 階）</div>';
     var curTier = null;
@@ -678,7 +725,10 @@
       '.m-wiki-spell-n{font-size:14px;font-weight:bold;color:#fff;}',
       '.m-wiki-spell-tags{font-size:11.5px;color:#94a3b8;}',
       '.m-wiki-spell-eff{font-size:13px;color:#cbd5e1;line-height:1.55;margin-top:3px;}',
-      '.m-wiki-spell-lv{font-size:12px;color:#7dd3fc;margin-top:3px;}'
+      '.m-wiki-spell-lv{font-size:12px;color:#7dd3fc;margin-top:3px;}',
+      '.m-wiki-mfilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}',
+      '.m-wiki-mfbtn{flex:1 1 auto;min-width:52px;padding:6px 4px;border:1px solid #334155;background:#111c30;color:#cbd5e1;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;}',
+      '.m-wiki-mfbtn.on{background:#0e7490;border-color:#22d3ee;color:#fff;}'
     ].join('\n');
     var s = document.createElement('style');
     s.id = 'm-wiki-style';
