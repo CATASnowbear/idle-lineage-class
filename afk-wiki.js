@@ -43,13 +43,11 @@
   // ===== 共用:時間 / 屬性 / 骰子 → 玩家講法 ==================================
   var ELE = { none: '無屬性', water: '💧 水', wind: '🌪 風', fire: '🔥 火', earth: '🪨 地' };
   var ELE_REQ = { fire: '火', water: '水', wind: '風', earth: '地' };
-  function durTxt(s) {
-    if (!s) return '';
-    var t;
-    if (s >= 3600) { var h = s / 3600; t = (Number.isInteger(h) ? h : h.toFixed(1)) + ' 小時'; }
-    else if (s >= 120) { var m = s / 60; t = (Number.isInteger(m) ? m : m.toFixed(1)) + ' 分鐘'; }
-    else t = s + ' 秒';
-    return '，持續 ' + t;
+  function durTxt(s) { return s ? '，持續 ' + fmtDur(s) : ''; }   // buff/狀態的 dur 以「秒」計
+  function fmtDur(s) {
+    if (s >= 3600) { var h = Math.floor(s / 3600), rm = Math.round((s % 3600) / 60); return rm ? h + ' 小時 ' + rm + ' 分' : h + ' 小時'; }
+    if (s >= 60) { var m = Math.floor(s / 60), ss = s % 60; return ss ? m + ' 分 ' + ss + ' 秒' : m + ' 分鐘'; }
+    return s + ' 秒';
   }
   function dice(d) { return d[0] + '~' + (d[0] * d[1]); }   // NdM → 最小~最大,用玩家看得懂的數字範圍取代骰子寫法
   function powerTxt(sk) {
@@ -62,7 +60,7 @@
     var base = sk.healBase || 0;
     var lo = base + (sk.healDice ? sk.healDice[0] : 0);
     var hi = base + (sk.healDice ? sk.healDice[0] * sk.healDice[1] : 0);
-    if (sk.hot) return '每 ' + sk.hot.interval + ' 秒回復 HP 約 ' + lo + '~' + hi + '、共 ' + sk.hot.ticks + ' 次';
+    if (sk.hot) { var iv = sk.hot.interval / 10; return '每 ' + (Number.isInteger(iv) ? iv : iv.toFixed(1)) + ' 秒回復 HP 約 ' + lo + '~' + hi + '、共 ' + sk.hot.ticks + ' 次'; }   // hot.interval 以 tick 計(10 tick=1 秒)
     return '回復 HP 約 ' + lo + '~' + hi;
   }
 
@@ -93,7 +91,7 @@
     sk_cancel: '解除自己身上的魔法狀態',
     sk_teleport: '讓當前的怪物消失、重新出現一批（可用來換掉難纏的怪；帶傳送控制戒指則會引來強敵）',
     sk_energy_sense: '查看目標怪物的屬性弱點',
-    sk_charm: '魅惑一隻非王級怪物，使牠為你作戰（成功率最高約 6 成；有召喚精通時，對比你低等的怪必定成功）',
+    sk_charm: '魅惑一隻非王級怪物，使牠為你作戰（持續 1 小時；成功率最高約 6 成，有召喚精通時對比你低等的怪必定成功）',
     sk_mana_drain: '消耗自身 HP，對怪物施放命中後吸取牠的 MP',
     sk_load_up: '提高負重上限（效果結束後才能再次施放）',
     sk_reduction_armor: '提升受到傷害的減免（依等級）',
@@ -115,7 +113,7 @@
     sk_dark_dodge: '有 50% 機率閃過原本「必中」的魔法攻擊（用掉後進入冷卻）',
     sk_dark_crit: '消耗一半當前 HP 與全部 MP，打出一記必中、必重擊的攻擊；剩下的 MP 越多傷害越高（滿 MP 約 10 倍，對血盟敵人再 ×2）',
     sk_dark_double: '使用雙刀或鋼爪時，有機率打出 2 倍傷害（45 級起 5%，每 5 級 +1%）',
-    sk_dark_refine: '提高黑魔石（黑暗妖精素材）的取得：沉默洞穴一帶掉率提升，其他野外／地監也才會掉到（被動）'
+    sk_dark_refine: '被動：提高「黑魔石」（黑暗妖精製作素材）取得。沉默洞穴外圍二級黑魔石掉率 20%→30%、三級 10%→15%；其他野外／地監原本完全不掉，學會後才會掉（二級 1%、三級 0.5%、四級 0.1%；攻城區不掉）'
   };
   function statDeltaTxt(d) {
     var out = [];
@@ -194,7 +192,7 @@
     { n: '龍的一擊（屠龍劍）', d: '攻擊時 12% 機率對「全場敵人」造成一記無視防禦的固定傷害。代表武器：屠龍劍。' },
     { n: '連射（弓）', d: '攻擊時有機率追加 1~3 支箭，每支各自結算命中（傷害為三成）。爆發很高。代表武器：尤米弓、十字弓、獵人之弓。' },
     { n: '武器附魔（傳說武器）', d: '普攻有機率不用學技能就免費施放武器內建的魔法，而且強化值越高越容易觸發（基礎 1%，每強化 +1%）。代表武器：死亡騎士的烈炎之劍、克特之劍、冰之女王魔杖、蕾雅魔杖。' },
-    { n: '出血（匕首 / 矛）', d: '普攻命中有「力量 ÷ 60」的機率讓目標流血，之後每秒持續扣血、還能疊層。代表武器：各種匕首、矛。' },
+    { n: '出血（匕首 / 矛）', d: '普攻命中時有「力量 ÷ 60」的機率讓目標流血：每層每秒造成「該擊傷害的 20%」、持續 8 秒，最多疊 5 層（疊滿後新層取代最舊層）。黑暗妖精「出血精通」搭配匕首可疊到 10 層、且每層傷害再 +10%；改用雙刀則固定 50% 機率觸發。代表武器：各種匕首、矛。' },
     { n: '反擊（單手劍）', d: '被敵人打中時 50% 機率立刻反擊（若裝盾且這次擋下攻擊，則必定反擊）。代表武器：長劍、彎刀、克特之劍等單手劍。' },
     { n: '居合（武士刀）', d: '不拿盾、裝武士刀時，敵人的攻擊被你「閃過」或「揮空」時，30% 機率反手砍一刀。代表武器：武士刀、瑟魯基之劍。' },
     { n: '不死 / 狼人剋星（銀・精靈）', d: '攻擊「不死類」或「狼人」時額外多加 1~20 傷害。打這兩類怪特別有效。代表武器：銀斧、精靈短劍、銀長劍，以及銀箭、米索莉箭。' },
@@ -209,6 +207,113 @@
     ['安定值', '強化的安全線：在安定值以內強化 100% 成功不爆裝；超過後才有失敗、爆裝的風險（武器多半是 6）。'],
     ['雙手武器', '佔用雙手，裝了就不能再拿盾牌。'],
     ['弓 / 遠距', '走遠距離的命中與傷害、可觸發連射，但需要箭矢。']
+  ];
+
+  // ===== 任務(本檔維護;依遊戲現行資料整理) ==================================
+  var QUEST_GROUPS = [
+    { t: '⚔️ 騎士試煉', rows: [
+      { n: '紅騎士頭巾', npc: '瑞奇 ＠銀騎士村', req: '黑騎士的誓約 ×1、古老的交易文件 ×1、龍龜甲 ×1', from: '交易文件：黑騎士／黑騎士搜索隊 1%（銀騎士地區、說話之島港口、古魯丁）；龍龜甲：龍龜 1%（銀騎士地區、鏡子森林）；黑騎士的誓約來源未明（待確認）', rw: '紅騎士頭巾' },
+      { n: '紅騎士之劍 / 盾牌', npc: '甘特 ＠說話之島', req: '夏洛伯之爪 ×1（換劍）；蛇女之鱗 ×1（換盾），各自分開兌換', from: '夏洛伯之爪：夏洛伯（蜘蛛）1%；蛇女之鱗：蛇女 1%（海音、鏡子森林、地下通道）', rw: '紅騎士之劍 或 紅騎士盾牌' },
+      { n: '勇敢皮帶', npc: '馬沙 ＠威頓村', req: '夜之視野 ×1、古代鑰匙 ×1', from: '夜之視野：強盜頭目 10%（奇岩）；古代鑰匙：鋼鐵高崙 1%（歐瑞雪原、水晶洞穴、國境要塞、象牙塔4/5樓）', rw: '勇敢皮帶' }
+    ]},
+    { t: '🪄 法師試煉', rows: [
+      { n: '魔法能量之書', npc: '詹姆 ＠說話之島', req: '食屍鬼的指甲 ×1、食屍鬼的牙齒 ×1、骷髏頭 ×1', from: '指甲／牙齒：食屍鬼 各 1%；骷髏頭：骷髏 1%（皆廣布野外/地監）', rw: '魔法能量之書' },
+      { n: '水晶魔杖（水晶試煉）', npc: '塔拉斯 ＠象牙塔', req: '不死族的鑰匙 ×1、不死族的骨頭 ×1', from: '鑰匙：骷髏 1%；骨頭：骷髏神射手 1%／骷髏警衛 0.1%（龍之谷地監1-5樓、龍之谷）', rw: '水晶魔杖' },
+      { n: '瑪那魔杖 / 斗篷（瑪那試煉）', npc: '塔拉斯 ＠象牙塔', req: '變形怪的血 ×1', from: '變形怪 1%／變形怪首領 10%（鏡子森林）', rw: '瑪那魔杖 或 瑪那斗篷' }
+    ]},
+    { t: '🍃 妖精試煉', rows: [
+      { n: '精靈頭盔', npc: '歐斯 ＠燃柳村', req: '四大妖魔魔法書（都達瑪拉／那魯加／甘地／阿吐巴）各 ×1', from: '對應四種妖魔 各 1%（妖魔森林、妖精森林周邊、眠龍洞穴）', rw: '精靈敏捷頭盔 或 精靈體質頭盔' },
+      { n: '精靈水晶 / 精靈T恤', npc: '迷幻森林之母 ＠妖精森林', req: '受詛咒的精靈書 ×1', from: '希爾黛斯 1%（伊娃王國）', rw: '精靈水晶(召喚屬性精靈) 或 精靈T恤' },
+      { n: '保護者手套 / 精靈水晶', npc: '馬沙 ＠威頓村', req: '藍色長笛 ×1、古代鑰匙 ×1', from: '藍色長笛：黑暗精靈 1%（妖魔森林、龍之谷、奇岩、奇岩地監4樓）；古代鑰匙：鋼鐵高崙 1%', rw: '保護者手套 或 精靈水晶(召喚強力屬性精靈)' }
+    ]},
+    { t: '🗡 黑暗妖精試煉（限黑暗妖精）', rows: [
+      { n: '影子手套', npc: '倫得 ＠沉默洞穴', req: '死亡誓約 ×1', from: '強盜 1%（奇岩）', rw: '影子手套' },
+      { n: '影子面具', npc: '康 ＠沉默洞穴', req: '妖魔長老首級 ×1', from: '妖魔法師 1%（低階區廣布）', rw: '影子面具' },
+      { n: '影子長靴', npc: '布魯迪卡 ＠沉默洞穴', req: '雪怪首級 ×1', from: '雪怪 1%（歐瑞、歐瑞雪原、水晶洞穴、國境要塞）', rw: '影子長靴' }
+    ]},
+    { t: '👥 全職業任務', rows: [
+      { n: '雷德的復仇', npc: '雷德 ＠銀騎士村', req: '魔法寶石 ×100，以及五枚部下證明戒指各 ×1（黑暗棲林者／馴獸師／精靈使／喚獸師／黑暗法師戒指）', from: '五戒指皆出自拉斯塔巴德區（黑暗棲林者 0.1%、馴獸師 0.05%、精靈使 0.001%、喚獸師 0.01%、黑暗法師 0.01%；機率極低、相當硬核）', rw: '召喚控制戒指' }
+    ]},
+    { t: '🏅 精通任務（50 級開放）', rows: [
+      { n: '職業精通', npc: '漢 ＠威頓村', req: '50 級以上接任務 → 擊敗「職業專屬頭目」必得『精通之證』→ 回威頓村交給漢', from: '頭目：騎士＝飛龍（龍之谷）、法師＝黑長者（龍之谷／古魯丁地監6樓）、妖精＝變形怪首領（鏡子森林）、黑暗妖精＝巴風特（奇岩地監1樓）', rw: '四選一精通能力（初次免費，之後更換要付費）。各精通內容見「職業專精」分頁' }
+    ]},
+    { t: '🌿 妖精屬性學習', rows: [
+      { n: '選定屬性魔法', npc: '艾利溫 ＠妖精森林', req: '妖精職業；四種屬性（火／水／風／地）四選一', from: '—', rw: '開啟所選屬性的魔法路線。注意：只能選一種、選了就固定' }
+    ]},
+    { t: '🐉 隱藏 / 傳說', rows: [
+      { n: '屠龍劍（卡瑞）', npc: '無 NPC，隱藏 BOSS', req: '同時帶齊四樣任務道具：飛龍的爪子、蜥蜴的角、水晶球、妖魔戰士護身符', from: '飛龍的爪子：飛龍 1%（龍之谷）；蜥蜴的角：邪惡蜥蜴 0.01%（沙漠）；水晶球：巫師 0.01%（古魯丁地監6樓）；妖魔戰士護身符：五種妖魔 各 0.01%。集齊四樣後，在「龍之谷地監6樓」有 1% 機率出現卡瑞', rw: '擊殺卡瑞 100% 掉屠龍劍（並消耗四道具各一）' },
+      { n: '巴列斯魔杖', npc: '無 NPC，道具喚醒', req: '失去魔力的巴列斯魔杖 ×1、靈魂之球 ×1', from: '失去魔力的魔杖：BOSS 巴列斯 100%（風木城地監）；靈魂之球：鬼魂／紅鬼魂 0.01%（象牙塔6/7/8樓）', rw: '帶著失魔魔杖使用靈魂之球 → 喚回成「巴列斯魔杖」' }
+    ]}
+  ];
+
+  // ===== 套裝(本檔維護) ====================================================
+  // 註:本作 AC 越低越強,此處一律改寫成「防禦 +n」較直覺。
+  var SETS = [
+    { n: '皮套裝', pcs: 4, items: '皮帽子、皮涼鞋、皮盾牌、皮背心', eff: '防禦 +3' },
+    { n: '歐西斯套裝', pcs: 4, items: '歐西斯頭盔、歐西斯環甲、歐西斯斗篷、阿克海盾牌', eff: '防禦 +3' },
+    { n: '侏儒套裝', pcs: 3, items: '侏儒鐵盔、侏儒斗篷、侏儒圓盾', eff: '防禦 +1、HP上限 +5' },
+    { n: '銀釘套裝', pcs: 4, items: '銀釘皮帽、銀釘皮背心、銀釘皮盾、銀釘皮涼鞋', eff: '防禦 +3' },
+    { n: '骷髏套裝', pcs: 3, items: '骷髏頭盔、骷髏盾牌、骷髏盔甲', eff: '防禦 +2、HP上限 +10' },
+    { n: '鋼鐵套裝', pcs: 5, items: '鋼鐵盔甲、鋼鐵頭盔、鋼鐵盾牌、鋼鐵長靴、鋼鐵手套', eff: '防禦 +2、傷害減免 +2' },
+    { n: '法師套裝', pcs: 2, items: '法師之帽、法師長袍', eff: 'MP上限 +50' },
+    { n: '死亡騎士套裝', pcs: 4, items: '死亡騎士手套、盔甲、長靴、頭盔', eff: '防禦 +4，並可變身「死亡騎士」（穿滿生效、卸下消失）' },
+    { n: '克特套裝', pcs: 4, items: '克特盔甲、手套、長靴、頭盔', eff: '防禦 +4，並可變身「克特」' },
+    { n: '抗魔套裝', pcs: 3, items: '抗魔戒指、抗魔項鍊、抗魔皮帶', eff: '魔防 +5（注意：裝備欄底色 2 件就亮，但要 3 件全齊才真的吃到 MR+5）' },
+    { n: '守護套裝', pcs: 3, items: '守護戒指、守護項鍊、守護皮帶', eff: '防禦 +1' },
+    { n: '四大軍王套裝', pcs: 4, items: '冥法軍王斗篷、法令軍王長袍、暗殺軍王手套、魔獸軍王長靴', eff: 'HP上限 +30、MP上限 +30、HP自然恢復 +10、MP自然恢復 +10、魅力 +3' }
+  ];
+
+  // ===== 強化機制(本檔維護) ================================================
+  var ENHANCE_SECTIONS = [
+    { t: '強化（把裝備 +1 升級）', lines: [
+      '用「施法卷軸」強化裝備：武器用對武器施法的卷軸、防具用對盔甲施法的卷軸、飾品用對飾品施法的卷軸。',
+      '<b>安定值（safe）是安全線</b>：在安定值以內強化 100% 成功、不會爆裝；超過安定值才有失敗機率，<b>失敗＝裝備直接消失（爆裝）</b>，不會掉等留殘骸。武器安定值多為 6、飾品多為 0。',
+      '每 +1 的加成：武器→額外傷害 +1、額外命中 +1（弓加到遠距）；防具／飾品→防禦每 +1 變好（部分另加魔防）。',
+      '超過安定值的成功率（固定值）：武器（safe 6）+6→60%、+7→50%、+8→40%、+9 以上→35%；飾品（safe 0）+0→50%、+1→40%、+2→30%、+3 以上→20%；防具依其安定值類推。',
+      '特殊卷軸：「祝福的」卷軸成功時一次隨機 +1~+3；「詛咒的」卷軸 100% 讓強化值 −1（不爆裝）。'
+    ]},
+    { t: '三種詞綴（一件裝備最多各帶一個）', lines: [
+      '<b>屬性（火／水／風／地，共三階）</b>：武器→轉成該元素並加固定傷害（之 +1／爆炎·海嘯等 +3／靈 +5），打「被剋元素」的怪再額外加（+6／+9／+12）；防具·飾品→加對應元素抗性與魔防。剋制關係：火剋地、地剋風、風剋水、水剋火。',
+      '<b>遠古系（遠古／永恆／不朽／太初）</b>：依部位給不同加成。例：遠古→武器額外傷害+2·魔法傷害+1／防具減傷+2；永恆→武器額外傷害+4／防具防禦+2；不朽→命中·迴避；太初→魔防·魔法。',
+      '<b>祝福／詛咒</b>：祝福給小幅正向（武器額外傷害+1·命中+1·魔力+2；防具防禦+1·減傷+1；飾品防禦+1·魔防+1），詛咒則是等量負向（負鏡像）。'
+    ]},
+    { t: '詞綴怎麼來', lines: [
+      '<b>祝福</b>：打怪／製作／黑市／血盟有 1% 機率直接帶「祝福的」（在「席琳的世界」擊殺時 ×3＝3%）；強化卷軸取得時也各有 1% 變成祝福／詛咒卷軸。',
+      '<b>屬性 與 遠古：現在不會隨機掉到！</b>只能靠象牙塔「碧恩」的『賦予祝福卷軸』施法——每張三選一（屬性／遠古／祝福 各 1/3），隨機改裝備的「一格」：原本沒有→附加、抽到一樣→消失、抽到不同→取代（無法指定）。',
+      '『賦予祝福卷軸』哪來：向象牙塔「克里斯特」用 100 萬金幣 ＋ 100 張施法卷軸兌換（飾品版只要 5 張）。',
+      '詛咒的裝備不能再被祝福，要先用「解除詛咒的卷軸」（克里斯特兌換、碧恩使用）清除。'
+    ]}
+  ];
+
+  // ===== 席琳(本檔維護) ====================================================
+  var SHERINE_SECTIONS = [
+    { t: '席琳的世界（困難模式）', lines: [
+      '到「席琳神殿」找 NPC <b>席琳</b> 祈禱即可開／關（需 40 級以上），可自由切換。',
+      '開啟後，全世界的怪（<b>攻城區與血盟敵人除外</b>）大幅變強：HP ×3、防禦 ×1.5、魔防 ×1.5、命中 ×1.5、額外減傷 +（怪等÷3）、一般攻擊傷害 ×2、技能與持續傷害 ×2、出怪等待 −1 秒。',
+      '回報是全面翻倍：經驗 ×5、金錢 ×5、掉落機率 ×3，而且「席琳結晶／套裝」只有開著它才掉得到。',
+      '視覺上畫面會變暗紅、怪物框變黑紅。'
+    ]},
+    { t: '席琳結晶', lines: [
+      '席琳世界限定的稀有材料，<b>本身不能直接使用</b>，是做「席琳套裝裝備」的鑰匙。',
+      '取得：席琳世界打怪固定機率掉（一般怪約萬分之一級距、一般 BOSS 0.1%、三大龍 10%、夢幻之島 BOSS 0.01%；20 級以下與血盟怪不掉）。',
+      '用途：做「席琳製作」或「席琳兌換」時，各額外消耗 1 個，讓成品必帶一種套裝效果。'
+    ]},
+    { t: '席琳套裝（綠光，獨立於一般套裝）', lines: [
+      '裝備可帶一個「席琳套裝效果」，同一組湊到 2／3／5 件解鎖遞增加成。可裝部位：武器／頭盔／盔甲／手套／長靴／斗篷／腰帶。',
+      '湊 5/5 要同組「5 種不同效果」各一件——同名效果疊不上去。',
+      '各組「2 件」效果：紅獅（額外傷害+5、魔力+3）、白鳥（命中+5）、鐵衛（防禦+3、減傷+5）、麗人（近距傷害+3·命中+3）、疾風（遠距傷害+3·命中+3）、月光（傷害+2·命中+2）、學徒（MP恢復+5·魔力+6）、魔女（魔法傷害+2）、暗影（傷害+7）。',
+      '3／5 件另有更強加成與專屬能力（例：紅獅5 攻擊技能最終傷害 +20%、白鳥5 普攻附「脆弱」、鐵衛5 反擊橫掃全體、暗影5 連擊追加擊傷害變 100%…）。',
+      '取得帶套裝效果的裝備：席琳世界擊殺掉落（一般怪 0.1%、恩賜怪 0.5%、BOSS 5%）、席琳製作（必帶）、席琳兌換（必帶）。'
+    ]},
+    { t: '席琳恩賜（精英怪）', lines: [
+      '席琳世界中每次刷怪有 1% 機率（每 3 分鐘最多一次），場上隨機一隻普通怪變成「恩賜精英」。',
+      '恩賜怪：HP ×10 並回滿、經驗 ×10、金錢 ×10、掉落 ×10、席琳套裝掉率 0.5%；但牠也更兇（傷害更高）。',
+      '辨識：怪名下方有紅底綠字「席琳恩賜」徽章、整隻紅綠光暈。'
+    ]},
+    { t: '席琳兌換', lines: [
+      '在各試煉 NPC 兌換時，一般兌換鈕旁會多一顆綠色「席琳兌換」鈕。',
+      '它會額外花 1 個席琳結晶，但換到的裝備<b>必定附帶一個隨機席琳套裝效果</b>（身上＋倉庫沒有結晶時不能用）。'
+    ]}
   ];
 
   // ===== 入口按鈕 =========================================================
@@ -227,7 +332,11 @@
   var TABS = [
     { k: 'mastery', n: '職業專精' },
     { k: 'weapon', n: '武器特性' },
-    { k: 'magic', n: '職業魔法' }
+    { k: 'magic', n: '職業魔法' },
+    { k: 'quest', n: '任務' },
+    { k: 'set', n: '套裝' },
+    { k: 'enhance', n: '強化' },
+    { k: 'sherine', n: '席琳' }
   ];
   var state = { tab: 'mastery', cls: 'knight' };
 
@@ -283,6 +392,10 @@
     body.scrollTop = 0;
     if (state.tab === 'mastery') body.innerHTML = renderMastery(state.cls);
     else if (state.tab === 'weapon') body.innerHTML = renderWeapon();
+    else if (state.tab === 'quest') body.innerHTML = renderQuest();
+    else if (state.tab === 'set') body.innerHTML = renderSet();
+    else if (state.tab === 'enhance') body.innerHTML = renderEnhance();
+    else if (state.tab === 'sherine') body.innerHTML = renderSherine();
     else body.innerHTML = renderMagic(state.cls);
   }
 
@@ -308,6 +421,53 @@
     var basics = '<div class="m-wiki-sub">武器數值怎麼看</div>' +
       WEAPON_BASICS.map(function (b) { return '<div class="m-wiki-kv"><b>' + esc(b[0]) + '</b>' + esc(b[1]) + '</div>'; }).join('');
     return traits + basics;
+  }
+
+  function renderQuest() {
+    var note = '<div class="m-wiki-note">遊戲裡的試煉／任務一覽：找對 NPC、帶齊材料即可兌換。材料多半要打特定怪掉落，「去哪打」欄已列出主要怪與機率。職業試煉只有對應職業能接。</div>';
+    var groups = QUEST_GROUPS.map(function (g) {
+      var rows = g.rows.map(function (r) {
+        return '<div class="m-wiki-card">' +
+          '<div class="m-wiki-name">' + esc(r.n) + '</div>' +
+          '<div class="m-wiki-msg">' + esc(r.npc) + '</div>' +
+          '<div class="m-wiki-desc"><b>需要：</b>' + esc(r.req) + '</div>' +
+          (r.from !== '—' ? '<div class="m-wiki-desc"><b>去哪打：</b>' + esc(r.from) + '</div>' : '') +
+          '<div class="m-wiki-desc"><b>獎勵：</b>' + esc(r.rw) + '</div>' +
+        '</div>';
+      }).join('');
+      return '<div class="m-wiki-sub">' + esc(g.t) + '</div>' + rows;
+    }).join('');
+    return note + groups;
+  }
+
+  function renderSet() {
+    var note = '<div class="m-wiki-note">穿齊同一套裝指定件數即觸發效果。<b>同款裝備只算 1 件</b>（兩枚同款戒指算 1），不能靠重複湊數。另有獨立的「席琳套裝」系統，請看「席琳」分頁。</div>';
+    var cards = SETS.map(function (s) {
+      return '<div class="m-wiki-card">' +
+        '<div class="m-wiki-name">' + esc(s.n) + '　<span style="color:#7dd3fc;font-size:12.5px;">' + s.pcs + ' 件</span></div>' +
+        '<div class="m-wiki-desc"><b>效果：</b>' + esc(s.eff) + '</div>' +
+        '<div class="m-wiki-desc" style="color:#94a3b8;"><b>組成：</b>' + esc(s.items) + '</div>' +
+      '</div>';
+    }).join('');
+    return note + cards;
+  }
+
+  function renderEnhance() {
+    var note = '<div class="m-wiki-note">裝備可以「強化」升等，還可能帶「屬性／遠古／祝福」三種詞綴。一件裝備這三種詞綴最多各帶一個，彼此獨立。</div>';
+    var secs = ENHANCE_SECTIONS.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    return note + secs;
+  }
+
+  function renderSherine() {
+    var note = '<div class="m-wiki-note">「席琳」是一整套困難模式系統：開啟世界 → 怪變強但報酬翻倍 → 掉席琳結晶 → 做／換席琳套裝。以下為各部分說明。</div>';
+    var secs = SHERINE_SECTIONS.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    return note + secs;
   }
 
   function renderMagic(cls) {
@@ -352,8 +512,8 @@
       '#m-wiki-title{flex:1 1 auto;font-size:17px;font-weight:bold;color:#fff;}',
       '#m-wiki-close{flex:0 0 auto;width:42px;height:38px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-wiki-close:active{background:#334155;}',
-      '#m-wiki-tabs{display:flex;gap:6px;padding:10px 12px 0;flex:0 0 auto;}',
-      '.m-wiki-tab{flex:1;padding:9px 4px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:8px 8px 0 0;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit;}',
+      '#m-wiki-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 4px;flex:0 0 auto;}',
+      '.m-wiki-tab{flex:1 1 auto;min-width:62px;padding:8px 6px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;border-radius:8px;font-size:14px;font-weight:bold;cursor:pointer;font-family:inherit;}',
       '.m-wiki-tab.on{background:#4338ca;border-color:#6366f1;color:#fff;}',
       '#m-wiki-cls{display:flex;gap:6px;padding:8px 12px;flex:0 0 auto;border-bottom:1px solid #1e293b;flex-wrap:wrap;}',
       '.m-wiki-clsbtn{flex:1 1 auto;padding:7px 4px;border:1px solid #334155;background:#111c30;color:#cbd5e1;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;}',
