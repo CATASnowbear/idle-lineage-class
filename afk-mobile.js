@@ -533,9 +533,10 @@
       'body.m-mobile #mob-list .mob-target > div[style*="height:18px"]{height:auto !important;min-height:18px !important;flex-wrap:wrap !important;overflow:visible !important;row-gap:2px !important;}',
       'body.m-mobile #mob-list .mob-target > div[style*="height:18px"] > span{flex:0 0 auto !important;}',
       /* 怪物卡原作固定 height:224px + overflow:hidden + 內容置中:手機窄欄怪名常折成兩行,內容超過 224
-         被裁掉 → 最底的血條看不見。手機改成 min-height + 高度自動長、不裁切,血條一定看得到
-         (同列三張 align stretch 會一起對齊到最高張)。原作改掉固定高即自動失效。 */
-      'body.m-mobile #mob-list .mob-target{height:auto !important;min-height:224px !important;overflow:visible !important;}',
+         被裁掉 → 最底的血條看不見。手機改成「固定 252px(容得下兩行名稱)+ 名稱最多兩行截斷」:
+         高度永遠一致 → 不會隨怪物換人/名稱長短抖動,血條也一定看得到。原作改掉固定高即自動失效。 */
+      'body.m-mobile #mob-list .mob-target{height:252px !important;overflow:hidden !important;}',
+      'body.m-mobile #mob-list .mob-target > div:first-child > span{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.15;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
