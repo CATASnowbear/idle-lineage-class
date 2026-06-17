@@ -333,6 +333,7 @@
     m.addEventListener('click', function (e) { if (e.target === m) close(); });   // 點背景關閉
     m.querySelector('#m-logout-cancel').addEventListener('click', close);
     m.querySelector('#m-logout-ok').addEventListener('click', function () {
+      window.__afkLoggingOut = true;   // 告知 afk-fixes 的關閉前存檔別重存:本流程已存過,reload 觸發的 beforeunload/pagehide 不必再存(否則手機 toast 會跳兩次)
       try { if (typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}   // 先存當前進度,避免漏掉上次自動存檔後的收益
       try { if (window.__afk && window.__afk.stamp) window.__afk.stamp(); } catch (e) {}   // 存完再蓋錨點 → 存檔時間=離線起算時間,離線結算不會漏算/重算
       try { location.reload(); } catch (e) {}

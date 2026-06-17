@@ -152,6 +152,7 @@
       return !!(gs && !gs.classList.contains('hidden'));
     }
     function saveOnExit() {
+      if (window.__afkLoggingOut) return;   // 手機登出流程已自己存過(且排了 stamp);這裡再存會讓手機 toast 跳兩次
       try { if (inGame() && typeof window.saveGame === 'function') window.saveGame(); } catch (e) {}
     }
     window.addEventListener('pagehide', saveOnExit);
