@@ -45,7 +45,7 @@
     console.log('[AFK-dex] hooks OK — 怪物/掉落查詢已啟用(' + INDEX.length + ' 隻怪)。');
   }
 
-  // 獨立頁:藏掉創角/遊戲畫面、改標題、隱藏關閉鈕,把面板常駐展開。
+  // 獨立頁:藏掉創角/遊戲畫面、改標題、隱藏關閉鈕,把面板常駐展開,並加頁首導覽。
   function enterStandalone() {
     var cs = document.getElementById('creation-screen'); if (cs) cs.style.display = 'none';
     var gs = document.getElementById('game-screen'); if (gs) gs.style.display = 'none';
@@ -55,7 +55,21 @@
       m.setAttribute('data-standalone', '1');
       var x = document.getElementById('m-dex-close'); if (x) x.style.display = 'none';
     }
+    buildStandaloneNav('dex');
     openModal();
+  }
+
+  // 獨立頁頁首:首頁 / 小百科 / 掉落查詢 互切(與 afk-wiki 共用同一條,只在 active 標亮)。
+  function buildStandaloneNav(active) {
+    if (document.getElementById('m-standalone-nav')) return;
+    var base = location.href.split('?')[0].split('#')[0];
+    var nav = document.createElement('div');
+    nav.id = 'm-standalone-nav';
+    nav.innerHTML =
+      '<a href="' + base + '">🏠 首頁</a>' +
+      '<a href="' + base + '?view=wiki"' + (active === 'wiki' ? ' class="on"' : '') + '>📚 小百科</a>' +
+      '<a href="' + base + '?view=dex"' + (active === 'dex' ? ' class="on"' : '') + '>📖 掉落查詢</a>';
+    document.body.appendChild(nav);
   }
 
   // ----- 名稱查詢 ---------------------------------------------------------
@@ -244,8 +258,13 @@
       '#main-menu .m-dex-entry-row > button{width:auto !important;max-width:none !important;}',
       '#main-menu .m-dex-entry-main{flex:1 1 auto;}',
       '#main-menu .m-dex-entry-newtab{flex:0 0 auto;font-size:1.4rem;line-height:1;padding-left:16px;padding-right:16px;}',
+      '#m-standalone-nav{position:fixed;top:0;left:0;right:0;height:46px;z-index:1001;display:flex;align-items:center;gap:6px;padding:0 10px;background:#0b1220;border-bottom:1px solid #334155;font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#m-standalone-nav a{color:#cbd5e1;text-decoration:none;font-size:14px;font-weight:bold;padding:7px 12px;border-radius:8px;border:1px solid transparent;white-space:nowrap;}',
+      '#m-standalone-nav a:hover{background:#1e293b;}',
+      '#m-standalone-nav a.on{background:#1e293b;color:#fcd34d;border-color:#475569;}',
       '#m-dex-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
       '#m-dex-modal.open{display:flex;}',
+      '#m-dex-modal[data-standalone]{padding-top:58px;}',
       '#m-dex-card-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
       '#m-dex-head{display:flex;gap:8px;padding:12px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
       '#m-dex-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
