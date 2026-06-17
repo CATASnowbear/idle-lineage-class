@@ -60,13 +60,23 @@
       battleView.parentNode.insertBefore(healBar, battleView.nextSibling);
     }
 
-    // 戰鬥畫面喝水列下方:即時鏡射「背包→能力→狀態」(#dt-buffs:增益/減益)一份,
+    // 喝水列下方:鏡射「背包→技能」裡 type:manual 的主動施放技能(傳送/能量感測/迷魅/絕對屏障)成快捷鈕,
+    //   點擊直接走遊戲原生 manualCast(skId) → 由它把關等級/冷卻/MP/目標等所有條件(與背包面板的施放鈕同一支)。
+    var skillBar = null;
+    if (healBar && healBar.parentNode) {
+      skillBar = document.createElement('div');
+      skillBar.id = 'm-skill-bar';
+      healBar.parentNode.insertBefore(skillBar, healBar.nextSibling);
+    }
+
+    // 戰鬥畫面技能列下方:即時鏡射「背包→能力→狀態」(#dt-buffs:增益/減益)一份,
     //   讓戰鬥中不用切分頁也看得到當前狀態。內容由 mirror() 每 300ms 從 #dt-buffs 複製 innerHTML。
     var battleBuffs = null;
-    if (healBar && healBar.parentNode) {
+    var _buffAfter = skillBar || healBar;
+    if (_buffAfter && _buffAfter.parentNode) {
       battleBuffs = document.createElement('div');
       battleBuffs.id = 'm-battle-buffs';
-      healBar.parentNode.insertBefore(battleBuffs, healBar.nextSibling);
+      _buffAfter.parentNode.insertBefore(battleBuffs, _buffAfter.nextSibling);
     }
     function setHealRow(row, itemId, cnt, empty) {
       if (!row) return;
@@ -87,6 +97,40 @@
       var fruit = (typeof player !== 'undefined' && player && player.inv) ? player.inv.find(function (x) { return x.id === 'new_item_141' && (x.cnt || 0) > 0; }) : null;
       var fruitRow = healBar.querySelector('.m-heal-fruit');
       if (fruitRow) { fruitRow.classList.toggle('m-show', !!fruit); if (fruit) setHealRow(fruitRow, 'new_item_141', fruit.cnt || 0, false); }
+    }
+    // 主動施放技能快捷鈕:只在「已學的 type:manual 技能」集合變動時重建按鈕(避免每 300ms 重畫);
+    //   每次都更新「冷卻中／MP 不足」的灰階提示(純視覺,實際限制仍由 manualCast 把關)。
+    var _skillSig = '';
+    function syncSkillBar() {
+      if (!skillBar) return;
+      if (typeof player === 'undefined' || !player || !player.skills || typeof DB === 'undefined') { skillBar.classList.remove('m-has'); return; }
+      var manual = player.skills.filter(function (id) { return DB.skills[id] && DB.skills[id].type === 'manual'; });
+      manual.sort(function (a, b) { return (DB.skills[a].tier || 0) - (DB.skills[b].tier || 0); });   // 與背包-技能面板同序
+      var sig = manual.join(',');
+      if (sig !== _skillSig) {
+        _skillSig = sig;
+        skillBar.innerHTML = '';
+        manual.forEach(function (id) {
+          var sk = DB.skills[id];
+          var btn = document.createElement('button');
+          btn.type = 'button'; btn.className = 'm-skill-go'; btn.setAttribute('data-sk', id);
+          var img = document.createElement('img'); img.className = 'm-skill-ic'; img.alt = '';
+          if (typeof getIconUrl === 'function') { var u = getIconUrl(sk, true); if (u) img.setAttribute('src', u); }
+          img.onerror = function () { this.style.display = 'none'; };
+          var name = document.createElement('span'); name.className = 'm-skill-n'; name.textContent = sk.n;
+          btn.appendChild(img); btn.appendChild(name);
+          btn.addEventListener('click', function () { if (typeof manualCast === 'function') manualCast(id); });
+          skillBar.appendChild(btn);
+        });
+      }
+      skillBar.classList.toggle('m-has', manual.length > 0);
+      for (var i = 0; i < skillBar.children.length; i++) {
+        var b = skillBar.children[i], sid = b.getAttribute('data-sk'), s = DB.skills[sid];
+        if (!s) continue;
+        var cd = (player.manualCd && player.manualCd[sid]) || 0;
+        var cost = (s.mp && player.d && typeof player.d.getMpCost === 'function') ? player.d.getMpCost(s.mp, s.tier) : (s.mp || 0);
+        b.classList.toggle('m-cd', cd > 0 || (player.mp || 0) < cost);
+      }
     }
 
     // 戰鬥日誌 / 系統日誌:手機上做成「底部浮動面板」(從導覽列開,浮在畫面上,不擠壓戰鬥畫面)
@@ -151,6 +195,7 @@
       var townView = document.getElementById('town-view');
       document.body.classList.toggle('m-intown', !!(townView && !townView.classList.contains('hidden')));
       updateHealBar();
+      syncSkillBar();
       // 戰鬥畫面狀態鏡射:把 #dt-buffs(背包→能力→狀態)同步到喝水列下方的 #m-battle-buffs
       if (battleBuffs) { var dtb = document.getElementById('dt-buffs'); battleBuffs.innerHTML = dtb ? dtb.innerHTML : ''; }
       // 村莊時遊戲會給 combat-log-panel 加 hidden(沒有戰鬥日誌):強制切系統日誌、隱藏「切到戰鬥」鈕
@@ -519,6 +564,15 @@
       'body.m-mobile #m-heal-bar .m-fruit-go{border-color:#22c55e;background:linear-gradient(#16a34a,#15803d);}',   /* 安特的水果列用綠色區分 */
       'body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-ic,body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-cnt,body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-go{filter:grayscale(.65);opacity:.5;}',
       'body.m-mobile.m-intown #m-heal-bar{display:none !important;}',
+
+      /* 喝水列下方:主動施放技能快捷鈕(琥珀色,與背包-技能面板的施放鈕同色系);沒學任何手動技能(無 .m-has)或村莊/桌機一律隱藏。一排兩顆 */
+      '#m-skill-bar{display:none;}',
+      'body.m-mobile.mview-battle #m-skill-bar.m-has{display:flex;flex-wrap:wrap;gap:8px;flex:0 0 auto;margin:2px 12px;}',
+      'body.m-mobile #m-skill-bar .m-skill-go{flex:1 1 40%;min-width:40%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:10px;font-size:14px;font-weight:bold;font-family:inherit;cursor:pointer;color:#fcd34d;border:1px solid #f59e0b;background:linear-gradient(#92400e,#78350f);box-shadow:0 2px 8px rgba(0,0,0,.4);}',
+      'body.m-mobile #m-skill-bar .m-skill-go:active{filter:brightness(.85);transform:translateY(1px);}',
+      'body.m-mobile #m-skill-bar .m-skill-ic{width:22px;height:22px;flex:0 0 auto;object-fit:contain;pointer-events:none;}',
+      'body.m-mobile #m-skill-bar .m-skill-go.m-cd{filter:grayscale(.6);opacity:.5;}',
+      'body.m-mobile.m-intown #m-skill-bar{display:none !important;}',
 
       /* 怪物名字與圖片之間的徽章列(頭目／異常狀態 tag):原作固定 height:18px + overflow:hidden + flex 不換行。
          手機三隻怪並排、單欄很窄,有 3 個以上 tag 時 flex 會把每個 tag 壓縮到只剩第一個字、其餘被裁掉看不見。
