@@ -107,14 +107,13 @@
         });
         setTimeout(function () { if (card.parentNode) card.parentNode.removeChild(card); }, 400);
       }
-      card.addEventListener('click', kill);   // 點 toast 一下提早關
-      setTimeout(kill, TOAST_MS);
+      setTimeout(kill, TOAST_MS);   // 自動消失;卡片 pointer-events:none 不攔點擊,故不提供點擊提早關(會擋到底下按鈕)
     }
 
     function injectCSS() {
       var css = [
         '#m-toast-wrap{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top, 0px) + 8px);z-index:99999;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none;}',
-        '#m-toast-wrap .m-toast{pointer-events:auto;background:rgba(15,23,42,.96);border:1px solid #334155;border-left:3px solid #38bdf8;border-radius:10px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.5);color:#e2e8f0;font-size:14px;line-height:1.5;word-break:break-word;opacity:0;transform:translateY(-10px);transition:opacity .22s ease,transform .22s ease;}',
+        '#m-toast-wrap .m-toast{pointer-events:none;background:rgba(15,23,42,.96);border:1px solid #334155;border-left:3px solid #38bdf8;border-radius:10px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.5);color:#e2e8f0;font-size:14px;line-height:1.5;word-break:break-word;opacity:0;transform:translateY(-10px);transition:opacity .22s ease,transform .22s ease;}',
         '#m-toast-wrap .m-toast.m-toast-in{opacity:1;transform:translateY(0);}',
         '#m-toast-wrap .m-toast-line + .m-toast-line{margin-top:4px;}',
         '#m-toast-wrap .m-toast-more{color:#94a3b8;font-size:12px;margin-bottom:4px;}'
