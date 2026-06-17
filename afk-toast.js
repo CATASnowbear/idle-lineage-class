@@ -26,7 +26,6 @@
   var MAX_TOASTS = 3;           // 畫面同時最多幾張,超過移除最舊
   var MAX_LINES_PER_CLICK = 4;  // 單次點擊抓到多則(如某些一鍵操作)時最多顯示幾則
   var FLOOD_CAP = 6;            // 單次點擊產生超過這麼多則 logSys → 視為結算/批次洗版,整批不冒 toast
-  var TOP_GAP = 10;             // toast 與頂部狀態列(#m-status)底緣的間距
 
   function init() {
     if (typeof window.logSys !== 'function') {
@@ -93,11 +92,6 @@
         card.insertAdjacentHTML('afterbegin',
           '<div class="m-toast-more">…(共 ' + msgs.length + ' 則,顯示最後 ' + shown.length + ' 則)</div>');
       }
-      // 浮在頂部狀態列下方:狀態列高度會因內容換行浮動,故每次量它的底緣定位(量不到退回 14px)
-      var statusEl = document.getElementById('m-status');
-      var topOffset = 14;
-      if (statusEl) { var r = statusEl.getBoundingClientRect(); if (r.bottom > 0) topOffset = r.bottom + TOP_GAP; }
-      wrap.style.top = topOffset + 'px';
       wrap.appendChild(card);
       while (wrap.children.length > MAX_TOASTS) wrap.removeChild(wrap.firstChild);
 
@@ -119,7 +113,7 @@
 
     function injectCSS() {
       var css = [
-        '#m-toast-wrap{position:fixed;left:50%;transform:translateX(-50%);top:14px;z-index:99999;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none;}',
+        '#m-toast-wrap{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top, 0px) + 8px);z-index:99999;display:flex;flex-direction:column;gap:8px;width:min(92vw,420px);pointer-events:none;}',
         '#m-toast-wrap .m-toast{pointer-events:auto;background:rgba(15,23,42,.96);border:1px solid #334155;border-left:3px solid #38bdf8;border-radius:10px;padding:10px 14px;box-shadow:0 6px 20px rgba(0,0,0,.5);color:#e2e8f0;font-size:14px;line-height:1.5;word-break:break-word;opacity:0;transform:translateY(-10px);transition:opacity .22s ease,transform .22s ease;}',
         '#m-toast-wrap .m-toast.m-toast-in{opacity:1;transform:translateY(0);}',
         '#m-toast-wrap .m-toast-line + .m-toast-line{margin-top:4px;}',
