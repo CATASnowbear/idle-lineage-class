@@ -135,8 +135,12 @@
    * 問題:原版只每 5 分鐘自動存檔一次 + 少數事件存檔,且沒有任何 beforeunload/pagehide
    *   存檔。直接關分頁時進度只停在上一次自動存檔,最多會丟近 5 分鐘的進度。
    *   (afk-offline 雖在關閉時掛了監聽,但只 stamp 離線錨點、不存角色進度。)
-   * 解法:在 pagehide / beforeunload 補呼叫一次 saveGame。afk-fixes 在 afk-offline 之後載入,
-   *   此時 window.saveGame 已被 afk-offline 包過 → 這一存同時也蓋上離線時間戳,一舉兩得。
+   * 解法:在 pagehide / beforeunload / visibilitychange(切到背景)補呼叫一次 saveGame。
+   *   afk-fixes 在 afk-offline 之後載入,此時 window.saveGame 已被 afk-offline 包過 → 這一存
+   *   同時也蓋上離線時間戳,一舉兩得。
+   *   特別補 visibilitychange→hidden:手機被系統殺背景時 pagehide/beforeunload 常不觸發,切到
+   *   背景(切 App / 鎖屏 / 切分頁)的 hidden 才是手機最可靠的存檔時機。代價是每次切背景都會存
+   *   一次,但 saveGame 本來就頻繁呼叫(每 5 分鐘 + 多種事件),多這一次無妨。
    * 守門:必須跟 stamp() 一樣只在「真的在遊戲畫面」時存——原版 saveGame 會讀 set-pot 等只存在
    *   於遊戲畫面的 DOM、也吃 player,在開始選單 / 創角時呼叫會直接拋錯或寫壞 slot。
    * 何時可移除:原作者自行加了關閉前存檔(beforeunload/pagehide/visibilitychange 存檔)時,
@@ -152,6 +156,9 @@
     }
     window.addEventListener('pagehide', saveOnExit);
     window.addEventListener('beforeunload', saveOnExit);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') saveOnExit();
+    });
     console.log('[AFK-fixes] 關閉前自動存檔 已掛上');
   })();
 
