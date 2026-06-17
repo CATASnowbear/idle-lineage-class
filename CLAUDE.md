@@ -93,11 +93,13 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 |---|---|
 | `afk-offline.js` | 離線掛機(關瀏覽器也結算收益;24h 上限、撞死即停、存活回原狩獵圖續掛) |
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
-| `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用) |
-| `afk-wiki.js` | 小百科(首頁入口;**10 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/負重/席琳/血盟/傲慢之塔;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**改前先讀下方「小百科維護準則」**) |
+| `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」) |
+| `afk-wiki.js` | 小百科(首頁入口;**10 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/負重/席琳/血盟/傲慢之塔;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
+
+> **小百科 / 掉落查詢的「獨立頁」(`?view=`)**:`index.html?view=wiki`、`index.html?view=dex` 會讓對應外掛把面板鋪滿整頁(藏掉創角/遊戲畫面、改 `document.title`、隱藏關閉鈕、背景點擊不關),看起來像獨立網頁。首頁兩顆入口旁各有一顆 `↗` 小鈕用 `window.open` 開新分頁到這網址;原本點主鈕開 modal 的行為保留。**資料仍來自 index.html 的 `DB`/`MOB_DROPS`/… 全域**(無法真的抽成獨立檔——那些 const 夾在原作者主程式裡、且每小時自動同步會整支覆蓋),所以獨立頁就是「重用 index.html 當資料源、只顯示該面板」。全寫在外掛內、不動原作者碼,自動同步不會洗掉。
 
 > 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
 > `afk-sw.js` + 根目錄 `sw.js`:只對 `/assets/background/` 的場景大圖做 cache-first(回訪/重整/改版都秒出、

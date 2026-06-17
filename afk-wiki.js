@@ -25,17 +25,40 @@
   }
   ready(init);
 
+  // 獨立頁:網址帶 ?view=wiki 時,把小百科鋪滿整頁(藏掉遊戲畫面),像一個獨立網頁。
+  var VIEW = 'wiki';
+  function isStandalone() {
+    try { return new URLSearchParams(location.search).get('view') === VIEW; } catch (e) { return false; }
+  }
+  function standaloneUrl() {
+    return location.href.split('?')[0].split('#')[0] + '?view=' + VIEW;   // 去掉現有 query/hash 再帶 view
+  }
+
   function init() {
     if (typeof DB === 'undefined' || !DB || !DB.skills || typeof MASTERY_DATA === 'undefined') {
       console.warn('[AFK-wiki] 缺少遊戲資料(DB.skills / MASTERY_DATA),小百科停用。');
       return;
     }
+    injectCSS();
+    if (isStandalone()) { buildModal(); enterStandalone(); console.log('[AFK-wiki] hooks OK — 小百科獨立頁。'); return; }
     var menu = document.getElementById('main-menu');
     if (!menu) { console.warn('[AFK-wiki] 找不到 #main-menu,小百科停用。'); return; }
-    injectCSS();
     injectButton(menu);
     buildModal();
     console.log('[AFK-wiki] hooks OK — 小百科已啟用。');
+  }
+
+  // 獨立頁:藏掉創角/遊戲畫面、改標題、隱藏關閉鈕,把面板常駐展開。
+  function enterStandalone() {
+    var cs = document.getElementById('creation-screen'); if (cs) cs.style.display = 'none';
+    var gs = document.getElementById('game-screen'); if (gs) gs.style.display = 'none';
+    document.title = '小百科 — 放置天堂';
+    var m = document.getElementById('m-wiki-modal');
+    if (m) {
+      m.setAttribute('data-standalone', '1');
+      var x = document.getElementById('m-wiki-close'); if (x) x.style.display = 'none';
+    }
+    openModal();
   }
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -452,13 +475,25 @@
   // ===== 入口按鈕 =========================================================
   function injectButton(menu) {
     if (document.getElementById('m-wiki-open')) return;
+    var row = document.createElement('div');
+    row.className = 'm-wiki-entry-row';
     var b = document.createElement('button');
     b.id = 'm-wiki-open';
     b.type = 'button';
-    b.className = 'btn text-xl w-72 py-4 bg-indigo-700 hover:bg-indigo-600 border-indigo-500';
+    b.className = 'btn text-xl py-4 bg-indigo-700 hover:bg-indigo-600 border-indigo-500 m-wiki-entry-main';
     b.textContent = '📚 小百科';
     b.addEventListener('click', openModal);
-    menu.appendChild(b);
+    var nt = document.createElement('button');
+    nt.id = 'm-wiki-newtab';
+    nt.type = 'button';
+    nt.className = 'btn py-4 bg-indigo-700 hover:bg-indigo-600 border-indigo-500 m-wiki-entry-newtab';
+    nt.textContent = '↗';
+    nt.title = '在新分頁開啟小百科';
+    nt.setAttribute('aria-label', '在新分頁開啟小百科');
+    nt.addEventListener('click', function () { window.open(standaloneUrl(), '_blank'); });
+    row.appendChild(b);
+    row.appendChild(nt);
+    menu.appendChild(row);
   }
 
   // ===== 面板 =============================================================
@@ -534,7 +569,7 @@
     m.classList.add('open');
     render();
   }
-  function closeModal() { var m = document.getElementById('m-wiki-modal'); if (m) m.classList.remove('open'); }
+  function closeModal() { var m = document.getElementById('m-wiki-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
 
   function tabHTML(key, cls) {
     if (key === 'mastery') return renderMastery(cls);
@@ -819,6 +854,10 @@
   function injectCSS() {
     if (document.getElementById('m-wiki-style')) return;
     var css = [
+      '#main-menu .m-wiki-entry-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%;max-width:21rem;margin:0 auto;}',
+      '#main-menu .m-wiki-entry-row > button{width:auto !important;max-width:none !important;}',
+      '#main-menu .m-wiki-entry-main{flex:1 1 auto;}',
+      '#main-menu .m-wiki-entry-newtab{flex:0 0 auto;font-size:1.4rem;line-height:1;padding-left:16px;padding-right:16px;}',
       '#m-wiki-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
       '#m-wiki-modal.open{display:flex;}',
       '#m-wiki-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',

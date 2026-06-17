@@ -21,19 +21,41 @@
   }
   ready(init);
 
+  // 獨立頁:網址帶 ?view=dex 時,把掉落查詢鋪滿整頁(藏掉遊戲畫面),像一個獨立網頁。
+  var VIEW = 'dex';
+  function isStandalone() {
+    try { return new URLSearchParams(location.search).get('view') === VIEW; } catch (e) { return false; }
+  }
+  function standaloneUrl() {
+    return location.href.split('?')[0].split('#')[0] + '?view=' + VIEW;
+  }
+
   function init() {
     if (typeof DB === 'undefined' || !DB || !DB.mobs || !DB.maps || !DB.items || typeof MOB_DROPS === 'undefined') {
       console.warn('[AFK-dex] 缺少遊戲資料(DB.mobs/maps/items/MOB_DROPS),查詢功能停用。');
       return;
     }
-    var menu = document.getElementById('main-menu');
-    if (!menu) { console.warn('[AFK-dex] 找不到 #main-menu,查詢功能停用。'); return; }
-
     injectCSS();
     buildIndexes();
+    if (isStandalone()) { buildModal(); enterStandalone(); console.log('[AFK-dex] hooks OK — 掉落查詢獨立頁(' + INDEX.length + ' 隻怪)。'); return; }
+    var menu = document.getElementById('main-menu');
+    if (!menu) { console.warn('[AFK-dex] 找不到 #main-menu,查詢功能停用。'); return; }
     injectButton(menu);
     buildModal();
     console.log('[AFK-dex] hooks OK — 怪物/掉落查詢已啟用(' + INDEX.length + ' 隻怪)。');
+  }
+
+  // 獨立頁:藏掉創角/遊戲畫面、改標題、隱藏關閉鈕,把面板常駐展開。
+  function enterStandalone() {
+    var cs = document.getElementById('creation-screen'); if (cs) cs.style.display = 'none';
+    var gs = document.getElementById('game-screen'); if (gs) gs.style.display = 'none';
+    document.title = '怪物 / 掉落查詢 — 放置天堂';
+    var m = document.getElementById('m-dex-modal');
+    if (m) {
+      m.setAttribute('data-standalone', '1');
+      var x = document.getElementById('m-dex-close'); if (x) x.style.display = 'none';
+    }
+    openModal();
   }
 
   // ----- 名稱查詢 ---------------------------------------------------------
@@ -152,13 +174,25 @@
   // ----- 首頁入口按鈕 -----------------------------------------------------
   function injectButton(menu) {
     if (document.getElementById('m-dex-open')) return;
+    var row = document.createElement('div');
+    row.className = 'm-dex-entry-row';
     var b = document.createElement('button');
     b.id = 'm-dex-open';
     b.type = 'button';
-    b.className = 'btn text-xl w-72 py-4 bg-amber-700 hover:bg-amber-600 border-amber-500';
+    b.className = 'btn text-xl py-4 bg-amber-700 hover:bg-amber-600 border-amber-500 m-dex-entry-main';
     b.textContent = '📖 怪物 / 掉落查詢';
     b.addEventListener('click', openModal);
-    menu.appendChild(b);
+    var nt = document.createElement('button');
+    nt.id = 'm-dex-newtab';
+    nt.type = 'button';
+    nt.className = 'btn py-4 bg-amber-700 hover:bg-amber-600 border-amber-500 m-dex-entry-newtab';
+    nt.textContent = '↗';
+    nt.title = '在新分頁開啟掉落查詢';
+    nt.setAttribute('aria-label', '在新分頁開啟掉落查詢');
+    nt.addEventListener('click', function () { window.open(standaloneUrl(), '_blank'); });
+    row.appendChild(b);
+    row.appendChild(nt);
+    menu.appendChild(row);
   }
 
   // ----- 搜尋面板 ---------------------------------------------------------
@@ -200,12 +234,16 @@
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });   // 點背景關閉
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
-  function closeModal() { var m = document.getElementById('m-dex-modal'); if (m) m.classList.remove('open'); }
+  function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
 
   // ----- CSS --------------------------------------------------------------
   function injectCSS() {
     if (document.getElementById('m-dex-style')) return;
     var css = [
+      '#main-menu .m-dex-entry-row{display:flex;gap:8px;align-items:stretch;justify-content:center;width:100%;max-width:21rem;margin:0 auto;}',
+      '#main-menu .m-dex-entry-row > button{width:auto !important;max-width:none !important;}',
+      '#main-menu .m-dex-entry-main{flex:1 1 auto;}',
+      '#main-menu .m-dex-entry-newtab{flex:0 0 auto;font-size:1.4rem;line-height:1;padding-left:16px;padding-right:16px;}',
       '#m-dex-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:20px 10px;}',
       '#m-dex-modal.open{display:flex;}',
       '#m-dex-card-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
