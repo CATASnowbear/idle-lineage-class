@@ -338,6 +338,30 @@
     ]}
   ];
 
+  // ===== 負重(本檔維護) ====================================================
+  var LOAD_SECTIONS = [
+    { t: '負重是什麼、超重會怎樣', lines: [
+      '身上「裝備的總重量」就是負重，佔上限的百分比越高、懲罰越重，分四段：',
+      '<b>49% 以下</b>：正常，沒有懲罰。',
+      '<b>50%～81%</b>：HP／MP <b>不會再自然恢復</b>（要靠喝水／治癒技能補）。',
+      '<b>82%～99%</b>：HP/MP 不恢復照舊，<b>而且所有「自動施法」全部停掉</b>（加速、勇敢、力量／敏捷／治癒頭盔的 buff…都不會自動放）、<b>攻擊速度變慢一半</b>。',
+      '<b>100% 以上</b>：HP/MP 不恢復、自動施法停，<b>攻擊速度大幅變慢</b>（比上一段更慢）。'
+    ]},
+    { t: '常見誤會：「自動施法／魔法頭盔壞了」多半是超重', lines: [
+      '負重一過 <b>82%</b> 就會自動關掉所有自動施法——這常被誤認成「力量魔法頭盔壞了／技能壞了」。<b>換裝備、賣掉重買都沒用</b>，因為問題不在那件裝備，在身上的<b>總重量</b>。',
+      '怎麼確認：看狀態列的「負重 X%」（50% 以上會變色）。只要 <b>≥82%</b> 就是它把自動施法停了。'
+    ]},
+    { t: '負重上限怎麼算、怎麼提高', lines: [
+      '上限主要看<b>力量與體質</b>：基礎上限約為 (⌊(力量×3＋體質×2)÷5⌋＋1)×50，再加上部分裝備提供的「負重上限」加成。',
+      '提高上限：<b>練力量／體質</b>（配點或靠裝備加屬性），或穿有負重上限加成的裝備。',
+      '降低負重：換<b>更輕的武器／防具</b>（重甲、巨型武器特別重，動輒 250～450），或拔掉用不到的飾品。'
+    ]},
+    { t: '想恢復到什麼程度、要壓到哪', lines: [
+      '只想<b>救回自動施法＋正常攻速</b> → 把負重壓到 <b>81% 以下</b>即可。',
+      '想連 <b>HP／MP 自然恢復</b>也一起救回 → 壓到 <b>49% 以下</b>。'
+    ]}
+  ];
+
   // ===== 席琳(本檔維護) ====================================================
   var SHERINE_SECTIONS = [
     { t: '席琳的世界（困難模式）', lines: [
@@ -408,6 +432,7 @@
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
     { k: 'enhance', n: '強化' },
+    { k: 'load', n: '負重' },
     { k: 'sherine', n: '席琳' },
     { k: 'tower', n: '傲慢之塔' }
   ];
@@ -482,6 +507,7 @@
     if (key === 'enhance') return renderEnhance();
     if (key === 'sherine') return renderSherine();
     if (key === 'tower') return renderTower();
+    if (key === 'load') return renderLoad();
     return '';
   }
 
@@ -511,6 +537,7 @@
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
     { key: 'enhance', cls: false, label: '強化' },
+    { key: 'load', cls: false, label: '負重' },
     { key: 'sherine', cls: false, label: '席琳' },
     { key: 'tower', cls: false, label: '傲慢之塔' }
   ];
@@ -653,6 +680,15 @@
   function renderTower() {
     var note = '<div class="m-wiki-note">「傲慢之塔」是往上爬的塔：可以一層層「攀登」，也可以選一段「樓層區間」固定刷。下面說明玩法，以及進塔／換怪會用到的各種符與卷軸。</div>';
     var secs = TOWER_SECTIONS.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    return note + secs;
+  }
+
+  function renderLoad() {
+    var note = '<div class="m-wiki-note">裝備太重會被「負重」懲罰，最容易中招的是<b>自動施法突然失效</b>（很多人誤以為是裝備壞了）。以下講清楚門檻與解法。</div>';
+    var secs = LOAD_SECTIONS.map(function (s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
