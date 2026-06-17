@@ -620,6 +620,11 @@
       'body.m-mobile #interaction-content .list-item input{width:44px !important;}',
       'body.m-mobile #interaction-content .list-item > div:last-child{gap:6px !important;flex-wrap:wrap;justify-content:flex-end;margin-left:auto;}',
 
+      /* 倉庫雙清單(背包/倉庫)在 iOS(Brave 等皆 WebKit)上,滑內層清單時手勢被鏈到外層→背景捲動、清單不動。
+         overscroll-behavior:contain 阻止捲動鏈出去;-webkit-overflow-scrolling:touch 讓清單成為慣性捲動的觸控主體;
+         touch-action:pan-y 明示縱向捲動。安卓不受影響(本來就正常)。 */
+      'body.m-mobile #wh-inv-list,body.m-mobile #wh-store-list{-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;touch-action:pan-y !important;}',
+
       /* 潘朵拉黑市卡片:原作用「左圖固定 112px + 右購買鈕固定 84px」的橫向列(行內 height:120px),
          手機窄寬下中間名稱/說明/價格欄被擠到只剩約 20px → 文字一字一行整個糊掉。改成直向堆疊:
          圖示置中、資訊欄取消固定高度與 truncate 正常換行、購買鈕整條寬。scope 在卡片唯一的 .max-w-xl,
