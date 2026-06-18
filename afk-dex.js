@@ -206,8 +206,9 @@
     var img = icon ? '<img class="m-dex-iimg" src="' + esc(icon) + '" alt="" onerror="this.style.display=\'none\'">' : '';
     var nameCls = d.legend ? ' c-legend' : '';
     var desc = d.d ? '<div class="m-dex-idesc">' + d.d + '</div>' : '';   // d 為遊戲內建文字(可含 <br>),原樣顯示
+    var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
     return '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>' +
-      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc;
+      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc + searchBtn;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
@@ -236,11 +237,7 @@
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
           return '<tr>' +
-            '<td>' +
-              '<button class="m-dex-iview" data-id="' + esc(d[0]) + '" title="看數值與圖片" aria-label="看數值與圖片">ℹ️</button>' +
-              '<span class="m-dex-iname">' + hl(d[1], q) + '</span>' +
-              '<button class="m-dex-isearch" data-item="' + esc(d[1]) + '" title="查會掉這件的怪" aria-label="查會掉這件的怪">🔍</button>' +
-            '</td>' +
+            '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span></td>' +
             '<td class="m-dex-pct">' + fmtPct(pct) + '%</td>' +
             '</tr>';
         }).join('') + '</tbody></table>'
@@ -360,18 +357,27 @@
     // 點「出沒地圖」→ 查該圖所有怪;點「掉落物」→ 查所有會掉這件的怪。事件委派,結果重繪也持續有效。
     document.getElementById('m-dex-results').addEventListener('click', function (e) {
       if (!e.target.closest) return;
-      var iview = e.target.closest('.m-dex-iview');
-      if (iview) { openItemPop(iview.getAttribute('data-id')); return; }   // 點 ℹ️ → 看數值與圖片
-      var link = e.target.closest('.m-dex-maplink') || e.target.closest('.m-dex-isearch');   // 點地圖 / 🔍 → 搜尋
+      var iname = e.target.closest('.m-dex-iname');
+      if (iname) { openItemPop(iname.getAttribute('data-id')); return; }   // 點物品名 → 看詳情(數值/圖片/掉落來源)
+      var link = e.target.closest('.m-dex-maplink');   // 點出沒地圖 → 查該圖的怪
       if (!link) return;
       var i = document.getElementById('m-dex-input');
-      i.value = link.getAttribute('data-map') || link.getAttribute('data-item') || '';
+      i.value = link.getAttribute('data-map') || '';
       doSearch();
       var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
     });
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });   // 點背景關閉
     document.getElementById('m-dex-itempop-close').addEventListener('click', closeItemPop);
     document.getElementById('m-dex-itempop').addEventListener('click', function (e) { if (e.target.id === 'm-dex-itempop') closeItemPop(); });   // 點彈窗背景關閉
+    // 詳情卡裡的「查有哪些怪會掉這件」→ 關卡片 + 以物品名搜尋
+    document.getElementById('m-dex-itempop-body').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.m-dex-pop-search') : null;
+      if (!b) return;
+      closeItemPop();
+      var i = document.getElementById('m-dex-input');
+      if (i) { i.value = b.getAttribute('data-item') || ''; doSearch(); }
+      var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
+    });
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
@@ -417,12 +423,9 @@
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-maplink:active{color:#38bdf8;}',
-      /* 掉落物:文字左邊 ℹ️(看詳情)、右邊 🔍(查會掉的怪);文字本身不可點,靠左右圖示一眼分辨兩個動作。 */
-      '.m-dex-iview,.m-dex-isearch{border:none;background:none;cursor:pointer;font-size:15px;line-height:1;padding:2px 3px;vertical-align:middle;}',
-      '.m-dex-iview{margin-right:5px;}',
-      '.m-dex-isearch{margin-left:5px;}',
-      '.m-dex-iview:active,.m-dex-isearch:active{opacity:.45;}',
-      '.m-dex-iname{color:#e2e8f0;vertical-align:middle;}',
+      /* 掉落物:點名稱=看詳情(慣例:點物品就是看它);查掉落來源的按鈕收進詳情卡裡。 */
+      '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
+      '.m-dex-iname:active{color:#38bdf8;}',
       '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
       '#m-dex-itempop.open{display:flex;}',
       '#m-dex-itempop-card{position:relative;width:min(420px,94vw);max-height:84vh;overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',
@@ -435,6 +438,8 @@
       '.m-dex-itable td{padding:4px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;vertical-align:top;}',
       '.m-dex-ik{color:#94a3b8;white-space:nowrap;width:1%;}',
       '.m-dex-idesc{font-size:12.5px;color:#cbd5e1;line-height:1.6;background:#111c30;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;}',
+      '.m-dex-pop-search{margin-top:12px;width:100%;border:1px solid #334155;background:#1e293b;color:#7dd3fc;border-radius:8px;padding:11px;font-size:13.5px;font-weight:bold;cursor:pointer;font-family:inherit;}',
+      '.m-dex-pop-search:active{background:#334155;}',
       '.m-dex-nodrop{font-size:13px;color:#64748b;}',
       '.m-dex-drops{width:100%;border-collapse:collapse;font-size:13px;}',
       '.m-dex-drops td{padding:3px 4px;border-bottom:1px solid #1e293b;color:#e2e8f0;}',
