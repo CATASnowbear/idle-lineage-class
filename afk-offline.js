@@ -42,8 +42,12 @@
   function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1 && n <= 4; }  // 原作存檔位 1~4(upstream: let currentSlot 1~4);原作加格時這裡上限要跟著調
   function tsKey()      { return TS_PREFIX + currentSlot; }
   function mapKey()     { return 'afk_map_' + currentSlot; }
+  function prideKey()   { return 'afk_pride_' + currentSlot; }
   function readTs()     { try { return +localStorage.getItem(tsKey()) || 0; } catch (e) { return 0; } }
   function readMap()    { try { return localStorage.getItem(mapKey()) || ''; } catch (e) { return ''; } }
+  // 攀登狀態:原作 saveGame 不存 state.prideClimb/...(且 loadGame 一律回村),所以由外掛自己記一份,
+  //   登入後才能還原並回到那層續爬。樓層區間(pride_x_y)是選單地圖,走 afk_map 即可,不靠這份。
+  function readPride()  { try { var s = localStorage.getItem(prideKey()); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
   // 蓋時間戳,順手記下「即時所在地圖」(changeMap 不會存檔,光看存檔 blob 會誤判還在村莊)
   function stamp() {
     try {
@@ -55,6 +59,12 @@
       if (!gs || gs.classList.contains('hidden')) return;
       localStorage.setItem(tsKey(), Date.now());
       if (typeof mapState !== 'undefined' && mapState && mapState.current) localStorage.setItem(mapKey(), mapState.current);
+      // 攀登中才記攀登狀態(在第幾樓/是否排名);非攀登就清掉,避免下次登入誤判
+      if (typeof state !== 'undefined' && state && state.prideClimb) {
+        localStorage.setItem(prideKey(), JSON.stringify({ climb: true, ranked: !!state.prideRanked, floor: state.prideFloor || 2, startMs: state.prideStartMs || 0 }));
+      } else {
+        localStorage.removeItem(prideKey());
+      }
     } catch (e) {}
   }
   function raf() {
@@ -114,6 +124,8 @@
   // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
   function mapName(id) {
     try {
+      var pm = (typeof id === 'string') ? id.match(/^pride_f(\d+)$/) : null;   // 攀登樓層不在 MAP_CATEGORIES,自己組名
+      if (pm) return '傲慢之塔 ' + pm[1] + ' 樓';
       if (id && typeof MAP_CATEGORIES !== 'undefined') {
         for (var c in MAP_CATEGORIES) {
           for (var i = 0; i < MAP_CATEGORIES[c].length; i++) if (MAP_CATEGORIES[c][i].v === id) return MAP_CATEGORIES[c][i].t;
@@ -130,6 +142,38 @@
       for (var i = 1; i < (lv || 1); i++) { var r = getExpReq(i); if (!isFinite(r)) break; t += r; }
     }
     return t;
+  }
+  // 攀登:把某一樓的 before→after 快照差,整理成 { floor, exp, gold, lv, items } 一行用
+  function climbSegDelta(floor, b, a) {
+    var exp = expTotal(a.lv, a.exp) - expTotal(b.lv, b.exp); if (exp < 0) exp = 0;
+    var items = [], ids = {};
+    for (var k in b.inv) ids[k] = 1; for (var k2 in a.inv) ids[k2] = 1;
+    for (var id in ids) { var d = (a.inv[id] || 0) - (b.inv[id] || 0); if (d > 0) items.push({ n: (typeof DB !== 'undefined' && DB.items && DB.items[id]) ? DB.items[id].n : id, d: d }); }
+    items.sort(function (x, y) { return y.d - x.d; });
+    return { floor: floor, exp: exp, gold: (a.gold || 0) - (b.gold || 0), lv: (a.lv || 0) - (b.lv || 0), items: items };
+  }
+  // 攀登專屬的離線摘要:逐層列出收益(一層一行),樓層用中文。沒有任何收益的樓層省略不列。
+  function summarizeClimb(segs, doneTicks, died) {
+    var mins = Math.round(doneTicks * TICK_MS / 60000);
+    var timeStr = mins < 60 ? (mins + ' 分鐘') : (Math.floor(mins / 60) + ' 小時' + (mins % 60 ? ' ' + (mins % 60) + ' 分鐘' : ''));
+    var reached = segs.length ? segs[segs.length - 1].floor : (segs[0] ? segs[0].floor : 0);
+    var fromFloor = segs.length ? segs[0].floor : 0;
+    var head = `<span class="text-sky-300 font-bold">🌙 離線攀登傲慢之塔 ${timeStr}</span>（${fromFloor} 樓 → ${reached} 樓）：`;
+    try { logSys(head); } catch (e) { console.log('[AFK]', head.replace(/<[^>]+>/g, '')); }
+    var shown = 0;
+    segs.forEach(function (s) {
+      var parts = [];
+      if (s.gold > 0) parts.push(`<span class="text-yellow-400 font-bold">${fmt(s.gold)} 金幣</span>`);
+      if (s.lv   > 0) parts.push(`<span class="text-green-400 font-bold">升 ${s.lv} 級</span>`);
+      if (s.exp  > 0) parts.push(`<span class="text-purple-400 font-bold">${fmt(s.exp)} 經驗</span>`);
+      if (s.items.length) parts.push(s.items.map(function (it) { return it.n + '×' + it.d; }).join('、'));
+      if (!parts.length) return;   // 該樓沒收益就省略
+      shown++;
+      var ln = `<span class="text-rose-200">傲慢之塔 ${s.floor} 樓</span>：` + parts.join('、') + '。';
+      try { logSys(ln); } catch (e) { console.log('[AFK]', ln.replace(/<[^>]+>/g, '')); }
+    });
+    if (!shown) { try { logSys('（本次攀登無明顯收益）'); } catch (e) {} }
+    if (died) { try { logSys('<span class="text-red-500 font-bold">離線攀登中陣亡，已結算至死亡前並送回村莊。</span>'); } catch (e) {} }
   }
   function summarize(before, after, doneTicks, died, huntMap) {
     var mins = Math.round(doneTicks * TICK_MS / 60000);
@@ -193,19 +237,35 @@
 
   // ----- 離線補跑(時間切片) ----------------------------------------------
   var catchingUp = false;
-  async function runCatchup(totalTicks, withOverlay, huntMap) {
+  async function runCatchup(totalTicks, withOverlay, huntMap, prePride) {
     if (catchingUp) return;
     catchingUp = true;
+
+    var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
 
     // 暫停 live loop,避免結算期間與主迴圈交錯;結算後再以全新計時重啟
     try { if (typeof _gameLoopId !== 'undefined' && _gameLoopId !== null) { clearInterval(_gameLoopId); _gameLoopId = null; } } catch (e) {}
 
     var prevFf0 = state.ff, prevInTick0 = state.inTick;
-    state.ff = true; state.inTick = true;        // 先靜音,再切到關閉時所在的狩獵圖
-    gotoMap(huntMap);
+    state.ff = true; state.inTick = true;        // 先靜音,再切到關閉時所在的位置
+    if (isClimb) {
+      // 攀登:還原原作不存檔的攀登旗標,用 enterPrideFloor 進場(ff=true 故不碰 DOM);補跑期間照常爬樓/撞死即停
+      state.prideClimb = true;
+      state.prideRanked = !!prePride.ranked;
+      state.prideFloor = prePride.floor || 2;
+      if (prePride.startMs) state.prideStartMs = prePride.startMs;
+      enterPrideFloor(state.prideFloor);
+    } else {
+      gotoMap(huntMap);
+    }
 
     var before = snapshot();
     if (withOverlay) showOverlay(totalTicks);
+
+    // 攀登:逐層記錄收益。segStart=本層起始快照、segFloor=本層樓層;偵測 state.prideFloor 變動(往上爬或結束)就封一段。
+    var climbSegs = isClimb ? [] : null;
+    var segStart = isClimb ? before : null;
+    var segFloor = isClimb ? (state.prideFloor || 2) : 0;
 
     var done = 0, died = false;
     try {
@@ -217,6 +277,14 @@
           tick();
           settleDeadMobs();
           done++;
+          if (climbSegs) {
+            var nf = state.prideFloor || 0;
+            if (nf !== segFloor) {   // 樓層變了(爬上去或攀登結束)→ 結算剛剛那一層
+              var sNow = snapshot();
+              climbSegs.push(climbSegDelta(segFloor, segStart, sNow));
+              segStart = sNow; segFloor = nf;
+            }
+          }
         }
         if (withOverlay) updateOverlay(done / totalTicks, done, totalTicks);
         await raf();
@@ -228,17 +296,34 @@
     }
 
     var after = snapshot();
+    // 攀登:封最後一段(還停在某層 → 用該層;已結束則 segFloor 已是 0,改記在最後到過的真實樓層)
+    if (climbSegs && segFloor > 0) climbSegs.push(climbSegDelta(segFloor, segStart, after));
 
-    // 結算後落點:陣亡(或拿不到狩獵圖)→ 回村莊甦醒;存活 → 接回原本掛機的狩獵圖繼續掛。
+    // 結算後落點:陣亡(或拿不到狩獵圖)→ 回村莊甦醒;存活 → 接回原本掛機的位置繼續掛。
     // 回狩獵圖前先補滿 HP/MP(等同「甦醒」),避免一上圖就低血暴斃。
     player.dead = false;
-    if (!died && huntMap) {
+    if (isClimb) {
+      if (died) {
+        // 撞死即停:比照原作 revive() 的「塔中死亡回城」——排名先依目前樓層結算,再結束攀登、回村
+        try { if (state.prideClimb && state.prideRanked && typeof prideRecord === 'function') prideRecord(state.prideFloor || 2); } catch (e) {}
+        state.prideClimb = false; state.prideRanked = false; state.prideFloor = 0;
+        gotoMap(homeTown());
+      } else if (state.prideClimb) {
+        // 存活且仍在攀登 → 補滿 HP/MP,回到目前樓層(補跑期間可能已往上爬)繼續
+        try { if (player.mhp) player.hp = player.mhp; if (player.mmp) player.mp = player.mmp; } catch (e) {}
+        state.ff = prevFf0; state.inTick = prevInTick0;   // 攀登存活:先還原 ff,enterPrideFloor 才會渲染戰鬥畫面
+        enterPrideFloor(state.prideFloor || 2);
+      } else {
+        // 攀登於補跑期間自然結束(爬到頂被原作結算)→ 落到村莊
+        gotoMap(homeTown());
+      }
+    } else if (!died && huntMap) {
       try { if (player.mhp) player.hp = player.mhp; if (player.mmp) player.mp = player.mmp; } catch (e) {}
       gotoMap(huntMap);
     } else {
       gotoMap(homeTown());
     }
-    state.ff = prevFf0; state.inTick = prevInTick0;
+    if (state.ff !== prevFf0) { state.ff = prevFf0; state.inTick = prevInTick0; }   // 還原 ff(攀登存活分支上面已還原 → 此處不動作)
 
     // 重啟 live loop(startGameTimers 內含去重,且重設 _loopLast=null → 不會把結算花掉的真實秒數再補一次)
     try { startGameTimers(); } catch (e) {}
@@ -246,7 +331,8 @@
     // 持久化離線收益(否則玩家在下次自動存檔前重載會丟失);saveGame 同時會蓋上新時間戳
     try { if (typeof saveGame === 'function') saveGame(); } catch (e) {}
 
-    summarize(before, after, done, died, huntMap);
+    if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
+    else summarize(before, after, done, died, huntMap);
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
     removeOverlay();
@@ -264,32 +350,44 @@
   // 載入後決定要不要結算離線。preMap/preTs 由 loadGame wrapper 在「原 loadGame 執行前」擷取——
   // 因為原 loadGame 會在村莊甦醒(內部呼叫 changeMap),而 changeMap 已被攔截會 stamp(),會把
   // afk_map/afk_ts 覆寫成現在(村莊),晚讀就拿不到真正的離線狀態。
-  function maybeCatchup(preMap, preTs) {
+  function maybeCatchup(preMap, preTs, prePride) {
     if (!validSlot() || !state || !state.running) return;
     var last = preTs;
     var savedMap = preMap;
     if (!savedMap) {   // 後援:舊資料沒有 afk_map,退回讀存檔 blob
       try { var raw = JSON.parse(localStorage.getItem('lineage_idle_save_' + currentSlot)); savedMap = (raw && raw.ms && raw.ms.current) || ''; } catch (e) {}
     }
+    var isClimb = !!(prePride && prePride.climb && !prePride.ranked);   // 排名挑戰不自動續(防重載刷分/閃死),只續一般攀登
     var now = Date.now();
     stamp(); // 不論如何先更新自己的心跳/錨點(宣告此分頁佔用此 slot)
-    if (!last) return;                         // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算
-    var gap = now - last;
-    // 不設「近期活躍就略過」的鎖:重新整理也照常結算那一小段 → 配合存活回原狩獵圖,刷新不會被丟回村莊。
-    // (gap < 一個 tick 會在下方 ticks<=0 自然 no-op;結算會更新時間戳,連續刷新不會重複給獎勵。)
-    if (!savedMap || savedMap.indexOf('town_') === 0) {
-      console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
+    if (prePride && prePride.climb && prePride.ranked) {
+      // 排名挑戰:依原作設計「重載＝回城放棄該次排名」,不自動續(stamp 已把 game-screen 開啟後的非攀登狀態清掉攀登旗標)
+      console.info('[AFK] 上次在傲慢之塔排名挑戰中：依設計不自動續(重載＝回城、該次排名作廢)。');
       return;
     }
-    if (typeof isSiegeArea === 'function' && isSiegeArea(savedMap)) {
-      console.info('[AFK] 關閉時位於攻城區，略過離線結算。');
+    if (!last) {
+      // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算離線收益;但若上次在攀登,仍要把人帶回那層(零補跑)
+      if (isClimb) runCatchup(0, false, savedMap, prePride);
       return;
+    }
+    var gap = now - last;
+    // 不設「近期活躍就略過」的鎖:重新整理也照常結算那一小段 → 配合存活回原狩獵圖,刷新不會被丟回村莊。
+    // 攀登不受「村莊/攻城」這兩道略過閘:它本來就不是村莊/攻城圖,且即使 gap≈0(立即重整)也要把人放回那層續爬。
+    if (!isClimb) {
+      if (!savedMap || savedMap.indexOf('town_') === 0) {
+        console.info('[AFK] 關閉時位於村莊/無有效地圖，無離線戰鬥收益。');
+        return;
+      }
+      if (typeof isSiegeArea === 'function' && isSiegeArea(savedMap)) {
+        console.info('[AFK] 關閉時位於攻城區，略過離線結算。');
+        return;
+      }
     }
 
     var ms = Math.min(gap, CAP_MS);
     var ticks = Math.floor(ms / TICK_MS);
-    if (ticks <= 0) return;
-    runCatchup(ticks, ticks > OVERLAY_MIN_TICK, savedMap);
+    if (ticks <= 0 && !isClimb) return;        // 一般圖 gap≈0 直接 no-op;攀登 gap≈0 仍要回到那層(ticks=0 補跑空轉,落點會 enterPrideFloor)
+    runCatchup(Math.max(0, ticks), ticks > OVERLAY_MIN_TICK, savedMap, prePride);
   }
 
   // ----- 包裹 saveGame / loadGame -----------------------------------------
@@ -302,11 +400,12 @@
 
   var _load = window.loadGame;
   window.loadGame = function () {
-    // 必須在原 loadGame 之前擷取:它會「在村莊甦醒」呼叫 changeMap → 被攔截 stamp() 覆寫 afk_map/afk_ts
+    // 必須在原 loadGame 之前擷取:它會「在村莊甦醒」呼叫 changeMap → 被攔截 stamp() 覆寫 afk_map/afk_ts/afk_pride
     var preMap = readMap();
     var preTs = readTs();
+    var prePride = readPride();
     var r = _load.apply(this, arguments);
-    try { maybeCatchup(preMap, preTs); } catch (e) { console.warn('[AFK] maybeCatchup error:', e); }
+    try { maybeCatchup(preMap, preTs, prePride); } catch (e) { console.warn('[AFK] maybeCatchup error:', e); }
     return r;
   };
 
