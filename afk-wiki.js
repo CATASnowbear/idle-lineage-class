@@ -607,7 +607,7 @@
     { t: '✨ 魅力（CHA）', lines: [
       '主管「召喚」與「誘捕（帶寵物）」的數量與戰力，是召喚流派的核心屬性。',
       '<b>召喚物</b>：近戰召喚物每輪攻擊次數 ＝ <b>魅力 ÷ 6</b>（無條件捨去）；屬性精靈預設 1 隻，學了「精靈精通」後 ＝ <b>1 ＋ 魅力 ÷ 20</b> 隻（最多 4 隻）。召喚物的命中與傷害也隨魅力提升（有「召喚精通」時，造屍／召喚術的命中傷害判定用 魅力 ×1.2）。',
-      '<b>誘捕（帶寵物／狗）數量</b>：能同時帶的誘捕寵物（項圈）數 ＝ <b>魅力 ÷ 7</b>（無條件捨去）——魅力 60 時最多 <b>8 隻</b>。被迷魅／誘捕的夥伴，其命中與傷害隨「完整魅力」提升（這部分連超過 60 的魅力都算進去）。',
+      '<b>誘捕（帶寵物／狗）數量</b>：能同時帶的誘捕寵物（項圈）數 ＝ <b>魅力 ÷ 7</b>（無條件捨去）——魅力 60 時最多 <b>8 隻</b>。被迷魅／誘捕的夥伴，其命中與傷害隨「完整魅力」提升（這部分連超過 60 的魅力都算進去）。完整玩法見「帶寵物」分頁。',
       '上述「數量」（召喚段數／精靈隻數／帶寵上限）一律以魅力 <b>60</b> 封頂；超過 60 只再加命中與傷害，不再增加數量。',
       '第六屬性：配點＋萬能藥同樣最多到 60，但裝備與套裝（如四大軍王、白鳥）可突破 60。'
     ]}
@@ -639,6 +639,7 @@
     { k: 'combat', n: '戰鬥機制' },
     { k: 'stats', n: '能力值' },
     { k: 'magic', n: '職業魔法' },
+    { k: 'pets', n: '帶寵物' },
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
     { k: 'legend', n: '傳說裝備' },
@@ -738,6 +739,7 @@
     if (key === 'stats') return renderStats();
     if (key === 'magic') return renderMagic();
     if (key === 'quest') return renderQuest(cls);
+    if (key === 'pets') return renderPets();
     if (key === 'set') return renderSet();
     if (key === 'legend') return renderLegend();
     if (key === 'enhance') return renderEnhance();
@@ -773,6 +775,7 @@
     { key: 'combat', cls: false, label: '戰鬥機制' },
     { key: 'stats', cls: false, label: '能力值' },
     { key: 'magic', cls: false, label: '職業魔法' },
+    { key: 'pets', cls: false, label: '帶寵物' },
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
     { key: 'legend', cls: false, label: '傳說裝備' },
@@ -873,6 +876,53 @@
     if (q.legend) html += '<div class="m-wiki-sub">🐉 ' + esc(q.name) + '隱藏 / 傳說</div>' + q.legend.map(questCard).join('');
     html += '<div class="m-wiki-sub">👥 全職業共通</div>' + QUEST_COMMON.map(questCard).join('');
     return html;
+  }
+
+  function renderPets() {
+    var note = '<div class="m-wiki-note">「帶寵物（誘捕）」是<b>任何職業</b>都能玩的夥伴系統，戰力吃「魅力」。流程：吃肉開誘捕 → 打死犬抓項圈 → 吹哨子叫出來 → 夥伴用肉當彈藥幫你打。</div>';
+    var secs = [
+      { t: '① 怎麼抓（誘捕）', lines: [
+        '吃一塊「肉」→ 得到「誘捕」狀態，持續 300 秒。',
+        '誘捕狀態下<b>打死犬類怪</b>（杜賓狗／狼／哈士奇／牧羊犬）→ <b>100% 必定捕獲</b>，拿到對應的「項圈」。抓到一隻後誘捕狀態就消失，要再抓得再吃一塊肉。',
+        '能帶的項圈總數上限 ＝ <b>魅力 ÷ 7</b>（無條件捨去、魅力以 60 計）→ 魅力 60 最多 <b>8 個</b>。已達上限時吃肉沒用（不會消耗肉）。'
+      ]},
+      { t: '② 怎麼叫出來（哨子）', lines: [
+        '用「哨子」→ 依你持有的各種項圈，一次把對應夥伴全部叫出來（可多種犬並存，每種數量＝你持有該項圈的個數）。哨子使用<b>不消耗</b>。',
+        '夥伴會一直跟著，直到關遊戲或<b>再吹一次哨子</b>（再吹一次＝全部收回）。',
+        '把項圈賣掉或丟掉 → 對應夥伴會自動離開。'
+      ]},
+      { t: '③ 夥伴怎麼打（特別：吃肉當彈藥）', lines: [
+        '每 2 秒攻擊一次，每隻夥伴的攻擊次數＝你持有該項圈的數量。',
+        '<b>每攻擊一下就消耗 1 塊肉，肉用完就停止攻擊</b>——所以帶寵打怪要先囤肉。',
+        '命中 ＝ 玩家等級 ＋ 魅力 ＋ 該犬命中偏移 － 怪等 ＋ 怪防禦（帶「召喚控制戒指」再 +5）。',
+        '傷害 ＝ 1 ～（玩家等級＋該犬傷害偏移）之間，再 ＋魅力 －怪的傷害減免，並帶該犬的屬性（吃屬性相剋）。',
+        '命中與傷害都吃<b>完整魅力</b>（連超過 60 的都算）；只有「能帶幾隻」才以魅力 60 封頂。'
+      ]},
+      { t: '肉、哨子、犬在哪', lines: [
+        '肉、哨子都是消耗道具，很便宜（肉 1 金幣）。',
+        '犬類怪散布在各地圖，想知道哪裡有，用「掉落查詢」搜 杜賓狗／狼／哈士奇／牧羊犬 看出沒地圖。'
+      ]}
+    ];
+    var cards = secs.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    var dogTable = '';
+    if (typeof PET_DEF !== 'undefined' && PET_DEF) {   // 讀遊戲的犬定義,作者新增犬種會自動出現
+      var rows = Object.keys(PET_DEF).map(function (nm) {
+        var p = PET_DEF[nm];
+        return '<tr>' +
+          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;"><b>' + esc(nm) + '</b></td>' +
+          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;">' + esc(p.eleName) + '屬性</td>' +
+          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;">傷害偏移 +' + p.diceOff + '</td>' +
+          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;">命中偏移 +' + p.hitOff + '</td>' +
+          '</tr>';
+      }).join('');
+      dogTable = '<div class="m-wiki-card"><div class="m-wiki-name">四種犬的特性</div>' +
+        '<div class="m-wiki-desc" style="color:#94a3b8;margin:2px 0 6px;">傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody>' + rows + '</tbody></table></div>';
+    }
+    return note + cards + dogTable;
   }
 
   function renderSet() {
