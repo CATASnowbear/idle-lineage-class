@@ -176,3 +176,20 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 ## Git / GitHub
 
 - commit / push 時**不要**帶上 Claude 作者資訊或 `Co-Authored-By` 標記(沿用全域規則)。
+
+### push 後要等 GitHub Pages 重建完成才算交付,並主動通知使用者
+
+每次 push 到此 repo 後,**不要 push 完就回報「上線了」**——GitHub Pages 要重建(通常 push 後約 40 秒~1 分鐘)才會真的生效。流程:
+
+1. push 完後**輪詢** Pages 建置狀態,直到 `status=built` 且 `commit` = 剛 push 的 HEAD:
+   ```bash
+   gh api repos/pp771007/idle-lineage-class/pages/builds/latest --jq '{status, commit, updated_at}'
+   git rev-parse HEAD   # 比對 commit 是否一致
+   ```
+2. (可選但更穩)再抓線上 index.html 確認外掛 `?v=` 版本號已是最新:
+   ```bash
+   curl -s --ssl-no-revoke "https://pp771007.github.io/idle-lineage-class/index.html?cb=$(date +%s)" | grep -oE 'afk-[a-z]+\.js\?v=[0-9a-z]+'
+   ```
+3. 確認重建完成後**才**通知使用者「已上線、可重整看到新版」(訊息從 Telegram 來就用 `reply`)。
+4. 輪詢時用背景指令或短間隔重試即可,別讓使用者空等卻不知進度。
+- GitHub Pages 站台:`https://pp771007.github.io/idle-lineage-class/`(本 fork,非原作者 shines871)。
