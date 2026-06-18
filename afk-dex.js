@@ -165,6 +165,58 @@
   function fmtPct(p) { return p < 0.01 ? (p < 0.001 ? p.toFixed(4) : p.toFixed(3)) : (p < 1 ? p.toFixed(2) : (Number.isInteger(p) ? '' + p : p.toFixed(1))); }
   function st(k, v) { return '<span class="m-dex-stat"><b>' + k + '</b> ' + esc(v) + '</span>'; }
 
+  // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
+  var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
+  var IT_REQ = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
+  var IT_SLOT = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
+  var IT_RES = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
+  var IT_STAT = { str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力' };
+  function itReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return IT_REQ[x] || x; }).join('／'); }
+  function itemDetailHTML(id) {
+    var d = DB.items[id];
+    if (!d) return '<div class="m-dex-hint">查無此物品資料。</div>';
+    var rows = [];
+    function add(k, v) { if (v !== undefined && v !== null && v !== '') rows.push('<tr><td class="m-dex-ik">' + esc(k) + '</td><td>' + esc(String(v)) + '</td></tr>'); }
+    add('類型', IT_TYPE[d.type] || d.type || '道具');
+    if (d.req) add('需求職業', itReqCN(d.req));
+    if (d.slot) add('部位', IT_SLOT[d.slot] || d.slot);
+    if (d.type === 'wpn') {
+      if (d.dmgS != null) add('攻擊力', d.dmgS === d.dmgL ? d.dmgS : '近 ' + d.dmgS + '　遠 ' + d.dmgL);
+      add('額外傷害', d.dmgBonus);
+      add('命中', d.hit);
+      add('魔法傷害', d.mdmg);
+      add('攻擊速度', d.spd);
+    } else if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) {
+      add('防禦', '+' + d.ac);
+    }
+    Object.keys(IT_STAT).forEach(function (k) { if (d[k]) add(IT_STAT[k], (d[k] > 0 ? '+' : '') + d[k]); });
+    Object.keys(IT_RES).forEach(function (k) { if (d[k]) add(IT_RES[k] + '屬性抗性', '+' + d[k]); });
+    if (d.block) add('格擋', d.block);
+    if (d.mmp) add('MP 上限', '+' + d.mmp);
+    if (d.mpR) add('MP 自然恢復', '+' + d.mpR);
+    var traits = [];
+    if (d.immStone) traits.push('免疫石化');
+    if (d.immPoison) traits.push('免疫中毒');
+    if (d.stunResist) traits.push(d.stunResist + '% 抵抗暈眩');
+    if (traits.length) add('特性', traits.join('、'));
+    if (d.safe != null) add('安定值', d.safe);
+    if (d.p) add('參考價', Number(d.p).toLocaleString());
+    var icon = '';
+    try { icon = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (e) {}
+    var img = icon ? '<img class="m-dex-iimg" src="' + esc(icon) + '" alt="" onerror="this.style.display=\'none\'">' : '';
+    var nameCls = d.legend ? ' c-legend' : '';
+    var desc = d.d ? '<div class="m-dex-idesc">' + d.d + '</div>' : '';   // d 為遊戲內建文字(可含 <br>),原樣顯示
+    return '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>' +
+      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc;
+  }
+  function openItemPop(id) {
+    var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
+    document.getElementById('m-dex-itempop-body').innerHTML = itemDetailHTML(id);
+    pop.classList.add('open');
+    var c = document.getElementById('m-dex-itempop-card'); if (c) c.scrollTop = 0;
+  }
+  function closeItemPop() { var pop = document.getElementById('m-dex-itempop'); if (pop) pop.classList.remove('open'); }
+
   function cardHTML(h, sherine, q) {
     var m = h.mob;
     var tags = '';
@@ -183,7 +235,10 @@
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
-          return '<tr><td><span class="m-dex-droplink" data-item="' + esc(d[1]) + '">' + hl(d[1], q) + '</span></td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
+          return '<tr><td>' +
+            '<button class="m-dex-isearch" data-item="' + esc(d[1]) + '" title="搜尋會掉落此物的怪" aria-label="搜尋會掉落此物的怪">🔍</button>' +
+            '<span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看數值與圖片">' + hl(d[1], q) + '</span>' +
+            '</td><td class="m-dex-pct">' + fmtPct(pct) + '%</td></tr>';
         }).join('') + '</tbody></table>'
       : '<div class="m-dex-nodrop">無專屬掉落表</div>';
     return '<div class="m-dex-card">' +
@@ -233,8 +288,7 @@
       spBlock('🧪 萬能藥（屬性藥）', [
         '條件：怪物等級 40 以上、且不是血盟',
         '一般怪 0.01%、頭目 1%，掉落時隨機給 力量／敏捷／體質／智力／精神／魅力 萬能藥之一',
-        '<b>夢幻之島一樣會掉萬能藥</b>：島上的一般怪同樣 0.01%；只有「夢幻之島的頭目」不走這條隨機掉落（不是整個島不掉）',
-        '夢幻之島頭目改成<b>固定</b>掉一種對應屬性的萬能藥：地精靈王→體質、水精靈王→智力、火精靈王→力量、風精靈王→敏捷（各 1%，在上面搜該頭目就看得到）',
+        '夢幻之島的頭目不走這條，改走自己的一般掉落表（搜該頭目可看到牠固定掉的萬能藥）',
         '機率固定，<b>不受</b>「席琳的世界 ×3」影響'
       ]) +
       spBlock('🔮 席琳結晶（席琳的世界限定）', [
@@ -289,7 +343,8 @@
         '<label id="m-dex-sherine-row"><input id="m-dex-sherine" type="checkbox"> 席琳的世界掉落率（×3）</label>' +
         '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋</div></div>' +
         specialPanelHTML() +
-      '</div>';
+      '</div>' +
+      '<div id="m-dex-itempop"><div id="m-dex-itempop-card"><button id="m-dex-itempop-close" type="button" title="關閉" aria-label="關閉">✕</button><div id="m-dex-itempop-body"></div></div></div>';
     document.body.appendChild(m);
     document.getElementById('m-dex-input').addEventListener('input', doSearch);
     document.getElementById('m-dex-sherine').addEventListener('change', doSearch);
@@ -301,7 +356,9 @@
     // 點「出沒地圖」→ 查該圖所有怪;點「掉落物」→ 查所有會掉這件的怪。事件委派,結果重繪也持續有效。
     document.getElementById('m-dex-results').addEventListener('click', function (e) {
       if (!e.target.closest) return;
-      var link = e.target.closest('.m-dex-maplink') || e.target.closest('.m-dex-droplink');
+      var iname = e.target.closest('.m-dex-iname');
+      if (iname) { openItemPop(iname.getAttribute('data-id')); return; }   // 點物品名 → 看數值與圖片
+      var link = e.target.closest('.m-dex-maplink') || e.target.closest('.m-dex-isearch');   // 點地圖 / 🔍 → 搜尋
       if (!link) return;
       var i = document.getElementById('m-dex-input');
       i.value = link.getAttribute('data-map') || link.getAttribute('data-item') || '';
@@ -309,6 +366,8 @@
       var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
     });
     m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });   // 點背景關閉
+    document.getElementById('m-dex-itempop-close').addEventListener('click', closeItemPop);
+    document.getElementById('m-dex-itempop').addEventListener('click', function (e) { if (e.target.id === 'm-dex-itempop') closeItemPop(); });   // 點彈窗背景關閉
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
@@ -354,8 +413,23 @@
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-maplink:active{color:#38bdf8;}',
-      '.m-dex-droplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
-      '.m-dex-droplink:active{color:#38bdf8;}',
+      '.m-dex-isearch{border:none;background:none;cursor:pointer;font-size:12.5px;padding:0 5px 0 0;line-height:1;opacity:.85;}',
+      '.m-dex-isearch:hover{opacity:1;}',
+      '.m-dex-isearch:active{opacity:.5;}',
+      '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
+      '.m-dex-iname:active{color:#38bdf8;}',
+      '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
+      '#m-dex-itempop.open{display:flex;}',
+      '#m-dex-itempop-card{position:relative;width:min(420px,94vw);max-height:84vh;overflow-y:auto;background:#0f172a;border:1px solid #475569;border-radius:12px;padding:16px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',
+      '#m-dex-itempop-close{position:absolute;top:8px;right:8px;width:30px;height:30px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;}',
+      '#m-dex-itempop-close:active{background:#334155;}',
+      '.m-dex-ihead{display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-right:34px;}',
+      '.m-dex-iimg{width:56px;height:56px;object-fit:contain;background:#1e293b;border:1px solid #334155;border-radius:8px;flex:0 0 auto;}',
+      '.m-dex-iname-big{font-size:17px;font-weight:bold;color:#fff;}',
+      '.m-dex-itable{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;}',
+      '.m-dex-itable td{padding:4px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;vertical-align:top;}',
+      '.m-dex-ik{color:#94a3b8;white-space:nowrap;width:1%;}',
+      '.m-dex-idesc{font-size:12.5px;color:#cbd5e1;line-height:1.6;background:#111c30;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;}',
       '.m-dex-nodrop{font-size:13px;color:#64748b;}',
       '.m-dex-drops{width:100%;border-collapse:collapse;font-size:13px;}',
       '.m-dex-drops td{padding:3px 4px;border-bottom:1px solid #1e293b;color:#e2e8f0;}',
