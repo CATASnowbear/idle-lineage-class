@@ -227,7 +227,7 @@
     if (d.magicDrNonEle) traits.push('受無屬性魔法傷害 −' + d.magicDrNonEle + '%');
     if (traits.length) add('特性', traits.join('、'));
     if (d.safe != null) add('安定值', d.safe);
-    if (d.p) add('參考價', Number(d.p).toLocaleString());
+    if (d.p) add('賣店價', Math.floor(d.p * 0.3).toLocaleString() + ' 金幣');   // 賣給商店約得定價(p)的 3 成;祝福/屬性/遠古詞綴各再 ×10
     var icon = '';
     try { icon = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (e) {}
     var img = icon ? '<img class="m-dex-iimg" src="' + esc(icon) + '" alt="" onerror="this.style.display=\'none\'">' : '';
