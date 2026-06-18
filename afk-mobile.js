@@ -50,6 +50,7 @@
     var nav = buildNav();
     gs.appendChild(nav);
     initTipPeek();   // 手機「長按物品看詳情」(取代桌機 hover tooltip)
+    initWhQty();     // 手機倉庫存/取數量:自製視窗取代原生 prompt(iOS 連點會被抑制)
 
     // 手機戰鬥畫面:在怪物(#battle-view)正下方插「手動喝水列」(桌機隱藏)
     //   每列 = [藥水圖示][數量][按鈕];背包有安特的水果時自動多出第二列(食用)。
@@ -804,6 +805,91 @@
   // --- 手機「長按物品看詳情」:取代桌機 hover tooltip(原作只綁 mousemove,手機觸發不到)。
   //   長按任一 .tip-host(倉庫/背包/商店/製作/裝備欄的物品)約 350ms → 彈出資訊卡;短按維持原動作。
   //   內容沿用原作全域函式(getItemFullName/buildItemDescHTML/getItemColor),不重寫資料、不改原作碼。
+  // --- 手機倉庫存/取數量:用自製數量視窗取代原生 prompt。
+  //   iOS Safari 連續跳幾次原生 prompt 後會「抑制後續對話框」→ 按了沒反應、要重開分頁(使用者回報)。
+  //   原作 whDeposit/whWithdraw 的第二參數 qty 有給就不會 prompt → 我們選好數量後帶 qty 呼叫原函式即可,完全不動原作碼。
+  function initWhQty() {
+    if (document.getElementById('m-whqty-modal')) return;
+    var st = document.createElement('style');
+    st.id = 'm-whqty-style';
+    st.textContent = [
+      '#m-whqty-modal{display:none;position:fixed;inset:0;z-index:100000;background:rgba(2,6,23,.75);align-items:center;justify-content:center;padding:24px;font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#m-whqty-modal.open{display:flex;}',
+      '#m-whqty-card{width:min(360px,92vw);background:#0f172a;border:1px solid #475569;border-radius:12px;padding:18px;box-shadow:0 16px 50px rgba(0,0,0,.6);}',
+      '#m-whqty-title{color:#e2e8f0;font-size:15px;font-weight:bold;margin-bottom:14px;text-align:center;line-height:1.5;}',
+      '#m-whqty-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;}',
+      '#m-whqty-row button{flex:0 0 auto;width:44px;height:44px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:18px;cursor:pointer;padding:0;}',
+      '#m-whqty-row #m-whqty-all{width:auto;padding:0 12px;font-size:14px;font-weight:bold;color:#fcd34d;}',
+      '#m-whqty-input{flex:1 1 auto;min-width:0;height:44px;text-align:center;background:#1e293b;border:1px solid #334155;color:#fff;border-radius:8px;font-size:18px;font-weight:bold;font-family:inherit;}',
+      '#m-whqty-btns{display:flex;gap:10px;}',
+      '#m-whqty-btns button{flex:1 1 0;height:46px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;border:1px solid #334155;font-family:inherit;}',
+      '#m-whqty-cancel{background:#1e293b;color:#cbd5e1;}',
+      '#m-whqty-ok{background:#15803d;color:#fff;border-color:#16a34a;}',
+      '#m-whqty-row button:active,#m-whqty-btns button:active{filter:brightness(1.25);}'
+    ].join('\n');
+    document.head.appendChild(st);
+
+    var modal = document.createElement('div');
+    modal.id = 'm-whqty-modal';
+    modal.innerHTML =
+      '<div id="m-whqty-card">' +
+        '<div id="m-whqty-title"></div>' +
+        '<div id="m-whqty-row">' +
+          '<button type="button" id="m-whqty-dec" aria-label="減一">−</button>' +
+          '<input id="m-whqty-input" type="number" inputmode="numeric" min="1">' +
+          '<button type="button" id="m-whqty-inc" aria-label="加一">＋</button>' +
+          '<button type="button" id="m-whqty-all">全部</button>' +
+        '</div>' +
+        '<div id="m-whqty-btns">' +
+          '<button type="button" id="m-whqty-cancel">取消</button>' +
+          '<button type="button" id="m-whqty-ok">確定</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    var input = modal.querySelector('#m-whqty-input');
+    var titleEl = modal.querySelector('#m-whqty-title');
+    var curMax = 1, curCb = null;
+    function clampV(v) { v = Math.floor(Number(v) || 0); if (!(v > 0)) v = 1; if (v > curMax) v = curMax; return v; }
+    function openQty(name, max, cb) {
+      curMax = Math.max(1, max | 0); curCb = cb;
+      titleEl.textContent = '「' + name + '」要幾個？（1 ~ ' + curMax + '）';
+      input.max = curMax; input.value = curMax;
+      modal.classList.add('open');
+      setTimeout(function () { try { input.focus(); input.select(); } catch (e) {} }, 30);
+    }
+    function closeQty() { modal.classList.remove('open'); curCb = null; }
+    modal.querySelector('#m-whqty-dec').addEventListener('click', function () { input.value = clampV((Number(input.value) || 0) - 1); });
+    modal.querySelector('#m-whqty-inc').addEventListener('click', function () { input.value = clampV((Number(input.value) || 0) + 1); });
+    modal.querySelector('#m-whqty-all').addEventListener('click', function () { input.value = curMax; });
+    modal.querySelector('#m-whqty-cancel').addEventListener('click', closeQty);
+    modal.querySelector('#m-whqty-ok').addEventListener('click', function () { var v = clampV(input.value); var cb = curCb; closeQty(); if (cb) cb(v); });
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeQty(); });
+
+    // 包住原作的 whDeposit/whWithdraw:手機 + 未指定數量 + 可堆疊(>1) → 改用自製視窗;否則照原行為。
+    function wrap(fnName, lookup) {
+      var orig = window[fnName];
+      if (typeof orig !== 'function') return;
+      window[fnName] = function (uidv, qty) {
+        if (qty === undefined && document.body.classList.contains('m-mobile')) {
+          var info = lookup(uidv);
+          if (info && info.total > 1) {
+            openQty(info.name, info.total, function (chosen) { orig(uidv, chosen); });
+            return;
+          }
+        }
+        return orig.apply(this, arguments);
+      };
+    }
+    function nameOf(it) { try { return (DB.items[it.id] && DB.items[it.id].n) || it.id; } catch (e) { return it.id; } }
+    wrap('whDeposit', function (uidv) {   // 背包 → 倉庫:查 player.inv
+      try { var it = (player.inv || []).filter(function (x) { return x.uid === uidv; })[0]; return it ? { name: nameOf(it), total: it.cnt || 1 } : null; } catch (e) { return null; }
+    });
+    wrap('whWithdraw', function (uidv) {   // 倉庫 → 背包:查 loadWarehouse()
+      try { var w = (typeof loadWarehouse === 'function') ? loadWarehouse() : null; var it = (w && w.items ? w.items : []).filter(function (x) { return x.uid === uidv; })[0]; return it ? { name: nameOf(it), total: it.cnt || 1 } : null; } catch (e) { return null; }
+    });
+  }
+
   function initTipPeek() {
     if (document.getElementById('m-tip-modal')) return;
     var modal = document.createElement('div');
