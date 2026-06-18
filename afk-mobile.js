@@ -856,7 +856,7 @@
       titleEl.textContent = '「' + name + '」要幾個？（1 ~ ' + curMax + '）';
       input.max = curMax; input.value = curMax;
       modal.classList.add('open');
-      setTimeout(function () { try { input.focus(); input.select(); } catch (e) {} }, 30);
+      // 不自動 focus input:手機上會每次都彈出鍵盤。預設值＝全部、又有 −/＋/全部 鈕,多數情況直接按確定即可;要改數字再自己點輸入框。
     }
     function closeQty() { modal.classList.remove('open'); curCb = null; }
     modal.querySelector('#m-whqty-dec').addEventListener('click', function () { input.value = clampV((Number(input.value) || 0) - 1); });
