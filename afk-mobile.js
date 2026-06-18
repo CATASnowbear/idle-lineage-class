@@ -232,15 +232,22 @@
     function closeLog() { document.body.classList.remove('mlog-open'); updateLogNavActive(false); }
     function toggleLog() { if (document.body.classList.contains('mlog-open')) closeLog(); else openLog(); }
 
+    // iOS(含 iPadOS 13+ 偽裝成 Mac):有些只該在 iOS WebKit 套用的修正(如倉庫清單捲動)靠這個 class 區隔,避免波及安卓。
+    var IS_IOS = /iP(hone|ad|od)/.test(navigator.platform || '') ||
+                 /iPad|iPhone|iPod/.test(navigator.userAgent || '') ||
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     function apply(on) {
       if (on) {
         document.body.classList.add('m-mobile');
+        document.body.classList.toggle('m-ios', IS_IOS);
         logsIntoSheet();
         if (!/mview-(battle|config|bag)/.test(document.body.className)) setView('battle');
         if (!/mlog-(combat|sys)/.test(document.body.className)) setLog('combat');
         mirror();
       } else {
         document.body.classList.remove('m-mobile');
+        document.body.classList.remove('m-ios');
         document.body.classList.remove('mlog-open');
         logsToColumn();
       }
@@ -717,8 +724,9 @@
 
       /* 倉庫雙清單(背包/倉庫)在 iOS(Brave 等皆 WebKit)上,滑內層清單時手勢被鏈到外層→背景捲動、清單不動。
          overscroll-behavior:contain 阻止捲動鏈出去;-webkit-overflow-scrolling:touch 讓清單成為慣性捲動的觸控主體;
-         touch-action:pan-y 明示縱向捲動。安卓不受影響(本來就正常)。 */
-      'body.m-mobile #wh-inv-list,body.m-mobile #wh-store-list{-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;touch-action:pan-y !important;}',
+         touch-action:pan-y 明示縱向捲動。
+         ⚠ 只套在 iOS(body.m-ios):安卓套了反而怪怪的(touch-action/overscroll 在安卓 WebView 會干擾正常捲動),故用 m-ios 隔離。 */
+      'body.m-mobile.m-ios #wh-inv-list,body.m-mobile.m-ios #wh-store-list{-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important;touch-action:pan-y !important;}',
 
       /* 潘朵拉黑市卡片:原作用「左圖固定 112px + 右購買鈕固定 84px」的橫向列(行內 height:120px),
          手機窄寬下中間名稱/說明/價格欄被擠到只剩約 20px → 文字一字一行整個糊掉。改成直向堆疊:
