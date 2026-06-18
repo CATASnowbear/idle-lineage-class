@@ -641,6 +641,7 @@
     { k: 'magic', n: '職業魔法' },
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
+    { k: 'legend', n: '傳說裝備' },
     { k: 'enhance', n: '強化' },
     { k: 'load', n: '負重' },
     { k: 'sherine', n: '席琳' },
@@ -738,6 +739,7 @@
     if (key === 'magic') return renderMagic();
     if (key === 'quest') return renderQuest(cls);
     if (key === 'set') return renderSet();
+    if (key === 'legend') return renderLegend();
     if (key === 'enhance') return renderEnhance();
     if (key === 'sherine') return renderSherine();
     if (key === 'tower') return renderTower();
@@ -773,6 +775,7 @@
     { key: 'magic', cls: false, label: '職業魔法' },
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
+    { key: 'legend', cls: false, label: '傳說裝備' },
     { key: 'enhance', cls: false, label: '強化' },
     { key: 'load', cls: false, label: '負重' },
     { key: 'sherine', cls: false, label: '席琳' },
@@ -882,6 +885,53 @@
       '</div>';
     }).join('');
     return note + cards;
+  }
+
+  // 傳說裝備(legend:true):直接讀遊戲 DB,作者新增會自動出現。效果文字用遊戲內建描述(d 欄,玩家可見、即時)。
+  // 成套才有價值的傳說防具(死亡騎士/克特/惡魔/四大軍王,d 內含「套裝」)不在此重列,改一行連到「套裝」分頁。
+  var LEGEND_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
+  var LEGEND_SLOT_CN = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
+  var LEGEND_RES_CN = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
+  function legendReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return LEGEND_REQ_CN[x] || x; }).join('／'); }
+  function legendEff(d) {
+    var base = d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
+    // 補上「常被風味描述漏掉」的具體機制(抗性/免疫/格擋);base 已提到就不重複
+    var sp = [];
+    Object.keys(LEGEND_RES_CN).forEach(function (k) { if (d[k] && base.indexOf('屬性抗性') < 0) sp.push(LEGEND_RES_CN[k] + '屬性抗性 +' + d[k]); });
+    if (d.immStone && base.indexOf('石化') < 0) sp.push('免疫石化');
+    if (d.immPoison && base.indexOf('中毒') < 0) sp.push('免疫中毒');
+    if (d.block && base.indexOf('格擋') < 0) sp.push('格擋 ' + d.block);
+    if (base) return sp.length ? base + '　【' + sp.join('、') + '】' : base;
+    // 無描述(純數值裝)→ 從欄位湊一句
+    Object.keys(LEGEND_RES_CN).forEach(function (k) { if (d[k] && sp.indexOf(LEGEND_RES_CN[k] + '屬性抗性 +' + d[k]) < 0) sp.push(LEGEND_RES_CN[k] + '屬性抗性 +' + d[k]); });
+    if (d.mmp) sp.push('MP 上限 +' + d.mmp);
+    if (d.mpR) sp.push('MP 自然恢復 +' + d.mpR);
+    if (d.ac) sp.push('防禦 +' + d.ac);
+    return sp.join('、') || '高數值傳說裝（數值見「掉落查詢」）';
+  }
+  function renderLegend() {
+    var groups = { wpn: [], arm: [], acc: [] }, setCount = 0;
+    Object.keys(DB.items).forEach(function (id) {
+      var d = DB.items[id];
+      if (!d || !d.legend || !groups[d.type]) return;
+      if (d.d && d.d.indexOf('套裝') >= 0) { setCount++; return; }   // 成套防具 → 交給「套裝」分頁
+      groups[d.type].push(d);
+    });
+    function card(d) {
+      var meta = legendReqCN(d.req) + (LEGEND_SLOT_CN[d.slot] ? '　|　' + LEGEND_SLOT_CN[d.slot] : (d.type === 'wpn' ? '　|　武器' : ''));
+      return '<div class="m-wiki-card">' +
+        '<div class="m-wiki-name"><span class="c-legend">' + esc(d.n) + '</span></div>' +
+        '<div class="m-wiki-desc" style="color:#94a3b8;font-size:12px;">' + esc(meta) + '</div>' +
+        '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(legendEff(d)) + '</div>' +
+      '</div>';
+    }
+    var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>），單件本身就帶獨特效果。這裡整理它們的特色，<b>詳細數值與掉落來源請用「掉落查詢」</b>。武器的特殊攻擊（橫掃／連擊／吸 MP…）詳見「武器特性」分頁。</div>';
+    var setNote = setCount ? '<div class="m-wiki-note" style="margin-top:8px;">死亡騎士、克特、惡魔、四大軍王等<b>成套</b>的傳說防具，價值在湊滿件數的變身／組合加成，不在此重列，請見「套裝」分頁。</div>' : '';
+    var html = note + setNote;
+    if (groups.wpn.length) html += '<div class="m-wiki-sub">⚔️ 傳說武器</div>' + groups.wpn.map(card).join('');
+    if (groups.arm.length) html += '<div class="m-wiki-sub">🛡 傳說防具（非成套）</div>' + groups.arm.map(card).join('');
+    if (groups.acc.length) html += '<div class="m-wiki-sub">💍 傳說飾品</div>' + groups.acc.map(card).join('');
+    return html;
   }
 
   function renderEnhance() {
