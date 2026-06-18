@@ -129,9 +129,17 @@
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
     if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋</div>'; return; }
+    // 命中「全域特殊掉落」關鍵字 → 自動展開下方規則面板(萬能藥/席琳結晶等不在怪物掉落表內)
+    var special = matchesSpecial(q);
+    if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; }
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
-    if (!hits.length) { results.innerHTML = '<div class="m-dex-hint">找不到符合的怪物</div>'; return; }
+    if (!hits.length) {
+      results.innerHTML = special
+        ? '<div class="m-dex-hint">「' + esc(input.value.trim()) + '」沒有固定掉落的怪物，請見下方<b>「全域特殊掉落規則」</b>。</div>'
+        : '<div class="m-dex-hint">找不到符合的怪物</div>';
+      return;
+    }
     var truncated = hits.length > MAX_RESULTS;
     if (truncated) hits = hits.slice(0, MAX_RESULTS);
     var html = hits.map(function (h) { return cardHTML(h, sherine, q); }).join('');
@@ -209,6 +217,60 @@
     menu.appendChild(row);
   }
 
+  // ----- 全域特殊掉落規則 -------------------------------------------------
+  // 這些不在任一隻怪的 MOB_DROPS 表內,是遊戲依「等級/類型/地圖/技能」即時判定的條件掉落,
+  // 所以不會出現在上面的怪物卡掉落清單。整理成一個預設收合的面板,點開才展開,不佔主版面。
+  // 搜到下列關鍵字時(doSearch)會自動展開,讓搜「萬能藥 / 席琳結晶」也能找到對應規則。
+  var SPECIAL_KEYS = ['萬能藥', '屬性藥', '席琳結晶', '黑魔石', '銀礦石', '祝福卷軸', '賦予祝福', '攜帶物', '米索莉', '精靈玉', '元素石'];
+  function matchesSpecial(q) { return SPECIAL_KEYS.some(function (k) { return q.indexOf(k.toLowerCase()) >= 0; }); }
+
+  function spBlock(title, lines) {
+    return '<div class="m-dex-sp-block"><div class="m-dex-sp-h">' + title + '</div><ul>' +
+      lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul></div>';
+  }
+  function specialPanelHTML() {
+    var body =
+      spBlock('🧪 萬能藥（屬性藥）', [
+        '條件：怪物等級 40 以上、且不是血盟',
+        '一般怪 0.01%；頭目 1%（夢幻之島頭目不掉）',
+        '掉落時隨機給 力量／敏捷／體質／智力／精神／魅力 萬能藥之一',
+        '機率固定，<b>不受</b>「席琳的世界 ×3」影響'
+      ]) +
+      spBlock('🔮 席琳結晶（席琳的世界限定）', [
+        '條件：開啟「席琳的世界」後，被席琳化的怪掉（血盟怪、等級 20 以下不掉）',
+        '一般怪：等級 21~30 為 0.001%、31~40 為 0.002%、41 以上為 0.003%',
+        '頭目：一般頭目 0.1%、夢幻之島頭目 0.01%',
+        '三大龍（安塔瑞斯／法利昂／巴拉卡斯）：10%',
+        '機率固定，<b>不受</b>席琳世界 ×3 影響'
+      ]) +
+      spBlock('✦ 賦予祝福卷軸（等級 40 以上頭目）', [
+        '條件：等級 40 以上頭目，夢幻之島、攻城區除外',
+        '賦予武器祝福卷軸 0.1%、賦予盔甲祝福卷軸 0.1%、賦予飾品祝福卷軸 0.01%',
+        '會受「席琳的世界 ×3」加成'
+      ]) +
+      spBlock('🌿 區域額外掉落（妖精森林周邊、眠龍洞穴 1~3 樓）', [
+        '該區所有怪：粗糙的米索莉塊／精靈玉／元素石 各 20%',
+        '學會「世界樹的呼喚」則各 30%',
+        '會受「席琳的世界 ×3」加成'
+      ]) +
+      spBlock('⛏ 黑魔石（黑暗妖精素材）', [
+        '沉默洞穴周邊：二級黑魔石 20%、三級黑魔石 10%（學「提煉魔石」提高為 30%／15%）',
+        '其他野外／地監：需學「提煉魔石」才掉，二級 1%、三級 0.5%、四級 0.1%',
+        '機率固定，<b>不受</b>席琳世界 ×3 影響'
+      ]) +
+      spBlock('🪙 銀礦石（黑暗妖精製作材料）', [
+        '石頭高崙／鋼鐵高崙：100%',
+        '侏儒／侏儒戰士／黑騎士／哈柏哥布林／蜥蜴人：各 50%'
+      ]) +
+      spBlock('🎁 攜帶物（野外血盟敵人／攻城敵人）', [
+        '擊殺時 1% 額外掉一件「攜帶物」（抽法同潘朵拉轉蛋，可能已強化或帶祝福詞綴）'
+      ]);
+    return '<details id="m-dex-special">' +
+      '<summary>📋 全域特殊掉落規則（依條件觸發，不列在各怪掉落表內）</summary>' +
+      '<div class="m-dex-sp-body">' + body + '</div>' +
+      '</details>';
+  }
+
   // ----- 搜尋面板 ---------------------------------------------------------
   function buildModal() {
     if (document.getElementById('m-dex-modal')) return;
@@ -225,7 +287,7 @@
         '</div>' +
         '<label id="m-dex-sherine-row"><input id="m-dex-sherine" type="checkbox"> 席琳的世界掉落率（×3）</label>' +
         '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋</div></div>' +
-        '<div id="m-dex-note">※ 妖精森林周邊、眠龍洞穴1~3樓 的所有怪另有「區域額外掉落」：粗糙的米索莉塊／精靈玉／元素石 各 20%（學會「世界樹的呼喚」則各 30%），此清單未含這部分。</div>' +
+        specialPanelHTML() +
       '</div>';
     document.body.appendChild(m);
     document.getElementById('m-dex-input').addEventListener('input', doSearch);
@@ -297,7 +359,18 @@
       '.m-dex-drops{width:100%;border-collapse:collapse;font-size:13px;}',
       '.m-dex-drops td{padding:3px 4px;border-bottom:1px solid #1e293b;color:#e2e8f0;}',
       '.m-dex-pct{text-align:right;color:#fcd34d;white-space:nowrap;width:1%;}',
-      '#m-dex-note{flex:0 0 auto;padding:10px 14px;border-top:1px solid #1e293b;color:#94a3b8;font-size:12px;line-height:1.5;}'
+      '#m-dex-special{flex:0 0 auto;border-top:1px solid #1e293b;}',
+      '#m-dex-special > summary{padding:10px 14px;color:#fcd34d;font-size:12.5px;font-weight:bold;cursor:pointer;list-style:none;user-select:none;}',
+      '#m-dex-special > summary::-webkit-details-marker{display:none;}',
+      '#m-dex-special > summary::before{content:"▸ ";color:#94a3b8;}',
+      '#m-dex-special[open] > summary::before{content:"▾ ";}',
+      '#m-dex-special > summary:hover{color:#fde047;}',
+      '.m-dex-sp-body{max-height:42vh;overflow-y:auto;padding:2px 14px 12px;}',
+      '.m-dex-sp-block{margin-top:10px;}',
+      '.m-dex-sp-h{font-size:13px;font-weight:bold;color:#e2e8f0;margin-bottom:3px;}',
+      '.m-dex-sp-body ul{margin:0;padding-left:18px;list-style:disc;}',
+      '.m-dex-sp-body li{font-size:12px;color:#94a3b8;line-height:1.55;margin:1px 0;}',
+      '.m-dex-sp-body b{color:#cbd5e1;}'
     ].join('\n');
     var s = document.createElement('style');
     s.id = 'm-dex-style';
