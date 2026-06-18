@@ -173,6 +173,8 @@
   var IT_STAT = { str: '力量', dex: '敏捷', con: '體質', int: '智力', wis: '精神', cha: '魅力' };
   // 武器特性(eff)→白話名稱(對齊小百科「武器特性」分頁);消耗品的 eff(藥水/卷軸等)不會走到武器分支故不列
   var IT_EFF = { combo: '連擊', cleave: '切割', pierce: '穿透', crush: '重擊／粉碎', moonburst: '月光爆裂', mp_drain: '命中恢復 MP', dice_death: '即死', magicburst: '魔爆', magicstrike: '魔擊' };
+  // 由武器種類(getWeaponTags)推出的內建特性:有些特性不是寫在 eff,而是看武器種類(單手劍=反擊、武士刀=居合、匕首/矛=出血…)
+  var IT_TAG_TRAIT = { '單手劍': '反擊', '武士刀': '居合', '匕首': '出血', '矛': '出血', '雙刀': '連擊', '鋼爪': '連擊', '雙手劍': '切割', '雙手鈍器': '重擊／粉碎' };
   function itReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return IT_REQ[x] || x; }).join('／'); }
   function itemDetailHTML(id) {
     var d = DB.items[id];
@@ -190,10 +192,14 @@
       add('攻擊速度', d.spd);
       if (d.w2h || d.twohanded) add('持用', '雙手武器');
       if (d.isBow || d.ranged) add('射程', '遠距離');
+      var tags = (typeof getWeaponTags === 'function') ? (getWeaponTags(id) || []) : [];
+      if (tags.length) add('種類', tags.join('／'));
       var wt = [];
       if (d.eff && IT_EFF[d.eff]) wt.push(IT_EFF[d.eff]);
+      tags.forEach(function (tg) { if (IT_TAG_TRAIT[tg]) wt.push(IT_TAG_TRAIT[tg]); });   // 武士刀=居合、單手劍=反擊、匕首/矛=出血…
       if (d.rapidfire) wt.push('連射');
       if (d.unBonus) wt.push('對不死／狼人額外傷害');
+      wt = wt.filter(function (v, i) { return wt.indexOf(v) === i; });   // 去重(eff 與種類可能指到同一特性)
       if (wt.length) add('武器特性', wt.join('、'));
     } else if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) {
       add('防禦', '+' + d.ac);
