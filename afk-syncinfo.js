@@ -36,7 +36,8 @@
     s.id = 'afk-syncinfo-style';
     s.textContent =
       '#afk-syncinfo{color:#64748b;font-size:12px;text-align:center;letter-spacing:.3px;margin-top:2px;line-height:1.6;}' +
-      '#afk-syncinfo .afk-si-sep{margin:0 6px;opacity:.6;}';
+      '#afk-syncinfo .afk-si-sep{margin:0 6px;opacity:.6;}' +
+      '#afk-syncinfo .afk-si-link{color:#7dd3fc;text-decoration:underline;}';
     document.head.appendChild(s);
   }
 
@@ -48,7 +49,7 @@
     var foot = document.createElement('div');
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
-      '<span class="afk-si-author">原作者：秋玥</span>' +
+      '<span class="afk-si-author">原作者：秋玥 <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(原版連結)</a></span>' +
       '<span class="afk-si-sep">·</span>' +
       '<span class="afk-si-time">原版最後同步：載入中…</span>';
     menu.appendChild(foot);
