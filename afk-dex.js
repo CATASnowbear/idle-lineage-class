@@ -166,14 +166,16 @@
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
     if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜裝備名可直接點看數值</div>'; return; }
-    // 命中「全域特殊掉落」關鍵字 → 自動展開下方規則面板(萬能藥/席琳結晶等不在怪物掉落表內)
-    var spId = matchSpecialId(q), special = !!spId;
-    if (spId) {   // 自動展開外層面板 + 展開/高亮/捲到對應那一條規則
-      var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true;
-      Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) { it.classList.remove('m-dex-sp-hit'); clearMarksIn(it); });
-      var hit = document.querySelector('.m-dex-sp-item[data-spid="' + spId + '"]');
-      if (hit) { hit.open = true; hit.classList.add('m-dex-sp-hit'); markIn(hit, q); try { hit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
-    } else { Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) { it.classList.remove('m-dex-sp-hit'); clearMarksIn(it); }); }
+    // 全域特殊掉落規則:每條只要「內文含查詢字」或「關鍵字雙向命中」就展開+金框+標色,可同時多條(如搜「祝福」會中 賦予祝福卷軸 與 施法卷軸)
+    var special = false, firstHit = null;
+    Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) {
+      it.classList.remove('m-dex-sp-hit'); clearMarksIn(it);
+      var b = SPECIAL_BY_ID[it.getAttribute('data-spid')];
+      var textMatch = it.textContent.toLowerCase().indexOf(q) >= 0;
+      var keyMatch = b && b.keys.some(function (k) { k = k.toLowerCase(); return k.indexOf(q) >= 0 || q.indexOf(k) >= 0; });
+      if (textMatch || keyMatch) { special = true; if (!firstHit) firstHit = it; it.open = true; it.classList.add('m-dex-sp-hit'); markIn(it, q); }
+    });
+    if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; if (firstHit) try { firstHit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
     var itemHTML = itemMatchesHTML(q);   // 先列出名稱符合的裝備(可點看數值;含沒被怪掉的)
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
@@ -464,6 +466,7 @@
     ] }
   ];
   var SPECIAL_KEYS = SPECIAL_BLOCKS.reduce(function (a, b) { return a.concat(b.keys); }, []);
+  var SPECIAL_BY_ID = {}; SPECIAL_BLOCKS.forEach(function (b) { SPECIAL_BY_ID[b.id] = b; });
   function matchSpecialId(q) {
     if (!q) return null;
     // 雙向比對:關鍵字含查詢字(搜「席琳」中「席琳結晶」)或查詢字含關鍵字(搜「屬性萬能藥」中「萬能藥」)都算命中
