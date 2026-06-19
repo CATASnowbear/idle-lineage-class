@@ -124,7 +124,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 3. **把新內容補進對應分頁**——分兩種:
    - **讀遊戲資料、自動同步的**(通常不用改):職業專精讀 `MASTERY_DATA`、職業魔法讀 `DB.skills`、席琳套裝讀 `SHERINE_SET_TEXT`、掉落查詢純讀 `DB`。
    - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、負重 `LOAD_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、血盟 `PLEDGE_SECTIONS`、傲慢之塔 `TOWER_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
-4. 補完照「每次 push 前檢查清單」bump `afk-wiki.js?v=`、無頭瀏覽器測過再推。
+   - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格 `spBlock` 到那個面板**(並把關鍵字加進 `SPECIAL_KEYS` 讓搜尋自動展開)。原版每次改動全域掉落都要同步補這裡,不要只更新小百科。
+4. 補完照「每次 push 前檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。
 
 ### 內容鐵則(踩過、別再犯)
 
