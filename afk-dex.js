@@ -165,7 +165,7 @@
     var clearBtn = document.getElementById('m-dex-clear');
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
-    if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋</div>'; return; }
+    if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜裝備名可直接點看數值</div>'; return; }
     // 命中「全域特殊掉落」關鍵字 → 自動展開下方規則面板(萬能藥/席琳結晶等不在怪物掉落表內)
     var special = matchesSpecial(q);
     if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; }
@@ -450,13 +450,13 @@
       '<div id="m-dex-card-wrap">' +
         '<div id="m-dex-head">' +
           '<span id="m-dex-inwrap">' +
-            '<input id="m-dex-input" type="text" placeholder="搜尋 怪物名 / 地圖 / 掉落物…" autocomplete="off">' +
+            '<input id="m-dex-input" type="text" placeholder="搜尋 怪物 / 地圖 / 掉落物 / 裝備…" autocomplete="off">' +
             '<button id="m-dex-clear" type="button" title="清除" aria-label="清除">✕</button>' +
           '</span>' +
           '<button id="m-dex-close" type="button" title="關閉">✕</button>' +
         '</div>' +
         '<label id="m-dex-sherine-row"><input id="m-dex-sherine" type="checkbox"> 席琳的世界掉落率（×3）</label>' +
-        '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋</div></div>' +
+        '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜裝備名可直接點看數值</div></div>' +
         specialPanelHTML() +
       '</div>' +
       '<div id="m-dex-itempop"><div id="m-dex-itempop-card"><button id="m-dex-itempop-close" type="button" title="關閉" aria-label="關閉">✕</button><div id="m-dex-itempop-body"></div></div></div>';
