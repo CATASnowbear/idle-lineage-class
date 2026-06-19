@@ -1024,16 +1024,27 @@
     }).join('');
     var dogTable = '';
     if (typeof PET_DEF !== 'undefined' && PET_DEF) {   // 讀遊戲的犬定義,作者新增犬種/進化夥伴會自動出現
+      // 基礎犬 → 進化後寵物 對照(讀進化果實 eff:evolve 的 evolveFrom→evolveTo,再用 PET_DEF.collar 反查名稱;為權威來源、非靠屬性猜)
+      var evolveTo = {}, petByCollar = {};
+      if (typeof DB !== 'undefined' && DB.items) Object.keys(DB.items).forEach(function (id) { var it = DB.items[id]; if (it && it.eff === 'evolve' && it.evolveFrom && it.evolveTo) evolveTo[it.evolveFrom] = it.evolveTo; });
+      Object.keys(PET_DEF).forEach(function (nm) { if (PET_DEF[nm].collar) petByCollar[PET_DEF[nm].collar] = nm; });
+      var evoOf = function (nm) { var c = PET_DEF[nm].collar, ec = c && evolveTo[c]; return ec ? (petByCollar[ec] || '') : ''; };
       var td = 'style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;"';
       var rowOf = function (nm) {
-        var p = PET_DEF[nm];
-        var proc = p.proc && typeof DB !== 'undefined' && DB.skills && DB.skills[p.proc] ? DB.skills[p.proc].n : '';
+        var p = PET_DEF[nm], extra;
+        if (p.proc) {   // 進化夥伴 → 顯示每擊追加的法術
+          var proc = (typeof DB !== 'undefined' && DB.skills && DB.skills[p.proc]) ? DB.skills[p.proc].n : p.proc;
+          extra = '<td ' + td + '>追加 ' + esc(proc) + '</td>';
+        } else {        // 基礎犬 → 顯示可進化成的夥伴
+          var ev = evoOf(nm);
+          extra = '<td ' + td + '>' + (ev ? '可進化為 ' + esc(ev) : '—') + '</td>';
+        }
         return '<tr>' +
           '<td ' + td + '><b>' + esc(nm) + '</b></td>' +
           '<td ' + td + '>' + esc(p.eleName) + '屬性</td>' +
           '<td ' + td + '>傷害偏移 +' + p.diceOff + '</td>' +
           '<td ' + td + '>命中偏移 +' + p.hitOff + '</td>' +
-          (proc ? '<td ' + td + '>追加 ' + esc(proc) + '</td>' : '') +
+          extra +
           '</tr>';
       };
       var baseN = [], evoN = [];
@@ -1044,7 +1055,7 @@
           '<div class="m-wiki-desc" style="color:#94a3b8;margin:2px 0 6px;">' + hint + '</div>' +
           '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody>' + names.map(rowOf).join('') + '</tbody></table></div>';
       };
-      dogTable = tbl('基礎犬的特性', '傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。', baseN) +
+      dogTable = tbl('基礎犬的特性', '傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。最右欄是用對應進化果實能進化成的夥伴。', baseN) +
         tbl('進化夥伴的特性', '由基礎犬進化而來（見上面「④ 進化」）；傷害另加魅力×倍率，每次攻擊還有 10% 追加對應法術。', evoN);
     }
     return note + cards + dogTable;
