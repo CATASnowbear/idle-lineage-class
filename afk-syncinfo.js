@@ -37,6 +37,7 @@
     s.textContent =
       '#afk-syncinfo{color:#64748b;font-size:12px;text-align:center;letter-spacing:.3px;margin-top:2px;line-height:1.6;}' +
       '#afk-syncinfo .afk-si-sep{margin:0 6px;opacity:.6;}' +
+      '#afk-syncinfo .afk-si-row{margin-top:1px;}' +
       '#afk-syncinfo .afk-si-link{color:#7dd3fc;text-decoration:underline;}';
     document.head.appendChild(s);
   }
@@ -49,9 +50,12 @@
     var foot = document.createElement('div');
     foot.id = 'afk-syncinfo';
     foot.innerHTML =
-      '<span class="afk-si-author">原作者：秋玥 <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(原版連結)</a></span>' +
-      '<span class="afk-si-sep">·</span>' +
-      '<span class="afk-si-time">原版最後同步：載入中…</span>';
+      '<div class="afk-si-row">' +
+        '<span class="afk-si-author">原作者：秋玥 <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(原版連結)</a></span>' +
+        '<span class="afk-si-sep">·</span>' +
+        '<span class="afk-si-time">原版最後同步：載入中…</span>' +
+      '</div>' +
+      '<div class="afk-si-row"><a class="afk-si-link" href="https://forum.gamer.com.tw/C.php?bsn=84452&amp;snA=8362" target="_blank" rel="noopener">巴哈討論串</a>（本加掛版發布在 301 樓）</div>';
     menu.appendChild(foot);
     console.log('[AFK-syncinfo] hooks OK — 首頁顯示原作者與原版最後同步時間。');
 
