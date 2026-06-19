@@ -1052,10 +1052,9 @@
   var LEGEND_SLOT_CN = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
   var LEGEND_RES_CN = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
   function legendReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return LEGEND_REQ_CN[x] || x; }).join('／'); }
-  function legendEff(d) {
-    // 獨特效果:取 d 風味/機制描述
-    var special = d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
-    // 完整數值:把這件裝備實際提供的能力全列出來(只列防禦會誤導,漏掉的屬性也要寫)
+  function isLegendSetPiece(d) { return !!(d.d && d.d.indexOf('套裝') >= 0); }   // 成套傳說(死亡騎士/克特/惡魔/四大軍王…):套裝加成另見「套裝」分頁
+  // 完整數值:把這件裝備實際提供的能力全列出來(只列防禦會誤導,漏掉的屬性也要寫)
+  function legendStats(d) {
     var sgn = function (v) { return (v > 0 ? '+' : '') + v; };
     var st = [];
     if (d.type === 'wpn') {
@@ -1077,31 +1076,34 @@
     if (d.mrPerEn) st.push('每強化 +1 魔防 +' + d.mrPerEn);
     if (d.immStone) st.push('免疫石化');
     if (d.immPoison) st.push('免疫中毒');
-    var statLine = st.join('、');
-    if (special && statLine) return special + '　｜　數值：' + statLine;
-    return special || statLine || '數值見「掉落查詢」';
+    return st.join('、');
+  }
+  // 獨特效果:成套件 → 指向「套裝」分頁(套裝加成不在此重列);其餘 → 取 d 的機制描述
+  function legendSpecial(d) {
+    if (isLegendSetPiece(d)) return '套裝效果見「套裝」分頁。';
+    return d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
   }
   function renderLegend() {
-    var groups = { wpn: [], arm: [], acc: [] }, setCount = 0;
+    var groups = { wpn: [], arm: [], acc: [] };
     Object.keys(DB.items).forEach(function (id) {
       var d = DB.items[id];
       if (!d || !d.legend || !groups[d.type]) return;
-      if (d.d && d.d.indexOf('套裝') >= 0) { setCount++; return; }   // 成套防具 → 交給「套裝」分頁
-      groups[d.type].push(d);
+      groups[d.type].push(d);   // 成套件也列進來,只是套裝加成連去套裝頁
     });
     function card(d) {
       var meta = legendReqCN(d.req) + (LEGEND_SLOT_CN[d.slot] ? '　|　' + LEGEND_SLOT_CN[d.slot] : (d.type === 'wpn' ? '　|　武器' : ''));
+      var special = legendSpecial(d), stats = legendStats(d);
       return '<div class="m-wiki-card">' +
         '<div class="m-wiki-name"><span class="c-legend">' + esc(d.n) + '</span></div>' +
         '<div class="m-wiki-desc" style="color:#94a3b8;font-size:12px;">' + esc(meta) + '</div>' +
-        '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(legendEff(d)) + '</div>' +
+        (special ? '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(special) + '</div>' : '') +
+        (stats ? '<div class="m-wiki-desc" style="margin-top:3px;color:#cbd5e1;">數值：' + esc(stats) + '</div>' : '') +
       '</div>';
     }
-    var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>），單件本身就帶獨特效果。這裡整理它們的<b>特色與獨特效果</b>。<b>想看詳細數值（攻擊力／防禦／加成等）：到「掉落查詢」搜該裝備名，點出現的裝備名稱就能看</b>——連製作／兌換／任務取得、沒有怪會掉的（如 50 級試煉獎勵）也查得到。武器的特殊攻擊（橫掃／連擊／吸 MP…）詳見「武器特性」分頁。</div>';
-    var setNote = setCount ? '<div class="m-wiki-note" style="margin-top:8px;">死亡騎士、克特、惡魔、四大軍王等<b>成套</b>的傳說防具，價值在湊滿件數的變身／組合加成，不在此重列，請見「套裝」分頁。</div>' : '';
-    var html = note + setNote;
+    var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>）。每件列出獨特效果與完整數值；<b>成套的傳說裝（死亡騎士／克特／惡魔／四大軍王等）也列在這，套裝加成請點「套裝」分頁看</b>。掉落來源到「掉落查詢」搜裝備名；武器特殊攻擊詳見「武器特性」分頁。</div>';
+    var html = note;
     if (groups.wpn.length) html += '<div class="m-wiki-sub">⚔️ 傳說武器</div>' + groups.wpn.map(card).join('');
-    if (groups.arm.length) html += '<div class="m-wiki-sub">🛡 傳說防具（非成套）</div>' + groups.arm.map(card).join('');
+    if (groups.arm.length) html += '<div class="m-wiki-sub">🛡 傳說防具</div>' + groups.arm.map(card).join('');
     if (groups.acc.length) html += '<div class="m-wiki-sub">💍 傳說飾品</div>' + groups.acc.map(card).join('');
     return html;
   }
