@@ -281,20 +281,20 @@
       var d = document.createElement('div');
       d.id = 'm-status';
       d.innerHTML =
-        // 第一列:暱稱 / 等級 / 金幣 / 點我提示
+        // 第一列:暱稱 / 等級 / 防 / 魔防 / 金幣(王冠與ⓘ移到第二列,避免暱稱+金幣太長把這列擠爆)
         '<div class="ms-row ms-row1">' +
           '<span class="ms-seg ms-name"><b id="ms-name">--</b></span>' +
           '<span class="ms-seg ms-lv">Lv <b id="ms-lv">--</b></span>' +
           '<span class="ms-seg ms-ac">防 <b id="ms-ac">--</b></span>' +
           '<span class="ms-seg ms-mr">魔防 <b id="ms-mr">--</b></span>' +
           '<span class="ms-seg ms-gold">💰 <span id="ms-gold">--</span></span>' +
-          '<span class="ms-seg ms-victory" id="ms-victory" title="攻城獲勝期間:全商店8折、開放城堡" style="display:none">👑</span>' +   // 攻城獲勝才顯示(mirror 切換)
-          '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
         '</div>' +
-        // 第二列:HP / MP 雙血條(仿原版:底條 + 填色 + 數字疊在上面)
+        // 第二列:HP / MP 雙血條 + 攻城獲勝皇冠 + ⓘ提示(血條 flex 自動讓出空間給右邊兩顆)
         '<div class="ms-row ms-row2">' +
           '<div class="ms-bar ms-hp"><i class="ms-bar-fill" id="ms-hp-bar"></i><span class="ms-bar-txt"><b>HP</b> <span id="ms-hp">--</span></span></div>' +
           '<div class="ms-bar ms-mp"><i class="ms-bar-fill" id="ms-mp-bar"></i><span class="ms-bar-txt"><b>MP</b> <span id="ms-mp">--</span></span></div>' +
+          '<span class="ms-seg ms-victory" id="ms-victory" title="攻城獲勝期間:全商店8折、開放城堡" style="display:none">👑</span>' +   // 攻城獲勝才顯示(mirror 切換)
+          '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
         '</div>' +
         '<div id="ms-exp"></div>';
       return d;
@@ -602,7 +602,7 @@
       'body.m-mobile #m-status .ms-bar-fill{position:absolute;left:0;top:0;bottom:0;width:0%;transition:width .25s;}',
       'body.m-mobile #m-status .ms-hp .ms-bar-fill{background:#dc2626;}',
       'body.m-mobile #m-status .ms-mp .ms-bar-fill{background:#2563eb;}',
-      'body.m-mobile #m-status .ms-bar-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:#fff;font-weight:bold;text-shadow:0 1px 2px rgba(0,0,0,.75);}',
+      'body.m-mobile #m-status .ms-bar-txt{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;color:#fff;font-weight:bold;text-shadow:0 1px 2px rgba(0,0,0,.75);}',
       'body.m-mobile #m-status .ms-bar-txt b{font-weight:bold;}',
       'body.m-mobile #m-status .ms-hp .ms-bar-txt b{color:#fecaca;}',
       'body.m-mobile #m-status .ms-mp .ms-bar-txt b{color:#bfdbfe;}',
