@@ -1007,6 +1007,12 @@
         '傷害 ＝ 1 ～（玩家等級＋該犬傷害偏移）之間，再 ＋魅力 －怪的傷害減免，並帶該犬的屬性（吃屬性相剋）。',
         '命中與傷害都吃<b>完整魅力</b>（連超過 60 的都算）；只有「能帶幾隻」才以魅力 60 封頂。'
       ]},
+      { t: '④ 進化：把基礎犬變更強', lines: [
+        '玩家<b>等級 30 以上</b>、且持有對應基礎項圈時，用「進化果實」可把 <b>1 個基礎項圈 ＋ 1 顆果實</b>進化成更強的進化夥伴：',
+        '哈士奇 ＋ 進化果實：暴走兔 → <b>暴走兔</b>；杜賓狗 ＋ 狐狸 → <b>狐狸</b>；牧羊犬 ＋ 小獵犬 → <b>小獵犬</b>；狼 ＋ 聖伯納 → <b>聖伯納</b>。',
+        '<b>進化果實哪來</b>：打死「對應屬性」的怪有機率掉，機率 ＝ <b>0.0001% × 怪物等級</b>（怪越高機率越大）。水屬性怪掉「暴走兔」、火屬性掉「狐狸」、地屬性掉「小獵犬」、風屬性掉「聖伯納」。',
+        '<b>進化夥伴比基礎犬強</b>：傷害骰更大、命中更高，傷害還<b>額外加「魅力 × 1.2～1.3」</b>；而且<b>每次攻擊有 10% 機率追加一發法術</b>（暴走兔冰錐／狐狸火箭／小獵犬地獄之牙／聖伯納風刃，傷害用你自己的施法數值、必定命中、吃魔防）。'
+      ]},
       { t: '肉、哨子、犬在哪', lines: [
         '肉、哨子都是消耗道具，很便宜（肉 1 金幣）。',
         '犬類怪散布在各地圖，想知道哪裡有，用「掉落查詢」搜 杜賓狗／狼／哈士奇／牧羊犬 看出沒地圖。'
@@ -1017,19 +1023,29 @@
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
     var dogTable = '';
-    if (typeof PET_DEF !== 'undefined' && PET_DEF) {   // 讀遊戲的犬定義,作者新增犬種會自動出現
-      var rows = Object.keys(PET_DEF).map(function (nm) {
+    if (typeof PET_DEF !== 'undefined' && PET_DEF) {   // 讀遊戲的犬定義,作者新增犬種/進化夥伴會自動出現
+      var td = 'style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;"';
+      var rowOf = function (nm) {
         var p = PET_DEF[nm];
+        var proc = p.proc && typeof DB !== 'undefined' && DB.skills && DB.skills[p.proc] ? DB.skills[p.proc].n : '';
         return '<tr>' +
-          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;"><b>' + esc(nm) + '</b></td>' +
-          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;">' + esc(p.eleName) + '屬性</td>' +
-          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;">傷害偏移 +' + p.diceOff + '</td>' +
-          '<td style="padding:3px 6px;border-bottom:1px solid #1e293b;color:#e2e8f0;">命中偏移 +' + p.hitOff + '</td>' +
+          '<td ' + td + '><b>' + esc(nm) + '</b></td>' +
+          '<td ' + td + '>' + esc(p.eleName) + '屬性</td>' +
+          '<td ' + td + '>傷害偏移 +' + p.diceOff + '</td>' +
+          '<td ' + td + '>命中偏移 +' + p.hitOff + '</td>' +
+          (proc ? '<td ' + td + '>追加 ' + esc(proc) + '</td>' : '') +
           '</tr>';
-      }).join('');
-      dogTable = '<div class="m-wiki-card"><div class="m-wiki-name">四種犬的特性</div>' +
-        '<div class="m-wiki-desc" style="color:#94a3b8;margin:2px 0 6px;">傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。</div>' +
-        '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody>' + rows + '</tbody></table></div>';
+      };
+      var baseN = [], evoN = [];
+      Object.keys(PET_DEF).forEach(function (nm) { (PET_DEF[nm].proc ? evoN : baseN).push(nm); });
+      var tbl = function (title, hint, names) {
+        if (!names.length) return '';
+        return '<div class="m-wiki-card"><div class="m-wiki-name">' + title + '</div>' +
+          '<div class="m-wiki-desc" style="color:#94a3b8;margin:2px 0 6px;">' + hint + '</div>' +
+          '<table style="width:100%;border-collapse:collapse;font-size:12.5px;"><tbody>' + names.map(rowOf).join('') + '</tbody></table></div>';
+      };
+      dogTable = tbl('基礎犬的特性', '傷害偏移越高，傷害上限越高；命中偏移越高，越容易打中。屬性決定相剋。', baseN) +
+        tbl('進化夥伴的特性', '由基礎犬進化而來（見上面「④ 進化」）；傷害另加魅力×倍率，每次攻擊還有 10% 追加對應法術。', evoN);
     }
     return note + cards + dogTable;
   }
