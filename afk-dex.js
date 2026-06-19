@@ -439,7 +439,9 @@
   ];
   var SPECIAL_KEYS = SPECIAL_BLOCKS.reduce(function (a, b) { return a.concat(b.keys); }, []);
   function matchSpecialId(q) {
-    for (var i = 0; i < SPECIAL_BLOCKS.length; i++) { var b = SPECIAL_BLOCKS[i]; for (var j = 0; j < b.keys.length; j++) { if (q.indexOf(b.keys[j].toLowerCase()) >= 0) return b.id; } }
+    if (!q) return null;
+    // 雙向比對:關鍵字含查詢字(搜「席琳」中「席琳結晶」)或查詢字含關鍵字(搜「屬性萬能藥」中「萬能藥」)都算命中
+    for (var i = 0; i < SPECIAL_BLOCKS.length; i++) { var b = SPECIAL_BLOCKS[i]; for (var j = 0; j < b.keys.length; j++) { var k = b.keys[j].toLowerCase(); if (k.indexOf(q) >= 0 || q.indexOf(k) >= 0) return b.id; } }
     return null;
   }
   function matchesSpecial(q) { return matchSpecialId(q) !== null; }
