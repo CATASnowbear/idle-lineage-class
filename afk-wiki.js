@@ -1069,11 +1069,13 @@
     for (var npcId in CRAFT_RECIPES) {
       var recs = CRAFT_RECIPES[npcId]; if (!recs || !recs.length) continue;
       var info = npcInfo[npcId] || { name: npcId, town: '' };
-      html += '<div class="m-wiki-sub">🔨 ' + esc(info.name) + (info.town ? '（' + esc(info.town) + '）' : '') + '</div>';
+      var where = esc(info.name) + (info.town ? '（' + esc(info.town) + '）' : '');
+      html += '<div class="m-wiki-sub">🔨 ' + where + '</div>';
       html += recs.map(function (r) {
         var nm = itemName(r.result) + ((r.yield && r.yield > 1) ? '（一次 ×' + r.yield + '）' : '');
         var mats = (r.req || []).map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') || '—';
-        return '<div class="m-wiki-kv"><b>' + esc(nm) + '</b>' + esc(mats) + '</div>';
+        // 每筆都附「在哪做」:搜尋會只抓到這一列(抓不到上面的 NPC 標題),所以 NPC 要寫進每列才查得到在哪做
+        return '<div class="m-wiki-kv"><b>' + esc(nm) + '</b>在 ' + where + ' 製作　材料：' + esc(mats) + '</div>';
       }).join('');
     }
     return html;
