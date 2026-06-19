@@ -323,6 +323,7 @@
     ]},
     { t: '重擊 vs 爆擊（是不一樣的兩件事）', lines: [
       '<b>重擊</b>：機率約 <b>5%</b>（戰斧、戰錘、巨斧、狂戰士斧這類「粉碎／重擊」武器約 <b>10%</b>）。觸發時這一擊的武器傷害<b>直接打出最高值</b>（不再隨機），還能大幅削怪物硬皮。',
+      '<b>小提醒</b>：能觸發「麗人」套裝 5 件那個「重擊後下一次一般攻擊必中」的，<b>只算你一般攻擊自己骰出的重擊</b>；反擊／居合／連擊／連射／魔擊（力量魔法杖）這類特殊攻擊，就算打出必定重擊也不算數、不會讓下一擊必中（套裝效果見「套裝」）。',
       '<b>爆擊</b>：另一套獨立機率，看你的「近戰／遠程爆擊率」。觸發時這一擊<b>多打 50% 傷害</b>。爆擊率來源例：黑暗妖精天賦 +3%、黑暗妖精爆擊精通 +3%、麗人套裝 3 件（近戰）+2%、疾風套裝 3 件（遠程）+2%。',
       '兩者<b>可以同時發生</b>，畫面會顯示「<b>會心一擊</b>」＝既取最高傷害、又再乘上爆擊倍率，最痛。',
       '例外：勉強蹭中的「<b>擦傷</b>」不會爆擊，傷害只剩一半。'
@@ -716,15 +717,16 @@
   ];
   var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all' };
 
-  // 把內文裡「見「分頁名」」的分頁名做成可點的跳頁連結(只認 TABS 裡的分頁名,避免誤把一般引號詞變連結)。
-  // 在 esc 之後執行也安全:「」不是 HTML 特殊字元、不會被 esc 動到。
+  // 把內文裡任何「分頁名」(夾在「」裡、且整段剛好等於某個分頁名)做成可點的跳頁連結。
+  // 用「整段精確等於分頁名」當條件:像「席琳套裝」「席琳的世界」不會誤中分頁「席琳」,避免把一般引號詞變連結。
+  // 不限定前面要有「見」,所以 看「X」/請看「X」/「X」與「Y」 這些都會連到;在 esc 之後執行也安全(「」非 HTML 特殊字元)。
   var _tabByName = null;
-  function linkifyTabs(html) {
-    if (!html || html.indexOf('見「') < 0) return html;
+  function linkifyTabs(html, curTab) {
+    if (!html || html.indexOf('「') < 0) return html;
     if (!_tabByName) { _tabByName = {}; TABS.forEach(function (t) { _tabByName[t.n] = t.k; }); }
-    return html.replace(/(見「)([^」]+)(」)/g, function (m, pre, name, post) {
+    return html.replace(/「([^」]+)」/g, function (m, name) {
       var k = _tabByName[name];
-      return k ? pre + '<span class="m-wiki-jump" data-goto-tab="' + k + '">' + name + '</span>' + post : m;
+      return (k && k !== curTab) ? '「<span class="m-wiki-jump" data-goto-tab="' + k + '">' + name + '</span>」' : m;   // 跳過「連到自己這頁」的自連
     });
   }
 
@@ -892,7 +894,7 @@
     var showCls = (state.tab === 'mastery' || state.tab === 'quest');
     clsRow.style.display = showCls ? 'flex' : 'none';
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls));
+    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls), state.tab);
   }
 
   function renderMastery(cls) {
