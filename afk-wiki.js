@@ -1053,20 +1053,33 @@
   var LEGEND_RES_CN = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
   function legendReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return LEGEND_REQ_CN[x] || x; }).join('／'); }
   function legendEff(d) {
-    var base = d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
-    // 補上「常被風味描述漏掉」的具體機制(抗性/免疫/格擋);base 已提到就不重複
-    var sp = [];
-    Object.keys(LEGEND_RES_CN).forEach(function (k) { if (d[k] && base.indexOf('屬性抗性') < 0) sp.push(LEGEND_RES_CN[k] + '屬性抗性 +' + d[k]); });
-    if (d.immStone && base.indexOf('石化') < 0) sp.push('免疫石化');
-    if (d.immPoison && base.indexOf('中毒') < 0) sp.push('免疫中毒');
-    if (d.block && base.indexOf('格擋') < 0) sp.push('格擋 ' + d.block);
-    if (base) return sp.length ? base + '　【' + sp.join('、') + '】' : base;
-    // 無描述(純數值裝)→ 從欄位湊一句
-    Object.keys(LEGEND_RES_CN).forEach(function (k) { if (d[k] && sp.indexOf(LEGEND_RES_CN[k] + '屬性抗性 +' + d[k]) < 0) sp.push(LEGEND_RES_CN[k] + '屬性抗性 +' + d[k]); });
-    if (d.mmp) sp.push('MP 上限 +' + d.mmp);
-    if (d.mpR) sp.push('MP 自然恢復 +' + d.mpR);
-    if (d.ac) sp.push('防禦(AC) ' + ((-d.ac) > 0 ? '+' : '') + (-d.ac));   // 比照遊戲:正常防具 AC 負值(越低越強)
-    return sp.join('、') || '高數值傳說裝（數值見「掉落查詢」）';
+    // 獨特效果:取 d 風味/機制描述
+    var special = d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
+    // 完整數值:把這件裝備實際提供的能力全列出來(只列防禦會誤導,漏掉的屬性也要寫)
+    var sgn = function (v) { return (v > 0 ? '+' : '') + v; };
+    var st = [];
+    if (d.type === 'wpn') {
+      if (d.dmgS != null) st.push(d.dmgS === d.dmgL ? ('攻擊力 ' + d.dmgS) : ('攻擊力 對小型 ' + d.dmgS + '／對大型 ' + d.dmgL));
+      if (d.dmgBonus) st.push('額外傷害 ' + sgn(d.dmgBonus));
+      if (d.hit) st.push('命中 ' + sgn(d.hit));
+      if (d.mdmg) st.push('魔法傷害 ' + sgn(d.mdmg));
+    }
+    if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) st.push('防禦(AC) ' + sgn(-d.ac));
+    ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(function (k) { if (d[k]) st.push(STAT_LABEL[k] + ' ' + sgn(d[k])); });
+    if (d.mr) st.push('魔防 ' + sgn(d.mr));
+    if (d.mhp) st.push('HP上限 ' + sgn(d.mhp));
+    if (d.mmp) st.push('MP上限 ' + sgn(d.mmp));
+    if (d.hpR) st.push('HP自然恢復 ' + sgn(d.hpR));
+    if (d.mpR) st.push('MP自然恢復 ' + sgn(d.mpR));
+    Object.keys(LEGEND_RES_CN).forEach(function (k) { if (d[k]) st.push(LEGEND_RES_CN[k] + '屬性抗性 ' + sgn(d[k])); });
+    if (d.block) st.push('格擋 ' + d.block);
+    if (d.weightCap) st.push('負重上限 ' + sgn(d.weightCap));
+    if (d.mrPerEn) st.push('每強化 +1 魔防 +' + d.mrPerEn);
+    if (d.immStone) st.push('免疫石化');
+    if (d.immPoison) st.push('免疫中毒');
+    var statLine = st.join('、');
+    if (special && statLine) return special + '　｜　數值：' + statLine;
+    return special || statLine || '數值見「掉落查詢」';
   }
   function renderLegend() {
     var groups = { wpn: [], arm: [], acc: [] }, setCount = 0;
