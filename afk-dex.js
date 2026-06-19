@@ -170,10 +170,10 @@
     var spId = matchSpecialId(q), special = !!spId;
     if (spId) {   // 自動展開外層面板 + 展開/高亮/捲到對應那一條規則
       var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true;
-      Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) { it.classList.remove('m-dex-sp-hit'); });
+      Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) { it.classList.remove('m-dex-sp-hit'); clearMarksIn(it); });
       var hit = document.querySelector('.m-dex-sp-item[data-spid="' + spId + '"]');
-      if (hit) { hit.open = true; hit.classList.add('m-dex-sp-hit'); try { hit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
-    }
+      if (hit) { hit.open = true; hit.classList.add('m-dex-sp-hit'); markIn(hit, q); try { hit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+    } else { Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) { it.classList.remove('m-dex-sp-hit'); clearMarksIn(it); }); }
     var itemHTML = itemMatchesHTML(q);   // 先列出名稱符合的裝備(可點看數值;含沒被怪掉的)
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
@@ -204,6 +204,32 @@
       i = idx + eq.length;
     }
     return out + s.slice(i);
+  }
+  // DOM 版高亮(給已渲染好的靜態區塊用,如特殊掉落規則):只動文字節點、不破壞既有 <b> 標籤
+  function clearMarksIn(el) {
+    if (!el) return;
+    var ms = el.querySelectorAll('mark.m-dex-hl');
+    for (var i = 0; i < ms.length; i++) { var m = ms[i]; m.parentNode.replaceChild(document.createTextNode(m.textContent), m); }
+    el.normalize();
+  }
+  function markIn(el, q) {
+    clearMarksIn(el);
+    if (!el || !q) return;
+    var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), nodes = [], n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(function (node) {
+      var txt = node.nodeValue, low = txt.toLowerCase(), idx = low.indexOf(q);
+      if (idx < 0) return;
+      var frag = document.createDocumentFragment(), pos = 0;
+      while (idx >= 0) {
+        if (idx > pos) frag.appendChild(document.createTextNode(txt.slice(pos, idx)));
+        var mk = document.createElement('mark'); mk.className = 'm-dex-hl'; mk.textContent = txt.slice(idx, idx + q.length);
+        frag.appendChild(mk);
+        pos = idx + q.length; idx = low.indexOf(q, pos);
+      }
+      if (pos < txt.length) frag.appendChild(document.createTextNode(txt.slice(pos)));
+      node.parentNode.replaceChild(frag, node);
+    });
   }
   function fmt(n) { try { return (n == null ? '-' : Number(n).toLocaleString()); } catch (e) { return '' + n; } }
   function fmtPct(p) { return p < 0.01 ? (p < 0.001 ? p.toFixed(4) : p.toFixed(3)) : (p < 1 ? p.toFixed(2) : (Number.isInteger(p) ? '' + p : p.toFixed(1))); }
