@@ -198,7 +198,7 @@
         elMp = strip.querySelector('#ms-mp'), elGold = strip.querySelector('#ms-gold'),
         elAc = strip.querySelector('#ms-ac'), elMr = strip.querySelector('#ms-mr'),
         elHpBar = strip.querySelector('#ms-hp-bar'), elMpBar = strip.querySelector('#ms-mp-bar'),
-        elExp = strip.querySelector('#ms-exp');
+        elExp = strip.querySelector('#ms-exp'), elVictory = strip.querySelector('#ms-victory');
     function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
     function barW(id) { var e = document.getElementById(id); return e && e.style.width ? e.style.width : '0%'; }
     function mirror() {
@@ -213,6 +213,8 @@
       if (elHpBar) elHpBar.style.width = barW('bar-hp');   // 跟原版血條同步寬度(讀遊戲自己算好的 %)
       if (elMpBar) elMpBar.style.width = barW('bar-mp');
       if (elGold) elGold.textContent = txt('st-gold') || '--';
+      // 攻城獲勝才在金幣右邊亮出皇冠(讀全域 siegeVictoryActive,缺了就安靜不顯示)
+      if (elVictory) elVictory.style.display = (typeof siegeVictoryActive === 'function' && siegeVictoryActive()) ? '' : 'none';
       var be = document.getElementById('bar-exp');
       if (elExp && be) elExp.style.width = be.style.width || '0%';
       // 手動喝水列:在村莊隱藏(本來就自動回滿)、更新圖示/數量/安特的水果列
@@ -286,6 +288,7 @@
           '<span class="ms-seg ms-ac">防 <b id="ms-ac">--</b></span>' +
           '<span class="ms-seg ms-mr">魔防 <b id="ms-mr">--</b></span>' +
           '<span class="ms-seg ms-gold">💰 <span id="ms-gold">--</span></span>' +
+          '<span class="ms-seg ms-victory" id="ms-victory" title="攻城獲勝期間:全商店8折、開放城堡" style="display:none">👑</span>' +   // 攻城獲勝才顯示(mirror 切換)
           '<span class="ms-seg ms-info">ⓘ</span>' +    // 提示:整條可點 → 開角色資訊彈窗
         '</div>' +
         // 第二列:HP / MP 雙血條(仿原版:底條 + 填色 + 數字疊在上面)
@@ -592,6 +595,7 @@
       'body.m-mobile #m-status .ms-ac,body.m-mobile #m-status .ms-mr{color:#94a3b8;}',   /* 防禦(AC)/魔防(MR):標籤灰、數值亮藍 */
       'body.m-mobile #m-status #ms-ac,body.m-mobile #m-status #ms-mr{color:#bfdbfe;font-size:14px;}',
       'body.m-mobile #m-status .ms-gold{color:#fbbf24;font-weight:bold;}',
+      'body.m-mobile #m-status .ms-victory{color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:14px;}',   /* 攻城獲勝皇冠:淡金黃+光暈,好辨識 */
       /* 第二列:HP / MP 雙血條(底條 + 填色 + 數字疊上,仿原版) */
       'body.m-mobile #m-status .ms-row2{gap:8px;}',
       'body.m-mobile #m-status .ms-bar{position:relative;flex:1 1 0;min-width:0;height:20px;border-radius:5px;overflow:hidden;background:#1e293b;border:1px solid #334155;}',
