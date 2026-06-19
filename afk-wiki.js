@@ -190,7 +190,7 @@
     sk_elf_watervital: '期間你下次受到「治癒術」（自身的瞬間治癒，不含持續回復 HoT）時，恢復量加倍；觸發後 7 秒冷卻才能再次加倍。效果結束才能再施放',
     sk_elf_energyboost: '負重超標（進入懲罰階）時，HP／MP 仍能自然恢復（平常背太重會停掉自然恢復）；效果結束才能再施放',
     sk_elf_physboost: '負重超標（進入懲罰階）時，HP／MP 仍能自然恢復（平常背太重會停掉自然恢復）；效果結束才能再施放',
-    sk_elf_attrfire: '一般攻擊有 30% 機率造成 1.5 倍傷害（與「燃燒鬥志」同效）；近戰與遠程（弓）的一般攻擊都適用（作者刻意設計）。效果結束才能再施放'
+    sk_elf_attrfire: '一般攻擊有 30% 機率造成 1.5 倍傷害（與「燃燒鬥志」同效）；近戰與遠程（弓）的一般攻擊都吃得到，但弓的「連射」追加箭不適用。效果結束才能再施放'
   };
   function statDeltaTxt(d) {
     var out = [];
@@ -1113,7 +1113,7 @@
       }
     }
     var itemName = function (id) { return (DB.items[id] && DB.items[id].n) || id; };
-    var note = '<div class="m-wiki-note">各製作 NPC 能做的裝備／道具與所需材料（讀遊戲資料，作者新增配方會自動出現）。想知道某件東西在哪做，直接用上面搜尋打它的名字。</div>';
+    var note = '<div class="m-wiki-note">各製作 NPC 能做的裝備／道具與所需材料。想知道某件東西在哪做，直接用上面搜尋打它的名字。</div>';
     var html = note;
     for (var npcId in CRAFT_RECIPES) {
       var recs = CRAFT_RECIPES[npcId]; if (!recs || !recs.length) continue;
