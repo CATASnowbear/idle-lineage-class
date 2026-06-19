@@ -1991,7 +1991,7 @@ const DB = {
         "sk_thunder": { n: "極道落雷", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 25, dmgType: "magic", ele: "wind", dmgDice: [6, 8] },
         "sk_heal2": { n: "高級治癒術", type: "heal", tier: 5, reqM: 20, reqE: 40, mp: 20, valDice: [2, 30], healDice: [1, 100], healBase: 100, msg: "你感覺舒服了一點。" },
         "sk_holy_light": { n: "聖潔之光", type: "heal", tier: 5, reqM: 20, reqE: 40, mp: 10, msg: "神聖光芒驅散了詛咒。" },
-        "sk_ice_spike": { n: "冰錐", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 21, dmgType: "magic", ele: "earth", dmgDice: [6, 6] },
+        "sk_ice_spike": { n: "冰錐", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 21, dmgType: "magic", ele: "water", dmgDice: [6, 6] },
         "sk_mana_drain": { n: "魔力奪取", type: "convert", tier: 5, reqM: 20, reqE: 40, hpCost: 50, drain: true },   // 🔧 改為轉換技能（法師/妖精）：消耗HP、需對怪物施展且以異常魔法命中判定，命中吸取 MP=1D(怪物等級/2)；其餘機制比照魂體轉換
         "sk_dark_shadow": { n: "黑闇之影", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 25, dmgType: "magic", status: { kind: "blind", pbase: 150, hit: 5, dur: 20 } },
 
@@ -2068,7 +2068,7 @@ const DB = {
 
         // 四階 (Lv 40)
         "sk_elf_magicerase": { n: "魔法消除", type: "atk", tier: 4, reqE: 40, mp: 30, dmgType: "magic", status: { kind: "mrhalf", pbase: 150, dur: 16 } },
-        "sk_elf_summon": { n: "召喚屬性精靈", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 3600, reqEleAny: true, summon: { n: "夥伴：{ele}精靈", dmgDice: [1, 40], elemScale: 20, interval: 20, kind: "ranged", eleFromPlayer: true, hitLvOff: 0 } },
+        "sk_elf_summon": { n: "召喚屬性精靈", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 3600, reqEleAny: true, summon: { n: "夥伴：{ele}精靈", dmgDice: [1, 40], elemScale: 20, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 10 } },
         "sk_elf_dancefire": { n: "舞躍之火", type: "buff", tier: 4, reqE: 40, mp: 30, dur: 1200, reqEle: "fire", d: { meleeDmg: 5 } },
         "sk_elf_stormeye": { n: "暴風之眼", type: "buff", tier: 4, reqE: 40, mp: 40, dur: 1200, reqEle: "wind", d: { rangedDmg: 2, rangedHit: 2 } },
         "sk_elf_earthshield": { n: "大地屏障", type: "buff", tier: 4, reqE: 40, mp: 50, dur: 8, reqEle: "earth" },
@@ -2076,7 +2076,7 @@ const DB = {
         "sk_elf_earthbless": { n: "大地的祝福", type: "buff", tier: 4, reqE: 40, mp: 35, dur: 1200, reqEle: "earth", d: { ac: 5 } },
 
         // 五階 (Lv 50)
-        "sk_elf_summon2": { n: "召喚強力屬性精靈", type: "buff", tier: 5, reqE: 50, mp: 50, dur: 3600, reqEleAny: true, summon: { n: "夥伴：上級{ele}精靈", dmgDice: [2, 40], elemScale: 10, interval: 20, kind: "ranged", eleFromPlayer: true, hitLvOff: 5 } },
+        "sk_elf_summon2": { n: "召喚強力屬性精靈", type: "buff", tier: 5, reqE: 50, mp: 50, dur: 3600, reqEleAny: true, summon: { n: "夥伴：上級{ele}精靈", dmgDice: [2, 40], elemScale: 10, interval: 10, kind: "ranged", eleFromPlayer: true, hitLvOff: 20 } },
         "sk_elf_lifebless": { n: "生命的祝福", type: "heal", tier: 5, reqE: 50, mp: 30, reqEle: "water", hot: { interval: 30, ticks: 6 }, valDice: [1, 20], healDice: [1, 28], healBase: 28, autoBuff: true },
         "sk_elf_seal": { n: "封印禁地", type: "atk", tier: 5, reqE: 50, mp: 40, dmgType: "magic", reqEleAny: true, status: { kind: "magicseal", pbase: 100, dur: 8 } },
         "sk_elf_blazewpn": { n: "烈炎武器", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "fire", d: { meleeDmg: 5, meleeHit: 5 } },
@@ -2874,22 +2874,22 @@ function fragileMult(t) { let m = 1; if (t && t.st) { if (t.st.fragile > 0) m *=
 // ============================================================================
 const MASTERY_DATA = {
     knight: { logo: 'assets/logo/騎士logo.png', boss: '飛龍', list: {
-        k_counter: { n: '反擊精通', pos: 'top',    msg: '反擊與居合100%發動、傷害提升、並削減硬皮',       d: '使用有反擊與居合武器時，反擊與居合觸發機率變成100%、傷害提升，且反擊與居合命中時各再削減 1 點硬皮值（與居合重擊的削減疊加）' },
-        k_cleave:  { n: '切割精通', pos: 'left',   msg: '切割持續時間更長且速度更快',           d: '使用有切割的武器時，切割持續時間變成4秒，增加攻擊速度變成33%' },
-        k_pierce:  { n: '穿透精通', pos: 'right',  msg: '穿透變成全體攻擊',                     d: '使用有穿透的武器時，穿透效果變成全體攻擊' },
+        k_counter: { n: '反擊精通', pos: 'top',    msg: '反擊與居合100%發動且必定爆擊、削減硬皮',       d: '使用有反擊與居合武器時，反擊與居合觸發機率變成100%、傷害提升、必定爆擊，且反擊與居合命中時各再削減 1 點硬皮值（與居合重擊的削減疊加）' },
+        k_cleave:  { n: '切割精通', pos: 'left',   msg: '持切割武器時切割常駐、攻速大增',           d: '使用有切割的武器時，切割效果常駐，增加攻擊速度變成50%，且觸發重擊時傷害×1.5' },
+        k_pierce:  { n: '穿透精通', pos: 'right',  msg: '穿透變全體攻擊、無視硬皮',                     d: '使用有穿透的武器時，穿透效果變成全體攻擊，且穿透傷害無視硬皮減傷' },
         k_survive: { n: '生存精通', pos: 'bottom', msg: '藥水治癒量增加，魔抗增加',             d: '治癒藥水恢復量增加25%，MR+15' }
     } },
     mage: { logo: 'assets/logo/法師logo.png', boss: '黑長者', list: {
-        m_resonance: { n: '共鳴精通', pos: 'top',    msg: '共鳴傷害提升並恢復更多MP',           d: '共鳴的光箭傷害提升，恢復MP變更為光箭傷害/5' },
-        m_strike:    { n: '魔擊精通', pos: 'left',   msg: '魔擊有機率額外觸發全體魔擊',         d: '觸發魔擊時，有機率額外觸發擴散魔擊，對所有敵人各自造成等同1次魔擊的傷害' },
-        m_echo:      { n: '迴響精通', pos: 'right',  msg: '傷害法術有機率變成連發',             d: '施放傷害攻擊法術時，有機率不消耗MP立刻觸發相同法術' },
+        m_resonance: { n: '共鳴精通', pos: 'top',    msg: '共鳴傷害×2且無視魔抗',           d: '共鳴的光箭傷害×2且無視魔抗，恢復MP變更為光箭傷害/5' },
+        m_strike:    { n: '魔擊精通', pos: 'left',   msg: '魔擊必定額外觸發全體魔擊',         d: '觸發魔擊時，必定額外觸發擴散魔擊，對所有敵人各自造成等同1次魔擊的傷害' },
+        m_echo:      { n: '迴響精通', pos: 'right',  msg: '傷害法術有機率變成連發、單體加倍',             d: '施放傷害攻擊法術時，有機率不消耗MP立刻觸發相同法術；全體傷害魔法沿用原機率，單體傷害魔法觸發機率加倍' },
         m_summon:    { n: '召喚精通', pos: 'bottom', msg: '對比自己低等怪迷魅必定成功，魅力額外增加召喚物傷害與命中', d: '迷魅術對等級比自己低的非BOSS怪物必定成功，造屍術與召喚術的傷害與命中魅力影響提升' }
     } },
     elf: { logo: 'assets/logo/妖精logo.png', boss: '變形怪首領', list: {
-        e_rapid:  { n: '連射精通', pos: 'top',    msg: '提升連射傷害與數量',                   d: '連射傷害由30%提升為50%，額外箭數由1~3變成1~4' },
-        e_spirit: { n: '精靈精通', pos: 'left',   msg: '可同時召喚多隻屬性精靈',               d: '召喚屬性精靈與召喚強力屬性精靈數量變成1+魅力/20，可同時擁有4隻屬性精靈或強力屬性精靈' },
-        e_sword:  { n: '劍術精通', pos: 'right',  msg: '可使用騎士單手武器並發動看破',         d: '可裝備騎士限定的單手武器，且近距離攻擊有機率發動看破' },
-        e_magic:  { n: '魔導精通', pos: 'bottom', msg: '同屬性傷害魔法增幅並可學高階法術',     d: '施放與自身同屬性的傷害魔法威力提升，可學習冰雪暴、龍捲風、震裂術、火風暴' }
+        e_rapid:  { n: '連射精通', pos: 'top',    msg: '提升連射傷害與數量',                   d: '連射傷害由30%提升為50%，額外箭數由1~3變成隨機1~5' },
+        e_spirit: { n: '精靈精通', pos: 'left',   msg: '可同時召喚多隻屬性精靈',               d: '召喚屬性精靈與召喚強力屬性精靈數量變成1+魅力/10，可同時擁有7隻屬性精靈或強力屬性精靈' },
+        e_sword:  { n: '劍術精通', pos: 'right',  msg: '可使用騎士單手武器、攻速+50%、發動看破',         d: '可裝備騎士限定的單手武器；持單手近戰武器時攻擊速度+50%（與加速術/勇敢/精靈餅乾/變身相乘疊加）；近距離攻擊有機率發動看破' },
+        e_magic:  { n: '魔導精通', pos: 'bottom', msg: '同屬性傷害魔法增幅、省MP並可學高階法術',     d: '施放與自身同屬性的傷害魔法威力提升、消耗MP減少30%，可學習冰雪暴、龍捲風、震裂術、火風暴' }
     } },
     dark: { logo: 'assets/logo/黑暗妖精logo.png', boss: '巴風特', list: {
         d_poison: { n: '劇毒精通', pos: 'top',    msg: '附加劇毒必定觸發、每秒200%傷害',     d: '附加劇毒觸發機率變成100%，且中毒每秒造成該次攻擊200%傷害（持續5秒、1層）' },
@@ -3674,7 +3674,8 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.brave > 0) spdMult *= 0.67;   // 勇敢藥水 +33%
     if(p.buffs.elfcookie > 0) spdMult *= 0.85; // 精靈餅乾 +15%
     if(p.buffs.sk_dark_walkhaste > 0) spdMult *= 0.85; // 🔧 行走加速：攻速+15%（與加速術等相乘疊加）
-    if(p.statuses && p.statuses.cleave > 0) spdMult *= (p.mastery === 'k_cleave' ? 0.67 : 0.80);   // 切割：攻速+20%（🏅 切割精通：+33%），與其他加速相乘疊加
+    { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = (p.statuses && p.statuses.cleave > 0) || (p.mastery === 'k_cleave' && _clvW && _clvW.eff === 'cleave'); if(_clvOn) spdMult *= (p.mastery === 'k_cleave' ? 0.50 : 0.80); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加
+    { let _swMelee = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.mastery === 'e_sword' && _swMelee && !_swMelee.w2h && !_swMelee.isBow && !_swMelee.ranged) spdMult *= (1/1.5); }   // 🏅 劍術精通：持單手近戰武器攻速+50%（與加速/勇敢/餅乾/變身相乘疊加）
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
     if(p.buffs.cautious > 0) { d.magicDmg += 2; d.mpR += 2; }      // 慎重藥水
     if(p.buffs.sk_reduction_armor > 0) d.dr += Math.floor(p.lv/10);   // 增幅防禦：等同傷害減免 floor(等級/10)，併入 DR 顯示與計算
@@ -4735,6 +4736,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     _outDmg = Math.max(1, Math.floor(_outDmg * fragileMult(target)));   // 🔮 脆弱（白鳥5）：受所有來源傷害 +20%
     _outDmg = Math.max(1, Math.floor(_outDmg * wpnEnFinalMult(player.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（×1.1~×2.0，取該階段值）
     if (player._setRedLion5) _outDmg = Math.max(1, Math.floor(_outDmg * 1.2));   // 🔮 紅獅 5/5：最終傷害 +20%（普攻及所有走本函式的物理攻擊：反擊/居合/看破/連擊/連射/穿透/魔擊/物理技能）
+    if (heavy && player.mastery === 'k_cleave' && _cw && _cw.eff === 'cleave') _outDmg = Math.max(1, Math.floor(_outDmg * 1.5));   // 🏅 切割精通：觸發重擊時傷害 ×1.5
     return { dmg: _outDmg, hit: true, heavy: heavy, crit: isCrit, graze: graze, crush: crush, ranged: isRanged };
 }
 
@@ -4797,7 +4799,7 @@ function procLightArrow(t) {
     let sk = DB.skills['sk_lightarrow'];
     if (!sk || !t || t.curHp <= 0) return;
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
-    let mrFactor = mrMult(effMr);
+    let mrFactor = hasMastery('m_resonance') ? 1 : mrMult(effMr);   // 🏅 共鳴精通：光箭無視魔抗
     let isCrit = Math.random() * 100 < player.d.magicCrit;
     let skillTier = sk.tier || 1;
     let spCoef = (1 + (3 * player.d.magicDmg / 16)) * (1 + (skillTier / 3));
@@ -4810,7 +4812,7 @@ function procLightArrow(t) {
     d = Math.max(1, d);   // 光箭無屬性，無剋制固定加值
     d = Math.floor(d * mageDmgMult);
     d = Math.max(1, Math.floor(d * fragileMult(t)));   // 🔮 脆弱（白鳥5）
-    if (hasMastery('m_resonance')) d += 5;             // 🏅 共鳴精通：光箭 +5 固定傷害
+    if (hasMastery('m_resonance')) d = Math.max(1, Math.floor(d * 2));   // 🏅 共鳴精通：光箭傷害 ×2
     if (player._setRedLion5) d = Math.max(1, Math.floor(d * 1.2));   // 🔮 紅獅 5/5：最終傷害 +20%
     t.curHp -= d;
     t.justHit = 'magic';
@@ -4865,7 +4867,7 @@ function moonburstProc(target) {
     procMoonburst(t);
 }
 // ===== 魔擊（力量魔法杖）：對指定目標打一次「必定命中且必定重擊」的物理攻擊，沿用一般攻擊完整傷害計算 =====
-// 🏅 魔擊精通：觸發魔擊時 30% 機率額外觸發「擴散魔擊」——對所有敵人各自造成等同 1 次魔擊的傷害（擴散不再連鎖）
+// 🏅 魔擊精通：觸發魔擊時「必定」額外觸發「擴散魔擊」——對所有敵人各自造成等同 1 次魔擊的傷害（擴散不再連鎖）
 function procMagicStrike(t, isSpread) {
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
@@ -4883,7 +4885,7 @@ function procMagicStrike(t, isSpread) {
     } else {
         renderMobs();
     }
-    if (!isSpread && hasMastery('m_strike') && Math.random() < 0.30) {
+    if (!isSpread && hasMastery('m_strike')) {   // 🏅 魔擊精通：必定額外觸發擴散魔擊
         let _all = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
         if (_all.length) {
             logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【魔擊精通】</span>魔力向四方擴散！`, 'player-special');
@@ -4909,7 +4911,7 @@ function rapidfireProc(arrowData) {
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     if (!wpn || !wpn.rapidfire) return;
     if (roll(1, 100) > wpn.rapidfire) return;
-    let _rfN = roll(1, hasMastery('e_rapid') ? 4 : 3);   // 🏅 連射精通：額外箭數 1~3 → 1~4
+    let _rfN = roll(1, hasMastery('e_rapid') ? 5 : 3);   // 🏅 連射精通：額外箭數 1~3 → 隨機 1~5
     for (let _r = 0; _r < _rfN; _r++) {
         let _alive = [];
         mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0) _alive.push(i); });
@@ -4942,7 +4944,7 @@ function procCounter(t) {
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
-    let res = getPhysicalDmg(dice, t, wpn, null, false, true);   // forceHeavy=false, forceHit=true
+    let res = getPhysicalDmg(dice, t, wpn, null, false, true, false, hasMastery('k_counter'));   // forceHeavy=false, forceHit=true；🏅 反擊精通：必定爆擊
     let dmg = Math.max(1, Math.floor(res.dmg * (hasMastery('k_counter') ? 0.65 : 0.50)));   // 傷害 50%（🏅 反擊精通：+30% → 65%）
     if (player.buffs.sk_counter_barrier > 0 && player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('單手劍')) dmg = Math.max(1, Math.floor(dmg * 2));   // 🔧 反擊屏障：原生反擊(單手劍)武器最終傷害×2
     t.curHp -= dmg;
@@ -4961,7 +4963,7 @@ function procIai(t) {
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
-    let res = getPhysicalDmg(dice, t, wpn, null, false, false, true);   // forceLand=true：必定命中、可重擊/爆擊
+    let res = getPhysicalDmg(dice, t, wpn, null, false, false, true, hasMastery('k_counter'));   // forceLand=true：必定命中、可重擊；🏅 反擊精通：必定爆擊
     if (hasMastery('k_counter')) res.dmg = Math.max(1, Math.floor(res.dmg * 1.3));   // 🏅 反擊精通：居合傷害 +30%
     if (player.buffs.sk_counter_barrier > 0 && player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('武士刀')) res.dmg = Math.max(1, Math.floor(res.dmg * 2));   // 🔧 反擊屏障：原生居合(武士刀)武器最終傷害×2
     t.curHp -= res.dmg;
@@ -5187,9 +5189,9 @@ function playerAttack() {
             if (otherIdx.length > 0 && roll(1, 100) <= _pc) {
                 // 🏅 穿透精通：穿透變成全體攻擊（命中主目標以外的「所有」敵人）；否則隨機一名
                 let _pTargets = hasMastery('k_pierce') ? otherIdx : [otherIdx[Math.floor(Math.random() * otherIdx.length)]];
-                // 🏅 穿透精通：發動穿透時 10% 機率該次傷害無視硬皮值（把主目標被硬皮扣減的量加回）
+                // 🏅 穿透精通：發動穿透時該次傷害 100% 無視硬皮值（把主目標被硬皮扣減的量加回）
                 let _pierceDmg = result.dmg;
-                if (hasMastery('k_pierce') && _mainHardSkin > 0 && Math.random() < 0.10) _pierceDmg += _mainHardSkin;
+                if (hasMastery('k_pierce') && _mainHardSkin > 0) _pierceDmg += _mainHardSkin;
                 _pTargets.forEach(exIdx => {
                     let exT = mapState.mobs[exIdx];
                     if (!exT || exT.curHp <= 0 || exT._dead) return;
@@ -6956,6 +6958,7 @@ function allyAttackOnce(ally) {
             else if (insight) { dmg *= 2; kp = '<span class="text-cyan-300 font-bold">【看破】</span>'; }
             else if (slay) { dmg *= 3; kp = '<span class="text-orange-400 font-bold">【殺戮】</span>'; }
         }
+        if (heavy && allyHasMastery(ally, 'k_cleave') && wpn && wpn.eff === 'cleave') dmg = Math.max(1, Math.floor(dmg * 1.5));   // 🏅 切割精通（傭兵）：觸發重擊時傷害 ×1.5
         dmg = Math.max(1, Math.floor(dmg * fragileMult(t)));   // 🔮 脆弱（白鳥5）
         t.curHp -= dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
         // 🔧 黑暗妖精傭兵：預設攻擊自動維持附加劇毒（學過 sk_dark_poison 即視為常駐增益）；命中 50%／劇毒精通 100% 使目標中毒（與玩家同規則）
@@ -7055,7 +7058,9 @@ function allyCastMagic(ally, sk) {
     }
     renderMobs();
     // 🔧 傭兵迴響精通：(11-階級)×10% 機率不消耗MP立刻再施放一次（迴響觸發的不再連鎖）
-    if (allyHasMastery(ally, 'm_echo') && !ally._echoing && Math.random() < (11 - (sk.tier || 1)) / 10) {
+    let _aEchoRate = (11 - (sk.tier || 1)) / 10;
+    if (sk.target !== 'all') _aEchoRate *= 2;   // 🏅 迴響精通（傭兵）：單體傷害魔法觸發機率加倍（全體沿用原機率）
+    if (allyHasMastery(ally, 'm_echo') && !ally._echoing && Math.random() < _aEchoRate) {
         ally._echoing = true;
         logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #3b82f6;">【協力·${ally._allyName}·迴響】</span>${sk.n} 的魔力迴盪不息，再次轟出！`, 'magic');
         try { allyCastMagic(ally, sk); } finally { ally._echoing = false; }
@@ -7079,8 +7084,8 @@ function allyRapidfire(ally) {
     let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
     let rate = (wpn && wpn.isBow && wpn.rapidfire) ? wpn.rapidfire : (ally._rapidfire || 0);   // 直接讀當前弓的連射機率（相容舊協力快照，確保普攻與三重矢都能連射）
     if (!rate || roll(1, 100) > rate) return;
-    let _allyRapid = allyHasMastery(ally, 'e_rapid');   // 🔧 傭兵連射精通：箭數 1~4、傷害 50%（疊疾風5/5 → 100%）
-    let n = roll(1, _allyRapid ? 4 : 3);
+    let _allyRapid = allyHasMastery(ally, 'e_rapid');   // 🔧 傭兵連射精通：箭數隨機 1~5、傷害 50%（疊疾風5/5 → 100%）
+    let n = roll(1, _allyRapid ? 5 : 3);
     let _rfMult = ally._setGale5 ? (_allyRapid ? 1.00 : 0.80) : (_allyRapid ? 0.50 : 0.30);
     for (let i = 0; i < n; i++) {
         let alive = []; mapState.mobs.forEach((m, idx) => { if (m && m.curHp > 0) alive.push(idx); });
@@ -7144,7 +7149,7 @@ function allyStrikeRoll(ally, t, opts) {
         heavy = !opts.noHeavy && (r === 20);
     }
     if (!hit) return { hit: false, dmg: 0, heavy: false, crit: false };
-    let isCrit = Math.random()*100 < critR;
+    let isCrit = opts.forceCrit || (Math.random()*100 < critR);   // 🏅 反擊精通（傭兵）：反擊/居合必定爆擊
     let critMult = isCrit ? (1 + critD/100) : 1;
     let wpnRoll = heavy ? dice : roll(1, dice);
     let dmg = Math.max(1, Math.floor((wpnRoll + dmgB) * critMult) + (d.extraDmg||0) - (t.dr||0) - mobHardSkin(t));   // 🔧 硬皮：額外物理減傷
@@ -7160,7 +7165,7 @@ function allyProcLightArrow(ally, t) {
     if (!sk || !t || t.curHp <= 0) return;
     let d = ally.d || {};
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
-    let mrFactor = mrMult(effMr);
+    let mrFactor = allyHasMastery(ally, 'm_resonance') ? 1 : mrMult(effMr);   // 🏅 共鳴精通（傭兵）：光箭無視魔抗
     let isCrit = Math.random()*100 < (d.magicCrit||0);
     let tier = sk.tier || 1;
     let spCoef = (1 + 3*(d.magicDmg||0)/16) * (1 + tier/3);
@@ -7169,8 +7174,8 @@ function allyProcLightArrow(ally, t) {
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
     let dmg = Math.max(1, Math.floor((core + (sk.dmgBase||0) + (d.extraMp||0)) * mrFactor) - (t.dr||0));
     dmg = Math.floor(dmg * mageMult);
-    let _allyReso = allyHasMastery(ally, 'm_resonance');   // 🔧 傭兵共鳴精通：光箭+5、回魔/5
-    if (_allyReso) dmg += 5;
+    let _allyReso = allyHasMastery(ally, 'm_resonance');   // 🔧 傭兵共鳴精通：光箭×2、回魔/5
+    if (_allyReso) dmg = Math.max(1, Math.floor(dmg * 2));
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     ally.mp = Math.min(ally.mmp||0, (ally.mp||0) + Math.max(1, Math.floor(dmg/(_allyReso ? 5 : 10))));   // 共鳴回魔 → 傭兵自身
     logCombat(`<span class="text-cyan-300 font-bold">【協力·${ally._allyName}·共鳴】</span>光箭對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。${isCrit?' (爆擊!)':''}`, 'magic');
@@ -7322,8 +7327,8 @@ function allyWeaponProcs(ally, target, hitInfo) {
             logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【協力·${ally._allyName}·魔擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${res.crit?'會心一擊':'重擊'}!）。`, res.crit ? 'player-crit' : 'player-special');
             wearHardSkin(t, null, true, false);   // 🔧 硬皮消磨：傭兵魔擊重擊 -2
             _allyDamageMob(ally, t, res.dmg, getWpnEle(wpnInst, wpn));
-            // 🔧 傭兵魔擊精通：30% 額外擴散魔擊（對全體各打一次，不再連鎖）
-            if (allyHasMastery(ally, 'm_strike') && Math.random() < 0.30) {
+            // 🔧 傭兵魔擊精通：必定額外擴散魔擊（對全體各打一次，不再連鎖）
+            if (allyHasMastery(ally, 'm_strike')) {
                 let _all = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
                 if (_all.length) {
                     logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【協力·${ally._allyName}·魔擊精通】</span>魔力向四方擴散！`, 'player-special');
@@ -7371,11 +7376,11 @@ function allyOnHitEffects(ally, t, res) {
         let others = [];
         mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0 && !m._dead && m.uid !== t.uid) others.push(i); });
         if (others.length > 0 && roll(1, 100) <= pc) {
-            // 🔧 傭兵穿透精通：穿透變全體攻擊；發動時 10% 該傷害無視硬皮值（加回主目標硬皮量）
+            // 🔧 傭兵穿透精通：穿透變全體攻擊；該傷害 100% 無視硬皮值（加回主目標硬皮量）
             let _allyPierce = allyHasMastery(ally, 'k_pierce');
             let _pT = _allyPierce ? others : [others[Math.floor(Math.random() * others.length)]];
             let _pd = res.dmg;
-            if (_allyPierce && (res.hardSkin || 0) > 0 && Math.random() < 0.10) _pd += res.hardSkin;
+            if (_allyPierce && (res.hardSkin || 0) > 0) _pd += res.hardSkin;
             _pT.forEach(_ix => {
                 let exT = mapState.mobs[_ix];
                 if (!exT || exT.curHp <= 0 || exT._dead) return;
@@ -7438,7 +7443,7 @@ function allyReactCounter(mob, blocked) {
         if (!getWeaponTags(ally.eq.wpn.id).includes('單手劍')) return;
         let _ctr = allyHasMastery(ally, 'k_counter');   // 🔧 傭兵反擊精通：必定發動、傷害+30%
         if (!_ctr && Math.random() >= (blocked ? 1 : 0.50)) return;
-        let res = allyStrikeRoll(ally, mob, { forceHit: true, noHeavy: true, mult: _ctr ? 0.65 : 0.50 });
+        let res = allyStrikeRoll(ally, mob, { forceHit: true, noHeavy: true, mult: _ctr ? 0.65 : 0.50, forceCrit: _ctr });
         logCombat(`<span class="font-bold" style="color:#fbbf24;text-shadow:0 0 6px #f59e0b;">【協力·${ally._allyName}·反擊】</span>對 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 造成 ${res.dmg} 點傷害${res.crit?'（爆擊!）':''}。`, 'player');
         if (_ctr) wearHardSkin(mob, null, false, false, true);   // 🏅 傭兵反擊精通：反擊命中削減 1 硬皮值
         _allyDamageMob(ally, mob, res.dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
@@ -7454,7 +7459,7 @@ function allyReactIai(mob) {
         if (!getWeaponTags(ally.eq.wpn.id).includes('武士刀')) return;
         let _iai = allyHasMastery(ally, 'k_counter');   // 🔧 傭兵反擊精通：居合必定發動、傷害+30%
         if (!_iai && Math.random() >= 0.50) return;
-        let res = allyStrikeRoll(ally, mob, { forceHit: true });
+        let res = allyStrikeRoll(ally, mob, { forceHit: true, forceCrit: _iai });
         if (_iai) res.dmg = Math.max(1, Math.floor(res.dmg * 1.3));
         let mark = (res.heavy && res.crit) ? '會心一擊' : (res.crit ? '爆擊' : (res.heavy ? '重擊' : ''));
         logCombat(`<span class="font-bold" style="color:#a5f3fc;text-shadow:0 0 6px #06b6d4;">【協力·${ally._allyName}·居合】</span>對 <span class="${getMobColor(mob.lv)}">${mob.n}</span> 造成 ${res.dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
@@ -7487,6 +7492,7 @@ function allyElfAct(ally) {
     } else if (sk && sk.type === 'atk' && sk.dmgType !== 'physical' && (sk.dmgDice || sk.multiDmg)) {
         // 傷害魔法：比照法師，MP 足夠則優先施放（妖精魔法不享有法師倍率，由 allyCastMagic 依職業處理）
         let cost = Math.max(1, Math.ceil((sk.mp||0) * (1 - (d.mpReduce||0)/100)));
+        if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通（傭兵）：同屬性魔法消耗MP -30%
         if ((ally.mp||0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
     }
     // 退回一般物理攻擊 + 連射（三重矢/魔法 MP 不足、或未選攻擊技能時）
@@ -7544,7 +7550,8 @@ function alliesTick() {
             } else {
                 let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
                 let _itv = Math.max(8, Math.round((wpn && wpn.spd ? wpn.spd : 1.0) * 10));
-                if (ally._cleaveTicks > 0) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.67 : 0.8)));   // 🔧 切割生效中：攻擊間隔 ×0.8（傭兵切割精通 ×0.67）
+                { let _aClvW = wpn && wpn.eff === 'cleave'; if (ally._cleaveTicks > 0 || (allyHasMastery(ally, 'k_cleave') && _aClvW)) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.50 : 0.8))); }   // 🔧 切割：攻速+20%（🏅 切割精通 +50%・持切割武器常駐）
+                if (allyHasMastery(ally, 'e_sword') && wpn && !wpn.w2h && !wpn.isBow && !wpn.ranged) _itv = Math.max(8, Math.round(_itv * (1/1.5)));   // 🏅 劍術精通（傭兵）：持單手近戰武器攻速+50%
                 ally._atkCd = _itv;
                 if (ally.cls === 'elf') allyElfAct(ally); else if (ally.cls === 'dark') allyDarkAct(ally); else allyAttackOnce(ally);
             }
@@ -7616,11 +7623,11 @@ function summonAttack(sm) {
     }
 
     // === 魅力召喚物：近戰多段(floor(魅力/6)次) / 屬性精靈(單次遠距) ===
-    // 🏅 精靈精通：屬性精靈/強力屬性精靈 數量＝1+魅力/20（60魅力上限4隻，各自完整攻擊一次）
+    // 🏅 精靈精通：屬性精靈/強力屬性精靈 數量＝1+魅力/10（60魅力上限7隻，各自完整攻擊一次）
     // 🔧 召喚「數量」(段數/隻數) 以魅力 60 封頂；超過 60 只提升下方的傷害與命中，不再增加數量
     let chaCnt = Math.min(60, cha);
     let hits = (sm.kind === 'melee') ? Math.max(1, Math.floor(chaCnt / 6))
-        : ((hasMastery('e_spirit') && (sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2')) ? Math.min(4, 1 + Math.floor(chaCnt / 20)) : 1);
+        : ((hasMastery('e_spirit') && (sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2')) ? Math.min(7, 1 + Math.floor(chaCnt / 10)) : 1);
     let hitLvOff = sm.hitLvOff || 0;
     // 🏅 召喚精通：造屍術/召喚術的「傷害與命中判定魅力」改為 魅力×1.2（攻擊段數仍依原魅力）
     let chaEff = (hasMastery('m_summon') && (sm.skId === 'sk_zombie' || sm.skId === 'sk_summon')) ? cha * 1.2 : cha;
@@ -7688,6 +7695,7 @@ function manualCast(skId) {
     if(!__granted && player.lv < needLv) { logSys('等級不足，無法使用此技能。'); return; }
     if((player.manualCd[skId] || 0) > 0) { logSys('技能冷卻中。'); return; }
     let cost = sk.mp ? player.d.getMpCost(sk.mp, sk.tier) : 0;
+    if (cost > 0 && player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通：同屬性魔法消耗MP -30%
     if(player.mp < cost) { logSys('MP 不足。'); return; }
     if(sk.hpCost && player.hp <= sk.hpCost) { logSys('HP 不足。'); return; }
 
@@ -7776,6 +7784,7 @@ function castSkill(skId) {
     }
 
     let cost = sk.mp ? player.d.getMpCost(sk.mp, sk.tier) : 0;
+    if (cost > 0 && player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通：同屬性魔法消耗MP -30%
     if (_echoFree) cost = 0;   // 🏅 迴響精通：連發那次不消耗 MP
     if(player.mp < cost) return false;
     if(sk.hpCost && player.hp <= sk.hpCost + 5) return false;  // HP 不足，拒絕施放
@@ -8033,7 +8042,9 @@ function castSkill(skId) {
             }
             renderMobs();
             // 🏅 迴響精通：(11-法術階級)×10% 機率不消耗 MP 立刻再施放一次（連發那次不再觸發迴響）
-            if (hasMastery('m_echo') && !_echoFree && Math.random() < (11 - (sk.tier || 1)) / 10) {
+            let _echoRate = (11 - (sk.tier || 1)) / 10;
+            if (sk.target !== 'all') _echoRate *= 2;   // 🏅 迴響精通：單體傷害魔法觸發機率加倍（全體傷害魔法沿用原機率）
+            if (hasMastery('m_echo') && !_echoFree && Math.random() < _echoRate) {
                 logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #3b82f6;">【迴響精通】</span>${sk.n} 的魔力迴盪不息，再次轟出！`, 'magic');
                 _echoFree = true;
                 try { castSkill(skId); } finally { _echoFree = false; }
@@ -9041,7 +9052,7 @@ function renderStatusEffects() {
                     let _chaC = Math.min(60, player.d.cha || 0);
                     let cnt = (k === 'sk_charm') ? 0
                         : (_creature.kind === 'melee') ? Math.floor(_chaC / 6)
-                        : (hasMastery('e_spirit') && (k === 'sk_elf_summon' || k === 'sk_elf_summon2')) ? Math.min(4, 1 + Math.floor(_chaC / 20))   // 🏅 精靈精通：屬性精靈顯示數量 1+魅力/20（上限4）
+                        : (hasMastery('e_spirit') && (k === 'sk_elf_summon' || k === 'sk_elf_summon2')) ? Math.min(7, 1 + Math.floor(_chaC / 10))   // 🏅 精靈精通：屬性精靈顯示數量 1+魅力/10（上限7）
                         : 0;
                     let suffix = cnt > 1 ? ` ${cnt}` : '';
                     buffs.push(`<span class="${getBuffColor(k, DB.skills[k])} font-bold">${_creature.n}${suffix}</span>`);
