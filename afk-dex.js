@@ -364,7 +364,7 @@
         '抽到裝備一定帶強化：多在 +0～該裝備安定值；超出安定值的機率 +1 為 0.1%、+2 0.01%、+3 0.001%、+4 0.0001%。另 1% 帶「祝福的」'
       ]);
     return '<details id="m-dex-special">' +
-      '<summary>📋 全域特殊掉落規則（依條件觸發，不列在各怪掉落表內）</summary>' +
+      '<summary><span class="m-dex-sp-label">📋 全域特殊掉落規則（依條件觸發，不列在各怪掉落表內）</span></summary>' +
       '<div class="m-dex-sp-body">' + body + '</div>' +
       '</details>';
   }
@@ -440,6 +440,7 @@
       '#m-dex-modal.open{display:flex;}',
       '#m-dex-modal[data-standalone]{padding-top:58px;}',
       '#m-dex-card-wrap{width:min(680px,96vw);max-height:92vh;max-height:calc(100dvh - 40px);display:flex;flex-direction:column;background:#0f172a;border:1px solid #334155;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:system-ui,"Segoe UI",sans-serif;}',
+      '#m-dex-modal[data-standalone] #m-dex-card-wrap{max-height:calc(100dvh - 78px);}',   /* 獨立頁:頂部 58px 給導覽列+底部 20px,卡片高度要扣掉,否則最底的「全域特殊掉落規則」會被切掉 */
       '#m-dex-head{display:flex;gap:8px;padding:12px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
       '#m-dex-inwrap{position:relative;flex:1 1 auto;min-width:0;display:flex;}',
       '#m-dex-input{flex:1 1 auto;min-width:0;background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 40px 10px 12px;font-size:15px;outline:none;font-family:inherit;}',
@@ -488,6 +489,7 @@
       '.m-dex-pct{text-align:right;color:#fcd34d;white-space:nowrap;width:1%;}',
       '#m-dex-special{flex:0 0 auto;border-top:1px solid #1e293b;}',
       '#m-dex-special > summary{padding:10px 14px;color:#fcd34d;font-size:12.5px;font-weight:bold;cursor:pointer;list-style:none;user-select:none;}',
+      '.m-dex-sp-label{text-decoration:underline;}',   /* 標題加底線,看起來像可點(展開/收合) */
       '#m-dex-special > summary::-webkit-details-marker{display:none;}',
       '#m-dex-special > summary::before{content:"▸ ";color:#94a3b8;}',
       '#m-dex-special[open] > summary::before{content:"▾ ";}',
