@@ -41,6 +41,7 @@ const PLUGINS = [
   { file: 'afk-statpts.js', comment: '能力值面板補點數分解 始/升/藥/總(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-syncinfo.js', comment: '首頁顯示原版最後同步時間(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-ui.js',       comment: '統一自製彈窗:全域接管 window.alert(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-autobuy.js',  comment: '外掛自動購買:肉 / 魔法屏障卷軸(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {
