@@ -40,6 +40,7 @@ const PLUGINS = [
   { file: 'afk-toast.js',   comment: '手機 toast 提示(點按鈕的系統日誌訊息浮現;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-statpts.js', comment: '能力值面板補點數分解 始/升/藥/總(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-syncinfo.js', comment: '首頁顯示原版最後同步時間(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-ui.js',       comment: '統一自製彈窗:全域接管 window.alert(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {
