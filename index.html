@@ -112,6 +112,10 @@
         .c-attr-earth1 { color: #fcd34d; } .c-attr-earth3 { color: #f59e0b; } .c-attr-earth5 { color: #d97706; }
         .c-attr-glow { text-shadow: 0 0 6px currentColor, 0 0 10px currentColor; }
         .log-entry { margin-bottom: 6px; line-height: 1.5; font-size: 1.05rem; }
+        /* ⚔️ 戰鬥日誌來源過濾：點亮(顯示)/點暗(隱藏) 敵人/玩家/傭兵/召喚/夥伴 */
+        .cf-pill { font-size: 0.7rem; font-weight: 700; line-height: 1; padding: 3px 6px; border-radius: 9999px; border: 1px solid; cursor: pointer; user-select: none; transition: opacity .15s, filter .15s; white-space: nowrap; }
+        .cf-pill.cf-off { opacity: 0.4; filter: grayscale(0.85); }
+        #combat-log.cf-hide-enemy [data-src="enemy"], #combat-log.cf-hide-player [data-src="player"], #combat-log.cf-hide-mercenary [data-src="mercenary"], #combat-log.cf-hide-summon [data-src="summon"], #combat-log.cf-hide-pet [data-src="pet"] { display: none; }
         @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .anim-flash { animation: flash 1s infinite; }
         
@@ -261,59 +265,14 @@
         }
         .tri-glow { animation: triGlow 2.4s infinite linear; }
 
-        #mobile-vitals { display: none; }   /* 桌機隱藏：置頂常駐 HP/MP 細條僅手機顯示 */
+        #mobile-vitals { display: none !important; }   /* 🖥️ 桌機專用：手機版排版已移除，此置頂血條元件永久隱藏 */
 
-        /* ===== 📱 手機 / 小螢幕：三欄改為單欄垂直堆疊、整頁可捲動 ===== */
-        @media (max-width: 820px) {
-            body { height: auto !important; min-height: 100vh; display: block !important; padding: 6px !important; align-items: initial !important; justify-content: initial !important; overflow: visible !important; }
-            html { overflow-x: hidden; }   /* 防止任何元素造成的水平捲動，垂直維持可捲動 */
-            #game-screen { flex-direction: column; height: auto; max-width: 100%; gap: 10px; }
-            #col-left, #col-center, #col-right { width: 100% !important; }
-            /* 自動化設定：壓成可內捲的小方塊，避免把地圖擠到太下面 */
-            #automation-panel { flex: none; }
-            #automation-panel > div:last-child { max-height: 220px; }
-            /* 戰鬥 / 系統日誌：固定高度、內部可捲動 */
-            #combat-log-panel { flex: none; height: 200px; }
-            #syslog-panel { flex: none; height: 170px; }
-            /* 背包頁籤內容：固定高度、內部可捲動 */
-            #tab-content-panel { flex: none; height: 70vh; min-height: 340px; }
-            /* 戰鬥區怪物列：放不下時可橫向捲動 */
-            #mob-list { overflow-x: auto; }
-            /* 地圖標題列在窄螢幕換行排列 */
-            #col-center .panel-header { flex-wrap: wrap; gap: 6px; }
-            /* 村莊 NPC 卡片在窄螢幕改單欄 */
-            #town-npc-container { grid-template-columns: 1fr; }
-            /* 📱 置頂常駐 HP/MP 細條：捲動時也看得到血量/魔力 */
-            #mobile-vitals {
-                display: flex; flex-direction: row; align-items: center; gap: 8px;
-                position: sticky; top: 0; z-index: 20;
-                margin: -6px -6px 4px -6px; padding: 5px 8px;
-                background: rgba(10, 15, 28, 0.96); border-bottom: 1px solid #334155;
-            }
-            #mobile-vitals .mv-bars { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-            #mv-action-btn { flex: 0 0 auto; height: 34px; padding: 0 16px; font-size: 14px; font-weight: 700; color: #fff; border: 1px solid #34d399; border-radius: 6px; white-space: nowrap; background: #047857; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-            #mobile-vitals .mv-row { display: flex; align-items: center; gap: 6px; }
-            #mobile-vitals .mv-label { width: 24px; text-align: right; font-size: 11px; font-weight: 700; }
-            #mobile-vitals .mv-bar { position: relative; flex: 1; height: 15px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; }
-            #mobile-vitals .mv-bar > div { height: 100%; transition: width 0.2s ease-out; }
-            #mobile-vitals .mv-bar > span { position: absolute; inset: 0; text-align: center; font-size: 10px; line-height: 15px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.95); }
+        /* 🖥️ 桌面高解析度清晰度：略增文字與圖示銳利度（1920/2560/3840 通用，效果輕微、不改版面） */
+        html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+        img { image-rendering: -webkit-optimize-contrast; }
+        #game-screen img, #creation-screen img, #battle-view img { filter: contrast(1.06) saturate(1.05); }
 
-            /* ===== 創角 / 載入 / 選職業畫面：手機改為單欄、不固定寬高 ===== */
-            #creation-screen { position: relative !important; width: 100% !important; max-width: 100%; padding: 14px !important; gap: 16px; }
-            #creation-screen h1 { font-size: 1.75rem; }
-            #main-menu { margin: 20px 0 !important; }
-            #main-menu button { width: 100% !important; max-width: 360px; }
-            #slot-select-panel { margin: 16px 0 !important; }
-            #slot-list { width: 100% !important; }
-            /* 創角面板：圖片在上、控制項在下 */
-            #creation-panel { flex-direction: column !important; align-items: stretch !important; gap: 14px; }
-            #creation-img-wrap { width: 100% !important; height: 300px !important; }
-            #creation-controls { width: 100% !important; height: auto !important; }
-            #creation-row { flex-direction: column !important; height: auto !important; gap: 14px; }
-            #creation-class-box { width: 100% !important; height: auto !important; }
-            #stat-allocation { height: auto !important; }
-            #class-desc { flex: none; max-height: 130px; }
-        }
+        /* 📱 手機 / 小螢幕響應式排版已移除：本遊戲專注桌上型電腦顯示（1920×1080 / 2560×1440 / 3840×2160）。 */
     </style>
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-4">
@@ -511,7 +470,16 @@
             </div>
 
             <div id="combat-log-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
-                <div class="panel-header text-slate-100 text-lg border-b border-red-900/40">戰鬥日誌</div>
+                <div class="panel-header text-slate-100 text-lg border-b border-red-900/40 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                    <span class="shrink-0">戰鬥日誌</span>
+                    <div class="flex items-center gap-1 flex-wrap justify-end">
+                        <button id="cf-btn-enemy" onclick="toggleCombatFilter('enemy')" class="cf-pill" style="color:#fca5a5;border-color:#b91c1c;background:rgba(127,29,29,.30)" title="點亮/點暗：敵人的戰鬥訊息">敵人</button>
+                        <button id="cf-btn-player" onclick="toggleCombatFilter('player')" class="cf-pill" style="color:#93c5fd;border-color:#2563eb;background:rgba(30,58,138,.30)" title="點亮/點暗：玩家的戰鬥訊息">玩家</button>
+                        <button id="cf-btn-mercenary" onclick="toggleCombatFilter('mercenary')" class="cf-pill" style="color:#6ee7b7;border-color:#059669;background:rgba(6,78,59,.30)" title="點亮/點暗：傭兵的戰鬥訊息">傭兵</button>
+                        <button id="cf-btn-summon" onclick="toggleCombatFilter('summon')" class="cf-pill" style="color:#d8b4fe;border-color:#7c3aed;background:rgba(76,29,149,.30)" title="點亮/點暗：召喚物的戰鬥訊息">召喚</button>
+                        <button id="cf-btn-pet" onclick="toggleCombatFilter('pet')" class="cf-pill" style="color:#fdba74;border-color:#ea580c;background:rgba(124,45,18,.30)" title="點亮/點暗：夥伴的戰鬥訊息">夥伴</button>
+                    </div>
+                </div>
                 <div id="combat-log" class="flex-1 p-4 overflow-y-auto log-bg rounded-b-xl shadow-inner text-base tracking-wide"></div>
                 <!-- 🔒 戰鬥日誌捲動鎖定提示（向上捲動查看舊訊息時鎖定刷新，捲回底部自動解除） -->
                 <button id="combat-log-unlock" onclick="combatLogToBottom()" class="hidden absolute left-1/2 -translate-x-1/2 bottom-2 z-10 px-3 py-1 text-xs font-bold rounded-full shadow-lg bg-amber-700/90 hover:bg-amber-600 border border-amber-400 text-amber-50">🔒 已鎖定捲動 ▾ 回到最新</button>
@@ -3070,6 +3038,7 @@ function startGameTimers() {
     _saveLoopId = setInterval(saveGame, 300000); // 每 5 分鐘自動存檔
     if (typeof initCombatLogLock === 'function') initCombatLogLock();   // 🔒 綁定戰鬥日誌捲動鎖定（含去重）
     if (typeof initSysLogLock === 'function') initSysLogLock();         // 🔒 綁定系統與物品日誌捲動鎖定（含去重）
+    if (typeof applyCombatFilter === 'function') applyCombatFilter();   // ⚔️ 套用已儲存的戰鬥日誌來源過濾（按鈕點亮/點暗 + 隱藏對應訊息）
 }
 
 // 補跑（掛機/背景）所得累積：補跑期間 logSys 被靜音，先把所得累積起來，
@@ -3089,7 +3058,7 @@ function flushAwaySummary() {
                 .join('、'));
         }
         if (_awayAcc.gold > 0) {
-            logSys(`掛機期間獲得 <span class="text-yellow-400 font-bold">${_awayAcc.gold.toLocaleString()} 金幣</span>。`);
+            /* 🔧 掛機期間獲得的金幣不輸出日誌（已計入 player.gold、即時顯示於左側面板）；賣出/花費/消耗等金幣訊息仍保留 */
         }
     }
     // 無論是否達門檻都清空（未達門檻者視為一般即時遊玩的計時抖動，不輸出）
@@ -3416,7 +3385,21 @@ function initCombatLogLock() {
 // ⚡ 快速強化（批次強化）狀態：wpn=武器分頁、arm=防具分頁（含飾品）。sel 為 uid→true 的勾選集合。
 let quickEnh = { wpn: { active: false, target: 6, sel: {} }, arm: { active: false, target: 6, sel: {} } };
 
-function logCombat(msg, type="player") {
+// ===== ⚔️ 戰鬥日誌來源過濾（敵人/玩家/傭兵/召喚/夥伴）=====
+// _combatSrc：目前正在記錄的戰鬥訊息來源，由各攻擊派發點設定；為 null 時依顏色 type 推定（'enemy'→敵人，其餘→玩家）。
+let _combatSrc = null;
+const COMBAT_FILTER_KEY = 'lineage_idle_combat_filter';
+let _combatFilter = { enemy: true, player: true, mercenary: true, summon: true, pet: true };
+(function(){ try { let s = localStorage.getItem(COMBAT_FILTER_KEY); if (s) { let o = JSON.parse(s); for (let k in _combatFilter) if (typeof o[k] === 'boolean') _combatFilter[k] = o[k]; } } catch(e){} })();
+function saveCombatFilter(){ try { localStorage.setItem(COMBAT_FILTER_KEY, JSON.stringify(_combatFilter)); } catch(e){} }
+function applyCombatFilter(){
+    let el = document.getElementById('combat-log');
+    if (el) for (let k in _combatFilter) el.classList.toggle('cf-hide-' + k, !_combatFilter[k]);   // 以 CSS class 隱藏 → 既有與未來訊息一併套用，重新點亮即還原
+    for (let k in _combatFilter) { let b = document.getElementById('cf-btn-' + k); if (b) b.classList.toggle('cf-off', !_combatFilter[k]); }   // 按鈕點亮/點暗
+}
+function toggleCombatFilter(k){ if (!(k in _combatFilter)) return; _combatFilter[k] = !_combatFilter[k]; saveCombatFilter(); applyCombatFilter(); }
+
+function logCombat(msg, type="player", src=null) {
     if(state.ff) return; // 補跑期間不洗版
     const el = document.getElementById('combat-log');
     let colorClass = "text-white";
@@ -3433,7 +3416,8 @@ function logCombat(msg, type="player") {
     else if (type === "miss" || type === "dodge") { colorClass = "text-slate-200"; } // 未命中/閃避 (淺灰，避免與灰底相近)
     else if (type === "evade") { colorClass = "text-teal-300"; } // ER獨立迴避 (淡青綠色)
     
-    el.innerHTML += `<div class="log-entry ${colorClass}">${msg}</div>`;
+    let _src = src || _combatSrc || (type === 'enemy' ? 'enemy' : 'player');   // 來源：明確指定 > 派發點情境(_combatSrc) > 依顏色type推定
+    el.innerHTML += `<div class="log-entry ${colorClass}" data-src="${_src}">${msg}</div>`;
     // 🔒 鎖定捲動時保留更多歷史；未鎖定時維持一般上限
     let _max = _combatLogLocked ? COMBAT_LOG_MAX_LOCKED : COMBAT_LOG_MAX;
     while(el.children.length > _max && el.children.length > 1) el.removeChild(el.firstChild);
@@ -4226,6 +4210,7 @@ function inAbsBarrier() { return !!(player.buffs && player.buffs.sk_abs_barrier 
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
+    _combatSrc = null;   // ⚔️ 戰鬥日誌來源：每 tick 起始重置（玩家攻擊/施法/DoT 等預設依顏色type推定；友方派發點會各自設定）
     castleGuardTick();   // 🏰 城堡護衛：回血/力竭恢復/城堡擁有結束自動解散
     for(let k in player.manualCd) if(player.manualCd[k] > 0) player.manualCd[k]--;
     
@@ -4457,7 +4442,7 @@ function tick() {
         if(player.dead) break;
     }
 
-    if(!player.dead) { summonTick(player.summon, () => { player.summon = null; }); summonTick(player.charmed, () => { player.charmed = null; }); alliesTick(); }
+    if(!player.dead) { _combatSrc = 'summon'; summonTick(player.summon, () => { player.summon = null; }); summonTick(player.charmed, () => { player.charmed = null; }); _combatSrc = 'mercenary'; alliesTick(); _combatSrc = null; }   // ⚔️ 召喚(含迷魅)/傭兵 戰鬥訊息來源情境
     if(!player.dead) pledgeBlessTick();   // 生命的祝福：場上血盟怪物持續治療
     // 盟主祝福到期清理（每秒檢查；到期即移除並重算屬性）
     if(!player.dead && player.blessings && state.ticks % 10 === 0) {
@@ -4499,6 +4484,7 @@ function tick() {
         let cha = player.d.cha || 0;   // 誘捕夥伴：命中/傷害隨完整魅力提升（含超過60）；僅「項圈數量」另以60封頂
         let pg = petGearBonus();   // 🦴 寵物裝備：夥伴額外傷害/命中（影響所有項圈夥伴）
         if (target && target.curHp > 0 && player.partners.length > 0) {
+            _combatSrc = 'pet';   // ⚔️ 夥伴(項圈犬類)戰鬥訊息來源情境
             player.partners.forEach(nm => {
                 let pd = PET_DEF[nm]; if(!pd) return;
                 let hits = petCollarCount(nm);
@@ -4533,6 +4519,7 @@ function tick() {
             if (target.curHp <= 0 && idx !== -1) killMob(idx);
             else renderMobs();
             renderTabs();   // 肉數量變動需刷新
+            _combatSrc = null;   // ⚔️ 結束夥伴來源情境
         }
     }
 }
@@ -5117,6 +5104,8 @@ function rapidfireProc(arrowData) {
     }
     renderMobs();
 }
+// 🛡️ 臂甲判定：臂甲裝在副手(slot:shield)但帶 armguard 旗標；反擊/居合用它區分「真盾牌 vs 臂甲」
+function _isArmguard(shRef) { return !!(shRef && DB.items[shRef.id] && DB.items[shRef.id].armguard); }
 // ===== 反擊（單手劍）：對攻擊者打一次「必定命中、必定非重擊、傷害 50%」的一般攻擊；只打攻擊者，不轉移 =====
 function procCounter(t) {
     if (!t || t.curHp <= 0) return;
@@ -5720,11 +5709,11 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
             player.buffs.sk_dark_stealth = 0; player._darkStealthCd = state.ticks + 50; calcStats();
             logCombat('<span class="text-fuchsia-300">暗影隱蔽消散了。</span>', 'magic');
         }
-        // 武士刀居合：無盾且敵人攻擊被迴避時，50% 對攻擊者打一次必定命中的一般攻擊（🏅 反擊精通：100%）
-        if (!player.dead && !player.eq.shield && mob.curHp > 0 && player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('武士刀') && (hasMastery('k_counter') || Math.random() < 0.50)) {
+        // 武士刀居合：無「真盾牌」（臂甲可發動）且敵人攻擊被迴避時，50% 對攻擊者打一次必定命中的一般攻擊（🏅 反擊精通：100%）
+        if (!player.dead && (!player.eq.shield || _isArmguard(player.eq.shield)) && mob.curHp > 0 && player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('武士刀') && (hasMastery('k_counter') || Math.random() < 0.50)) {
             procIai(mob);
         }
-        if (!player.dead) allyReactIai(mob);   // 🔧 傭兵居合：判定主玩家迴避成功
+        if (!player.dead) { _combatSrc = 'mercenary'; allyReactIai(mob); _combatSrc = null; }   // 🔧 傭兵居合：判定主玩家迴避成功
         return;
     }
 
@@ -5838,17 +5827,17 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
 
         // 單手劍反擊：受到敵人一般攻擊命中時觸發。一般 50% 機率；若裝備盾牌且本次觸發格檔(blocked)則必定反擊
         // 🏅 反擊精通：100% 觸發
-        if (!player.dead && mob.curHp > 0 && player.eq.wpn && (getWeaponTags(player.eq.wpn.id).includes('單手劍') || (player.buffs.sk_counter_barrier > 0 && DB.items[player.eq.wpn.id].w2h))) {   // 🔧 反擊屏障：雙手武器亦可反擊
+        if (!player.dead && mob.curHp > 0 && player.eq.wpn && (getWeaponTags(player.eq.wpn.id).includes('單手劍') || (player.buffs.sk_counter_barrier > 0 && DB.items[player.eq.wpn.id].w2h)) && !(getWeaponTags(player.eq.wpn.id).includes('武士刀') && !(player.eq.shield && !_isArmguard(player.eq.shield)))) {   // 🔧 反擊屏障：雙手武器亦可反擊；🛡️ 反擊/居合雙標籤武器「無真盾牌(空手或臂甲)」時→改走居合、不發動反擊（唯獨裝真盾牌才反擊）
             if (blocked || hasMastery('k_counter') || Math.random() < 0.50) procCounter(mob);
         }
-        if (!player.dead) allyReactCounter(mob, blocked);   // 🔧 傭兵反擊：判定主玩家受擊（玩家格檔則必定反擊）
+        if (!player.dead) { _combatSrc = 'mercenary'; allyReactCounter(mob, blocked); _combatSrc = null; }   // 🔧 傭兵反擊：判定主玩家受擊（玩家格檔則必定反擊）
     } else {
-        logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 的攻擊未命中。`, 'miss');
-        // 武士刀居合：無盾且敵人攻擊未命中時，50% 對攻擊者打一次必定命中的一般攻擊（🏅 反擊精通：100%）
-        if (!player.dead && !player.eq.shield && mob.curHp > 0 && player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('武士刀') && (hasMastery('k_counter') || Math.random() < 0.50)) {
+        logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 的攻擊未命中。`, 'miss', 'enemy');   // ⚔️ 敵人攻擊未命中（miss色，但歸入「敵人」來源）
+        // 武士刀居合：無「真盾牌」（臂甲可發動）且敵人攻擊未命中時，50% 對攻擊者打一次必定命中的一般攻擊（🏅 反擊精通：100%）
+        if (!player.dead && (!player.eq.shield || _isArmguard(player.eq.shield)) && mob.curHp > 0 && player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('武士刀') && (hasMastery('k_counter') || Math.random() < 0.50)) {
             procIai(mob);
         }
-        allyReactIai(mob);   // 🔧 傭兵居合：判定敵人未命中主玩家
+        _combatSrc = 'mercenary'; allyReactIai(mob); _combatSrc = null;   // 🔧 傭兵居合：判定敵人未命中主玩家
     }
 }
 
@@ -7119,7 +7108,7 @@ function setupSummon(skId, sk) {
     if(skId !== 'sk_charm') player.buffs[skId] = sk.dur || 3600;
     player.summon = buildSummon(skId, sk.summon, sk.dur || 3600);
     if(sk.eleFromPlayer) player.summon.ele = player.elfEle || 'none';
-    logCombat(`你召喚了 <span class="text-purple-300">${player.summon.n}</span>。`, 'magic');
+    logCombat(`你召喚了 <span class="text-purple-300">${player.summon.n}</span>。`, 'magic', 'summon');
 }
 function summonElementDamage(dice, ele, t, flatBonus, mult) {
     let mrBase = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
@@ -7705,6 +7694,7 @@ function allyReactCounter(mob, blocked) {
         if (!ally || !ally.eq || !ally.eq.wpn) return;
         if (!mob || mob._dead || mob.curHp <= 0) return;   // 攻擊者已被前一位傭兵反殺則停止
         if (!getWeaponTags(ally.eq.wpn.id).includes('單手劍')) return;
+        if (getWeaponTags(ally.eq.wpn.id).includes('武士刀') && !(ally.eq.shield && !_isArmguard(ally.eq.shield))) return;   // 🛡️ 反擊/居合雙標籤武器「無真盾牌(空手或臂甲)」時→走居合、不發動反擊（唯獨裝真盾牌才反擊）
         let _ctr = allyHasMastery(ally, 'k_counter');   // 🔧 傭兵反擊精通：必定發動、傷害+30%
         if (!_ctr && Math.random() >= (blocked ? 1 : 0.50)) return;
         let res = allyStrikeRoll(ally, mob, { forceHit: true, noHeavy: true, mult: _ctr ? 0.65 : 0.50, forceCrit: _ctr });
@@ -7714,11 +7704,11 @@ function allyReactCounter(mob, blocked) {
         allyIronGuardSweep(ally, '反擊');   // 🔮 鐵衛 5/5（傭兵）
     });
 }
-// 居合：傭兵持武士刀且未裝盾 → 玩家迴避或敵人未命中時 50%；必中、可自然重擊/爆擊
+// 居合：傭兵持武士刀且未裝「真盾牌」（臂甲可發動） → 玩家迴避或敵人未命中時 50%；必中、可自然重擊/爆擊
 function allyReactIai(mob) {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
-        if (!ally || !ally.eq || !ally.eq.wpn || ally.eq.shield) return;
+        if (!ally || !ally.eq || !ally.eq.wpn || (ally.eq.shield && !_isArmguard(ally.eq.shield))) return;
         if (!mob || mob._dead || mob.curHp <= 0) return;
         if (!getWeaponTags(ally.eq.wpn.id).includes('武士刀')) return;
         let _iai = allyHasMastery(ally, 'k_counter');   // 🔧 傭兵反擊精通：居合必定發動、傷害+30%
@@ -9826,7 +9816,7 @@ function onSummonToggle(sid) {
         // 🔧 取消打勾：該召喚狀態馬上結束（不等增益自然倒數 3600 秒）
         player.buffs[sid] = 0;
         if (player.summon && player.summon.skId === sid) {
-            logCombat(`<span class="text-purple-300">${player.summon.n}</span> 消失了。`, 'magic');
+            logCombat(`<span class="text-purple-300">${player.summon.n}</span> 消失了。`, 'magic', 'summon');
             player.summon = null;
             calcStats();
             renderStatusEffects();
