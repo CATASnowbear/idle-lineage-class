@@ -38,6 +38,7 @@ const PLUGINS = [
   { file: 'afk-fixes.js',   comment: '通用修正外掛(補原作者坑,桌機/手機通用;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-sw.js',      comment: '背景大圖快取 Service Worker 註冊(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-toast.js',   comment: '手機 toast 提示(點按鈕的系統日誌訊息浮現;可獨立維護,原作者更新後重新加回此行即可)' },
+  { file: 'afk-statpts.js', comment: '能力值面板補點數分解 始/升/藥/總(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-syncinfo.js', comment: '首頁顯示原版最後同步時間(可獨立維護;原作者更新後重新加回此行即可)' },
 ];
 
