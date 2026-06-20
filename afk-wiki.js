@@ -1116,6 +1116,30 @@
     if (isLegendSetPiece(d)) return '套裝效果見「套裝」分頁。';
     return d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
   }
+  // 走特殊取得鏈的傳說裝:靈魂之球喚回(寫死,遊戲機制寫死在 soulorb 處理裡、無可讀資料)
+  var LEGEND_SOULORB = {
+    '巴風特魔杖': '帶著「失去魔力的巴風特魔杖」對「靈魂之球」使用即可喚回（會繼承原杖的席琳套裝效果）。<br>・失去魔力的巴風特魔杖：打「巴風特」約 0.1%、「炎魔的巴風特」約 0.0001%。<br>・靈魂之球：打「鬼魂／紅鬼魂」各約 0.01%。',
+    '巴列斯魔杖': '帶著「失去魔力的巴列斯魔杖」對「靈魂之球」使用即可喚回（會繼承原杖的席琳套裝效果）。<br>・失去魔力的巴列斯魔杖：打「巴列斯」約 1%、「炎魔的巴列斯」約 0.0001%。<br>・靈魂之球：打「鬼魂／紅鬼魂」各約 0.01%。',
+  };
+  // 傳回該傳說裝的「取得方式」HTML(無特殊取得鏈則回空字串,交給頁尾通則+掉落查詢)
+  function legendAcquire(d) {
+    if (LEGEND_SOULORB[d.n]) return LEGEND_SOULORB[d.n];
+    // 惡魔王武器:讀遊戲 DEMONKING_RECIPES 動態組出炎魔之影客製製作鏈(作者改配方會自動跟著變)
+    if (typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES) {
+      var r = null;
+      for (var i = 0; i < DEMONKING_RECIPES.length; i++) {
+        var res = DEMONKING_RECIPES[i].result;
+        if (DB.items[res] && DB.items[res].n === d.n) { r = DEMONKING_RECIPES[i]; break; }
+      }
+      if (r) {
+        var matStr = (typeof DEMONKING_MATS !== 'undefined' && DEMONKING_MATS)
+          ? DEMONKING_MATS.map(function (m) { return esc(((DB.items[m.id] && DB.items[m.id].n) || m.id) + '×' + m.cnt); }).join('、') : '';
+        return '在「炎魔之影（炎魔謁見所）」客製製作：消耗 +11 以上的「' + esc(r.srcName) + '」×1'
+          + (matStr ? '＋' + matStr : '') + '，會繼承來源武器的強化值／詞綴／席琳套裝（材料詳見「製作」分頁）。';
+      }
+    }
+    return '';
+  }
   function renderLegend() {
     var groups = { wpn: [], arm: [], acc: [] };
     Object.keys(DB.items).forEach(function (id) {
@@ -1125,12 +1149,13 @@
     });
     function card(d) {
       var meta = legendReqCN(d.req) + (LEGEND_SLOT_CN[d.slot] ? '　|　' + LEGEND_SLOT_CN[d.slot] : (d.type === 'wpn' ? '　|　武器' : ''));
-      var special = legendSpecial(d), stats = legendStats(d);
+      var special = legendSpecial(d), stats = legendStats(d), acq = legendAcquire(d);
       return '<div class="m-wiki-card">' +
         '<div class="m-wiki-name"><span class="c-legend">' + esc(d.n) + '</span></div>' +
         '<div class="m-wiki-desc" style="color:#94a3b8;font-size:12px;">' + esc(meta) + '</div>' +
         (special ? '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(special) + '</div>' : '') +
         (stats ? '<div class="m-wiki-desc" style="margin-top:3px;color:#cbd5e1;">數值：' + esc(stats) + '</div>' : '') +
+        (acq ? '<div class="m-wiki-desc" style="margin-top:3px;color:#a5b4fc;">🔑 取得：' + acq + '</div>' : '') +
       '</div>';
     }
     var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>）。每件列出獨特效果與完整數值；<b>成套的傳說裝（死亡騎士／克特／惡魔／四大軍王等）也列在這，套裝加成請點「套裝」分頁看</b>。掉落來源到「掉落查詢」搜裝備名；武器特殊攻擊詳見「武器特性」分頁。</div>';
