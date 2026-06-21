@@ -248,7 +248,8 @@
     try { logSys(line); } catch (e) { console.log('[AFK]', line.replace(/<[^>]+>/g, '')); }
     // ⚔ 軍王之室:附帶「擊敗輪數 / 消耗鑰匙」;若因鑰匙用完被傳回村,多一行提示
     if (kingInfo && kingInfo.kills > 0) {
-      var kl = `<span class="text-amber-300">⚔ 軍王之室：本次擊敗軍王 <b>${kingInfo.kills}</b> 輪，消耗 <b>${kingInfo.keysUsed}</b> 把軍王的鑰匙。</span>`;
+      var kl = `<span class="text-amber-300">⚔ 軍王之室：本次擊敗軍王 <b>${kingInfo.kills}</b> 輪`
+        + (kingInfo.keysUsed > 0 ? `，消耗 <b>${kingInfo.keysUsed}</b> 把軍王的鑰匙` : ``) + `。</span>`;
       try { logSys(kl); } catch (e) { console.log('[AFK]', kl.replace(/<[^>]+>/g, '')); }
     }
     if (kingInfo && kingInfo.depleted) {
@@ -390,11 +391,10 @@
         enterOblivionMap(mapState.current);
       }
     } else if (!died && huntMap) {
-      // 🔧 軍王之室:鑰匙若在離線期間用完(原作已把人傳回村),落點別再強制重進「沒鑰匙的空房」,改放村莊。
-      //   一般圖/有鑰匙時照舊回原狩獵圖續掛。
-      var _kingNoKey = (typeof KING_ROOMS !== 'undefined' && KING_ROOMS[huntMap]) &&
-        !player.inv.some(function (i) { return i.id === 'item_king_key' && (i.cnt || 1) >= 1; });
-      if (_kingNoKey) {
+      // 🔧 軍王之室:只有「補跑期間真的因鑰匙用完被原作傳回村(kingLeftRoom)」才把落點放村莊。
+      //   不要只看「背包 0 鑰匙」——用最後一把鑰匙進場(進場即扣→0 鑰匙)、軍王還沒打死就短暫離線回來的人,
+      //   應留在房內續打,不能因「0 鑰匙」被誤傳回村。
+      if (isKing && kingLeftRoom) {
         gotoMap(homeTown());
       } else {
         try { if (player.mhp) player.hp = player.mhp; if (player.mmp) player.mp = player.mmp; } catch (e) {}
