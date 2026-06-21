@@ -1285,7 +1285,7 @@ const DB = {
         "wpn_old_greatsword": { n: "古老的巨劍", type: "wpn", w2h: true, dmgS: 27, dmgL: 45, hit: 3, dmgBonus: 3, spd: 0.8, req: "knight", safe: 0, p: 15000, gachaWeight: 0, eff: "cleave", noEnhance: true, finalMult: 1.5, d: "古代的雙手巨劍。切割、最終傷害×1.5；無法強化。" },
         "wpn_old_xbow": { n: "古老的弩槍", type: "wpn", isBow: true, ranged: true, oneHand: true, rapidfire: 90, dmgS: 3, dmgL: 3, hit: 5, dmgBonus: 2, spd: 0.9, req: "elf,dark", safe: 6, p: 15000, gachaWeight: 0, d: "古代的單手弩槍（首把單手弓）。連射90%；可同時裝備盾牌或臂甲。" },
         "wpn_ancient_spear": { n: "古代神之槍", type: "wpn", w2h: true, legend: true, dmgS: 27, dmgL: 30, hit: 3, dmgBonus: 5, spd: 1.0, req: "knight", safe: 6, p: 465000, gachaWeight: 1, eff: "pierce", pierceChance: 90, d: "古代神祇所持的雙手神槍。穿透90%。" },
-        "wpn_ancient_axe": { n: "古代神之斧", type: "wpn", legend: true, dmgS: 25, dmgL: 28, hit: 3, dmgBonus: 8, spd: 1.2, req: "knight", safe: 6, p: 465000, gachaWeight: 1, eff: "crush", d: "古代神祇所持的單手神斧。鈍擊（單手）。" },
+        "wpn_ancient_axe": { n: "古代神之斧", type: "wpn", legend: true, dmgS: 25, dmgL: 28, hit: 3, dmgBonus: 8, spd: 1.2, req: "knight", safe: 6, p: 465000, gachaWeight: 1, d: "古代神祇所持的單手神斧。鈍擊。" },
         "amr_old_plate": { n: "古老的金屬盔甲", type: "arm", slot: "armor", ac: 16, hpR: 1, req: "knight", safe: 0, p: 10000, gachaWeight: 0, noEnhance: true, d: "古代的金屬盔甲。HP自然恢復+1；無法強化。" },
         "amr_old_scale": { n: "古老的鱗甲", type: "arm", slot: "armor", ac: 14, hpR: 8, mpR: 4, req: "knight,elf,dark", safe: 0, p: 10000, gachaWeight: 0, noEnhance: true, d: "古代的鱗甲。HP自然恢復+8、MP自然恢復+4；無法強化。" },
         "amr_old_leather": { n: "古老的皮盔甲", type: "arm", slot: "armor", ac: 14, hpR: 4, mpR: 8, req: "elf,dark", safe: 0, p: 10000, gachaWeight: 0, noEnhance: true, d: "古代的皮盔甲。HP自然恢復+4、MP自然恢復+8；無法強化。" },
@@ -9978,7 +9978,7 @@ const WEAPON_TAGS = {
     wpn_invader: ['單手劍'], wpn_34: ['單手劍'], wpn_35: ['單手劍'],
     wpn_36: ['單手劍'], wpn_rapier: ['單手劍'], wpn_mailbreaker: ['單手劍'], wpn_silversword: ['單手劍'], wpn_37: ['單手劍'],
     wpn_21: ['矛'], wpn_24: ['矛'], wpn_25: ['矛'], wpn_28: ['矛'], wpn_39: ['矛'], wpn_40: ['矛'], wpn_41: ['矛'], wpn_17: ['矛'], wpn_4: ['矛'],
-    wpn_20: ['單手鈍器'], wpn_10: ['單手鈍器'], wpn_13: ['單手鈍器'], wpn_alien: ['單手鈍器'], wpn_1: ['單手鈍器'], wpn_2: ['單手鈍器'],
+    wpn_20: ['單手鈍器'], wpn_10: ['單手鈍器'], wpn_13: ['單手鈍器'], wpn_alien: ['單手鈍器'], wpn_1: ['單手鈍器'], wpn_2: ['單手鈍器'], wpn_ancient_axe: ['單手鈍器'],   // 🔧 古代神之斧：單手鈍器（鈍擊）
     wpn_2hsword: ['雙手劍'], wpn_dragonslayer: ['雙手劍'], wpn_official_2h: ['雙手劍'],   // 🔧 雙手劍類型標註
     // 🔧 重擊特效武器標註為「雙手鈍器」
     wpn_battleaxe: ['雙手鈍器'], wpn_19: ['雙手鈍器'], wpn_23: ['雙手鈍器'], wpn_giantaxe: ['雙手鈍器'], wpn_berserker: ['雙手鈍器'], wpn_silveraxe: ['雙手鈍器'],
@@ -15324,6 +15324,7 @@ window.onload = () => {
             if(d.eff === 'haste')      _eff.push('自我加速');
             if(d.eff === 'crush')      _eff.push('重擊');
             if(d.eff === 'cleave')     _eff.push('切割');
+            if(d.eff === 'combo')      _eff.push('連擊');   // 🔧 鋼爪/雙刀：連擊特效
             if(d.ignHardSkin)          _eff.push('貫穿');   // 🗡️ 暗黑十字弓：攻擊無視硬皮額外減傷
             if(d.block)                _eff.push('格檔：' + d.block + '%');
             if(d.eff === 'magicburst') _eff.push('魔爆');
@@ -15331,6 +15332,14 @@ window.onload = () => {
             if(d.immStone)             _eff.push('免疫石化');
             if(d.immPoison)            _eff.push('免疫中毒');
             if(d.unique)               _eff.push('唯一（最多裝備1個）');
+            // 🔧 武器標籤特效（反擊/居合/鈍擊/出血）：來自 WEAPON_TAGS（非 eff 欄位），與背包資訊欄一致顯示
+            if(d.type === 'wpn' && typeof getWeaponTags === 'function'){
+                if(typeof weaponHasBleed === 'function' && weaponHasBleed(id)) _eff.push('出血');
+                let _tg = getWeaponTags(id);
+                if(_tg.includes('單手劍'))   _eff.push('反擊');
+                if(_tg.includes('武士刀'))   _eff.push('居合');
+                if(_tg.includes('單手鈍器')) _eff.push('鈍擊');
+            }
             if(_eff.length) parts.push(`<div class="text-rose-300 font-bold" style="font-size:12px;">特效：${_eff.join(' / ')}</div>`);
         }
         if(typeof d.p === 'number' && d.p > 0) parts.push(`<div class="text-yellow-400" style="font-size:12px;">售價 ${d.p.toLocaleString()} 金幣</div>`);
