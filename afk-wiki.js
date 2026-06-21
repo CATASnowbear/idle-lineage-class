@@ -496,6 +496,36 @@
     ]}
   ];
 
+  // ===== 軍王之室(本檔維護) ================================================
+  var KINGROOM_SECTIONS = [
+    { t: '軍王之室是什麼、有哪幾間', lines: [
+      '四間獨立的「純 BOSS 房」，每間中央是一隻<b>軍王</b>、兩側各一隻固定小怪，進去就是專心打那隻軍王。',
+      '四間與對應軍王（等級／血量）：<b>暗殺軍王史雷佛</b>（Lv61、HP 約 1.6 萬）、<b>魔獸軍王巴蘭卡</b>（Lv63、HP 約 1.7 萬）、<b>法令軍王蕾雅</b>（Lv65、HP 約 1.5 萬，會放冰裂術冰凍你、還會幫小怪補血）、<b>冥法軍王海露拜</b>（Lv70、HP 約 2.3 萬，最硬，會放流星雨）。',
+      '軍王本身是<b>被動怪</b>（你不打牠、牠不會主動出手），但兩側小怪是主動的。'
+    ]},
+    { t: '怎麼進去（需要「軍王的鑰匙」）', lines: [
+      '在地圖選單選該軍王之室，<b>進場時消耗 1 把「軍王的鑰匙」</b>；身上沒鑰匙就進不去。',
+      '四間共用同一種「軍王的鑰匙」，不分房。'
+    ]},
+    { t: '軍王的鑰匙哪裡來', lines: [
+      '打「<b>拉斯塔巴德守門人</b>」<b>必定掉落（100%）</b>1 把。牠是 Lv40 的黑暗妖精，散布在拉斯塔巴德訓練區一帶——確切出沒地圖用「<b>掉落查詢</b>」搜「拉斯塔巴德守門人」。',
+      '流程：先去刷守門人累積鑰匙 → 再進軍王之室刷軍王。'
+    ]},
+    { t: '打贏之後：每輪再燒 1 把鑰匙續打', lines: [
+      '擊敗軍王後室內怪物全部消散，<b>15 秒後自動消耗 1 把「軍王的鑰匙」讓軍王重生</b>，接著打下一輪。',
+      '<b>身上沒鑰匙時，打贏就直接被傳送回村。</b>所以「掛在裡面連續打」＝<b>每一輪燒 1 把鑰匙</b>，帶幾把大約打幾輪。'
+    ]},
+    { t: '掉落：只有軍王會掉，傳說裝很稀有', lines: [
+      '<b>只有中央的軍王會掉東西，兩側小怪完全不掉。</b>',
+      '每次擊敗軍王<b>必掉材料</b>：對應的<b>軍團印記（100%）</b>＋<b>軍王徽印（10%）</b>（威頓村倫提斯製作用）；另約 <b>3%</b> 機率掉普通牧師／武官裝。',
+      '<b>軍王專屬的傳說裝（軍王武器、四大軍王套裝件、軍王飾品）掉率非常低，約 0.02%～0.1%</b>，要打很多輪才可能掉一件——必掉的只有上面那些材料（套裝加成見「套裝」分頁）。'
+    ]},
+    { t: '房內限制與離線掛機', lines: [
+      '室內<b>不能用傳送術、瞬間移動卷軸</b>（會被封印之力壓制），<b>日光術也無效</b>。',
+      '軍王之室<b>可以離線掛機</b>：離線時照樣「打贏→15 秒燒 1 鑰匙→重生」一輪輪跑，<b>鑰匙用完就自動傳回村莊</b>；回到遊戲的離線結算會告訴你這次打了幾輪、消耗幾把鑰匙。'
+    ]}
+  ];
+
   // ===== 負重(本檔維護) ====================================================
   var LOAD_SECTIONS = [
     { t: '負重是什麼、超重會怎樣', lines: [
@@ -725,7 +755,8 @@
     { k: 'sherine', n: '席琳' },
     { k: 'pledge', n: '血盟' },
     { k: 'tower', n: '傲慢之塔' },
-    { k: 'oblivion', n: '遺忘之島' }
+    { k: 'oblivion', n: '遺忘之島' },
+    { k: 'kingroom', n: '軍王之室' }
   ];
   var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all' };
 
@@ -830,6 +861,7 @@
     if (key === 'sherine') return renderSherine();
     if (key === 'tower') return renderTower();
     if (key === 'oblivion') return renderOblivion();
+    if (key === 'kingroom') return renderKingroom();
     if (key === 'load') return renderLoad();
     if (key === 'pledge') return renderPledge();
     return '';
@@ -870,7 +902,8 @@
     { key: 'sherine', cls: false, label: '席琳' },
     { key: 'pledge', cls: false, label: '血盟' },
     { key: 'tower', cls: false, label: '傲慢之塔' },
-    { key: 'oblivion', cls: false, label: '遺忘之島' }
+    { key: 'oblivion', cls: false, label: '遺忘之島' },
+    { key: 'kingroom', cls: false, label: '軍王之室' }
   ];
   // 統一搜尋:跨「所有分頁 + 所有職業」收集符合的小區塊,依來源分組列出。
   //   搜尋時不再切換/隱藏分頁(避免切職業整頁消失的怪現象),一次看到全部命中的結果。
@@ -1299,6 +1332,15 @@
   function renderOblivion() {
     var note = '<div class="m-wiki-note">「遺忘之島」是搭船前往的特殊離島：先到「途中」打掉傳送門才能登島，<b>島上不能用任何傳送（瞬移）</b>，離開就得回海音重新搭船。</div>';
     var secs = OBLIVION_SECTIONS.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    return note + secs;
+  }
+
+  function renderKingroom() {
+    var note = '<div class="m-wiki-note">「軍王之室」是四間獨立的純 BOSS 房，<b>進場與重生都要消耗「軍王的鑰匙」</b>。下面說明四間軍王、鑰匙怎麼拿、續打與掉落規則。</div>';
+    var secs = KINGROOM_SECTIONS.map(function (s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
