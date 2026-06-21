@@ -233,6 +233,15 @@
 
     var mql = window.matchMedia(MQ);
 
+    // 🔧 偵測手機:作者改版後新增 __mobileScaling,手機時把 viewport 設成固定 1180 等比縮放——這會讓
+    //    純寬度的 matchMedia 判定失效(變成對 1180 比、永遠 >768),故優先用它的 isMobileDevice()
+    //    (看 pointer:coarse / 螢幕短邊 / UA,不受 viewport 影響),再 OR 上 matchMedia(窄視窗也算)。
+    function detectMobile() {
+      var sc = window.__mobileScaling;
+      var devMobile = (sc && typeof sc.isMobileDevice === 'function') ? sc.isMobileDevice() : false;
+      return devMobile || mql.matches;
+    }
+
     function setView(v) {
       document.body.classList.remove('mview-battle', 'mview-config', 'mview-bag');
       document.body.classList.add('mview-' + v);
@@ -254,6 +263,8 @@
 
     function apply(on) {
       if (on) {
+        var sc = window.__mobileScaling;
+        if (sc && typeof sc.apply === 'function') sc.apply(false);   // 🔧 關掉作者「viewport 1180 等比縮放」→ 回 device-width,本外掛自建版面才正確(否則 100vw=1180、版面爆開)
         document.body.classList.add('m-mobile');
         logsIntoSheet();
         if (!/mview-(battle|config|bag)/.test(document.body.className)) setView('battle');
@@ -266,15 +277,17 @@
       }
     }
 
-    apply(mql.matches);
-    if (mql.addEventListener) mql.addEventListener('change', function (e) { apply(e.matches); });
-    else if (mql.addListener) mql.addListener(function (e) { apply(e.matches); });
+    apply(detectMobile());
+    function onMobileChange() { apply(detectMobile()); }
+    if (mql.addEventListener) mql.addEventListener('change', onMobileChange);
+    else if (mql.addListener) mql.addListener(onMobileChange);
+    window.addEventListener('orientationchange', onMobileChange);   // 裝置旋轉也重新判定
 
-    window.__afkm = { version: '1.0.0', apply: apply, setView: setView, setLog: setLog, openLog: openLog, closeLog: closeLog, toggleLog: toggleLog, isMobile: function () { return mql.matches; } };
+    window.__afkm = { version: '1.0.0', apply: apply, setView: setView, setLog: setLog, openLog: openLog, closeLog: closeLog, toggleLog: toggleLog, isMobile: detectMobile };
 
     wrapSlotSelect(mql);   // 手機:把存檔鈕單行文字重排成兩行(編號+職業 / 等級+暱稱)
 
-    console.log('[AFK-mobile] hooks OK — 手機版面已啟用(目前:' + (mql.matches ? '手機' : '桌機') + ')。');
+    console.log('[AFK-mobile] hooks OK — 手機版面已啟用(目前:' + (detectMobile() ? '手機' : '桌機') + ')。');
 
     // --- 精簡一行式狀態列 --------------------------------------------------
     function buildStatusStrip() {
