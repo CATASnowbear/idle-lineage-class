@@ -188,6 +188,7 @@
       var seg = '對' + tgt + '造成 ' + (ELE[sk.ele] || '') + '魔法傷害' + powerTxt(sk);
       if (sk.lifesteal) seg += '，並回復等同造成傷害的 HP';
       if (sk.status) seg += '，使其' + (STATUS_LABEL[sk.status.kind] || sk.status.kind) + durTxt(sk.status.dur);
+      if (sk.freeze) seg += '，命中後有機率（依異常魔法命中判定）使目標冰凍 6 秒（冰凍中無法行動、對王級無效）';
       return seg;
     }
     if (sk.type === 'heal') return healTxt(sk);
