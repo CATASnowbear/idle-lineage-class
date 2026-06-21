@@ -469,6 +469,32 @@
     ]}
   ];
 
+  // ===== 遺忘之島(本檔維護) ================================================
+  var OBLIVION_SECTIONS = [
+    { t: '怎麼去遺忘之島', lines: [
+      '到<b>海音</b>，找港口的 NPC <b>依斯巴</b>，搭他的船出發，船費 <b>10 萬金幣</b>。',
+      '出航後不會直接到島上，會先進入一段「<b>遺忘之島途中</b>」的海域（見下一段），打過去才登島。'
+    ]},
+    { t: '途中：打掉「傳送門」才能登島', lines: [
+      '搭船後先到「遺忘之島途中」，這裡會出現一座名為「<b>遺忘之島</b>」的<b>傳送門</b>。它是建築、<b>不會攻擊你</b>、血量極低，把它打掉、迷霧散開後就正式登上<b>遺忘之島</b>本島。',
+      '途中也會遇到一般海怪（蛇女、人魚、哈維、格利芬等），可以邊清邊找那座傳送門。'
+    ]},
+    { t: '島上不能用「傳送」（瞬移）', lines: [
+      '整趟旅程——不管在「途中」還是登島後——<b>都不能用傳送術，也不能用瞬間移動卷軸</b>，硬施放會跳出「遺忘之島的迷霧壓制了傳送」。',
+      '所以平常靠「傳送引出 BOSS」「換掉當前怪重抽一批」那套，在這裡<b>完全用不了</b>；遇到 BOSS 也<b>不會自動瞬移逃跑</b>，只能正面打。',
+      '航程與島上也<b>不能從地圖選單切到別的狩獵圖</b>。'
+    ]},
+    { t: '離開就等於結束旅程', lines: [
+      '只要<b>回村</b>，或<b>主動切換到別的地圖</b>，這趟遺忘之島旅程就<b>結束</b>了；在島上<b>死亡</b>也會被送回村並結束旅程。',
+      '想再去得<b>回海音找依斯巴重新搭船、再付一次 10 萬金幣</b>。'
+    ]},
+    { t: '島上的怪與掉落', lines: [
+      '島上怪物等級約 <b>20～53</b>，最強的頭目是「<b>遺忘之島巨大牛人</b>」（HP 1.5 萬，會放震裂術＋暈眩，建議練起來再來）。',
+      '島上專屬掉落「<b>被遺忘的裝備</b>」（被遺忘的鱗甲／皮盔甲／長袍／金屬盔甲，以及受封印的劍／巨劍／弩槍）。',
+      '這些是製作<b>古代臂甲</b>等古代裝備的材料——拿到威頓村找 <b>客盧亞</b> 製作（配方見「製作」分頁）。'
+    ]}
+  ];
+
   // ===== 負重(本檔維護) ====================================================
   var LOAD_SECTIONS = [
     { t: '負重是什麼、超重會怎樣', lines: [
@@ -697,7 +723,8 @@
     { k: 'load', n: '負重' },
     { k: 'sherine', n: '席琳' },
     { k: 'pledge', n: '血盟' },
-    { k: 'tower', n: '傲慢之塔' }
+    { k: 'tower', n: '傲慢之塔' },
+    { k: 'oblivion', n: '遺忘之島' }
   ];
   var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all' };
 
@@ -801,6 +828,7 @@
     if (key === 'craft') return renderCraft();
     if (key === 'sherine') return renderSherine();
     if (key === 'tower') return renderTower();
+    if (key === 'oblivion') return renderOblivion();
     if (key === 'load') return renderLoad();
     if (key === 'pledge') return renderPledge();
     return '';
@@ -840,7 +868,8 @@
     { key: 'load', cls: false, label: '負重' },
     { key: 'sherine', cls: false, label: '席琳' },
     { key: 'pledge', cls: false, label: '血盟' },
-    { key: 'tower', cls: false, label: '傲慢之塔' }
+    { key: 'tower', cls: false, label: '傲慢之塔' },
+    { key: 'oblivion', cls: false, label: '遺忘之島' }
   ];
   // 統一搜尋:跨「所有分頁 + 所有職業」收集符合的小區塊,依來源分組列出。
   //   搜尋時不再切換/隱藏分頁(避免切職業整頁消失的怪現象),一次看到全部命中的結果。
@@ -1253,6 +1282,15 @@
   function renderTower() {
     var note = '<div class="m-wiki-note">「傲慢之塔」是往上爬的塔：可以一層層「攀登」，也可以選一段「樓層區間」固定刷。下面說明玩法，以及進塔／換怪會用到的各種符與卷軸。</div>';
     var secs = TOWER_SECTIONS.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    return note + secs;
+  }
+
+  function renderOblivion() {
+    var note = '<div class="m-wiki-note">「遺忘之島」是搭船前往的特殊離島：先到「途中」打掉傳送門才能登島，<b>島上不能用任何傳送（瞬移）</b>，離開就得回海音重新搭船。</div>';
+    var secs = OBLIVION_SECTIONS.map(function (s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
