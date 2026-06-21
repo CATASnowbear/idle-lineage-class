@@ -3,6 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+      // 📱 手機/平板：以固定設計寬度讓整個桌機版面「等比縮小」到螢幕，避免欄位溢出導致按鈕被裁切/點不到。
+      //    桌機瀏覽器會忽略 viewport meta，故此設定僅影響行動裝置，完全不動桌機(1920/1440/4K)顯示。
+      (function () {
+        var DESIGN_W = 1180;   // 三欄(左340+中+右380+間距)的舒適設計寬度；行動裝置會縮放到實際螢幕寬
+        function isMobileDevice() {
+          var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+          var minSide = Math.min(screen.width || 9999, screen.height || 9999);
+          var uaMobile = /Android|iPhone|iPod|iPad|Mobile|Silk|Kindle|BlackBerry|Windows Phone/i.test(navigator.userAgent || '');
+          return (coarse && minSide <= 1024) || uaMobile;   // 真手機/平板才觸發；桌機(細指標/大螢幕)維持 device-width
+        }
+        function applyViewport(forceMobile) {
+          var m = document.querySelector('meta[name="viewport"]');
+          if (!m) return null;
+          var mobile = (typeof forceMobile === 'boolean') ? forceMobile : isMobileDevice();
+          m.setAttribute('content', mobile ? ('width=' + DESIGN_W) : 'width=device-width, initial-scale=1.0');
+          return m.getAttribute('content');
+        }
+        window.__mobileScaling = { DESIGN_W: DESIGN_W, isMobileDevice: isMobileDevice, apply: applyViewport };
+        applyViewport();
+      })();
+    </script>
     <title>放置天堂-遺忘之島</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
