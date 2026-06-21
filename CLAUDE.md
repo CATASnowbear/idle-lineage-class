@@ -95,7 +95,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 | `afk-mobile.js` | 手機版面(底部導覽列、一行式狀態列、浮動日誌面板、修正彈窗溢出) |
 | `afk-extradata.js` | **掉落查詢+小百科共用的手動補充資料**(純資料、無 DOM、最先載入,定義全域 `AFK_EXTRA`):`itemAcquire`(物品取得方式,`short` 給 dex 物品卡、`chain` 給 wiki 傳說裝備頁)、`skillNote`(法術白話,原 wiki 的 EFFECT_OVERRIDE)、`weaponTraitEff`/`weaponTagTrait`(武器特性白話對照,dex 物品卡與 wiki 傳說武器共用)。**只放「不能從遊戲 DB 動態算」的手動補充**;補一件裝備取得/一個法術只改這支、dex+wiki 同時生效。dex/wiki 都 call 時即時讀、沒載到優雅降級 |
 | `afk-dex.js` | 怪物/掉落查詢(首頁入口;搜尋怪名/地圖/掉落物;純讀 DB.mobs/maps/MOB_DROPS/items;桌機手機共用;**支援獨立頁 `?view=dex`**,見下「獨立頁」) |
-| `afk-wiki.js` | 小百科(首頁入口;**10 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/負重/席琳/血盟/傲慢之塔;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**) |
+| `afk-wiki.js` | 小百科(首頁入口;**11 分頁 + 關鍵字搜尋**:職業專精/武器特性/職業魔法/任務/套裝/強化/負重/席琳/血盟/傲慢之塔/遺忘之島;部分讀遊戲資料、部分本檔手動維護;桌機手機共用;**支援獨立頁 `?view=wiki`**;**改前先讀下方「小百科維護準則」**) |
 | `afk-fixes.js` | 通用修正(補原作者上游坑、桌機/手機通用、與裝置判定無關;目前:renderTabs select-guard——戰鬥中操作強化下拉不被重繪關掉) |
 | `afk-sw.js` | 背景大圖快取 Service Worker 註冊(配 `sw.js`;只在 isSecureContext 註冊、file:// 自動略過;不掛 DOM) |
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
@@ -113,7 +113,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ## 📚 小百科(afk-wiki.js)維護準則
 
-小百科已長成「**10 分頁 + 關鍵字搜尋**」:職業專精 / 武器特性 / 職業魔法 / 任務 / 套裝 / 強化 / 負重 / 席琳 / 血盟 / 傲慢之塔。**改它前先讀這節**——以下都是使用者反覆要求過的點,別再犯。
+小百科已長成「**11 分頁 + 關鍵字搜尋**」:職業專精 / 武器特性 / 職業魔法 / 任務 / 套裝 / 強化 / 負重 / 席琳 / 血盟 / 傲慢之塔 / 遺忘之島。**改它前先讀這節**——以下都是使用者反覆要求過的點,別再犯。
 
 ### 「更新小百科內容」SOP(使用者說「更新小百科」就照這跑)
 
@@ -181,6 +181,18 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 實測過:在「同一個分頁、不重整」的情況下重複呼叫 `loadGame()`(載入存檔)來重置角色,第二次起記憶體會從 ~17MB 暴漲到 ~97MB、每個 tick 從 ~0.1ms 變 ~0.9ms(慢 9 倍)。原因是 `loadGame()` 連帶啟動的計時器/事件監聽/DOM 每次都「再掛一份」、舊的沒拆掉,連續載入就一直疊。**正解:每次量測前重新導航到網址(整個 JS 環境倒掉重來),不要在原地 `loadGame()` 重置**,否則 A/B 比較的後半段數字全被污染(我原本「四個切片值連續各跑一次」的做法就是被這個害到、數字不準)。
 - 對一般玩家正常不影響(開遊戲只載入一次)。**待查疑點**:遊戲內「不重整就切存檔位/匯入存檔/回主選單再進」若底層直接再 `loadGame()` 而沒先清乾淨,連續切幾次可能變鈍——尚未驗證,先當備忘。
+
+## 🗺️ 離線掛機原則:等同「在線上掛機照跑」+ 非選單地圖(攀登/遺忘之島)的續掛寫法
+
+`afk-offline.js` 的核心原則:**離線掛機 = 把「在線上會發生的掛機」照跑一遍**,行為盡量與在線一致(同圖續掛、撞死即停結算到死前、存活回原地)。新增/修改離線行為前先對齊這條,不要自己發明特例。
+
+**特別坑:有些「狩獵地點」不是地圖選單裡的地圖**(攀登 `pride_fN`、遺忘之島 `oblivion_travel`/`oblivion_island`)——它們**不在 `DB.maps`/`MAP_CATEGORIES`**,而且原作**不存檔**這類「旅程/攀登狀態」(`state.prideClimb…`/`state.oblivion`),重載一律回村。對這種地圖做離線續掛,規則:
+
+- **不能用 `gotoMap()`/`changeMap()`(選單路徑)**把人帶回去——選單沒有這個 option,`setMapSelectors`/`sel.value` 設不上 → `mapState.current` 變空字串 → 補跑在空地圖空轉 → **收益歸零**(2026-06-21 遺忘之島就是這樣壞的,修前還會跳「離線掛機 0 分鐘…無收益」的怪訊息)。
+- **正解**:外掛**自存一份旅程狀態**(攀登 `afk_pride_<slot>`、遺忘之島 `afk_obl_<slot>`),登入時在「原 loadGame 之前」擷取;補跑時**還原 `state.xxx` 旗標 + 呼叫原作專屬進場函式**(攀登 `enterPrideFloor(n)`、遺忘之島 `enterOblivionMap(mapKey)`)進場,絕不走選單。
+- **落點比照在線**:存活→補滿 HP/MP、留在原地續掛(state 旗標維持,saveGame 後由 `stamp()` 續記);撞死→清掉旅程旗標、`gotoMap(homeTown())` 回村(比照原作 `revive()` 的塔中/島中死亡回城)。
+- **階段自動推進交給原作**:如遺忘之島「途中擊敗傳送門→進本島」是原作 `settleDeadMobs()` 內 `state._oblivionAdvance` 流程處理的,補跑時照呼叫 `settleDeadMobs()` 即可,不要自己重寫推進邏輯。
+- 新增這類地圖時,記得 `mapName()` 也補上它的中文名(這些 id 不在 `MAP_CATEGORIES`,否則摘要會印出原始 id)。
 
 ## 🐌 離線結算效能:實測結論(別再往「優化掃描」方向想)
 
