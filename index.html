@@ -5604,10 +5604,11 @@ function procFreeMagicSkill(t, skId, en) {
     if (t.curHp <= 0) { let ri = mapState.mobs.findIndex(x => x && x.uid === t.uid); if (ri !== -1) killMob(ri); }
     else if (!state.ff) renderMobs();
 }
-// 🔧 暈眩抵抗：飾品（如蕾雅戒指 stunResist:5）裝備時，依機率抵抗暈眩
+// 🔧 暈眩抵抗：掃描所有裝備欄位（含頭盔/盾牌），取 stunResist 最大值依機率抵抗
+//    修正：原僅掃 ring/amulet/belt，漏掉 helm/shield → 混沌頭盔/死亡之盾(stunResist:100) 失效
 function playerStunResisted() {
     let pct = 0;
-    ['ring1','ring2','ring3','ring4','amulet','belt'].forEach(k => { let e = player.eq[k]; if (e && DB.items[e.id] && DB.items[e.id].stunResist) pct = Math.max(pct, DB.items[e.id].stunResist); });
+    WEIGHT_COUNT_SLOTS.forEach(k => { let e = player.eq[k]; if (e && DB.items[e.id] && DB.items[e.id].stunResist) pct = Math.max(pct, DB.items[e.id].stunResist); });
     return pct > 0 && Math.random() * 100 < pct;
 }
 // 🔧 裝備狀態抵抗（沉睡/冰凍等）：掃描所有裝備欄位，取該抵抗欄位最大值，依機率抵抗（曼波帽子/深淵戒指 sleepResist/freezeResist）
