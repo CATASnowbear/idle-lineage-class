@@ -117,18 +117,19 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ### 「更新小百科內容」SOP(使用者說「更新小百科」就照這跑)
 
-1. **查上次更新小百科內容的時間**:`git log --format='%ad %h %s' --date=short -- afk-wiki.js`,取最近一筆「內容性」commit(跳過只 bump 版本號那種)的日期/hash。
-2. **diff 這段期間原作者(index.html 遊戲資料)的變更**:
-   `git log --oneline --since=<上次日期> -- index.html`、
-   `git diff <上次hash> HEAD -- index.html | grep '^+' | grep -E '"sk_|set_|DB\.sets|type: "(quest|mastery)"|SHERINE_SET_TEXT|eff: "'`
-   重點抓:新技能(`sk_`)、新套裝(`set_`/`DB.sets`)、新試煉/精通 NPC、新武器特性 `eff`、席琳套裝(`SHERINE_SET_TEXT`)、`MASTERY_DATA` 變動。
+1. **先同步遠端,再用 `wiki-checkpoint.json` 的錨點抓 diff(不要用 git log 猜起點——踩過,會漏改版)**:
+   - **務必先 `git fetch origin && git pull --rebase origin main`**:自動同步會在背景把作者新版推上來,本機落後就會拿舊的去比、漏掉剛進來的改版(2026-06-21 席琳套裝改版就是這樣差點漏掉)。
+   - 讀 `wiki-checkpoint.json` 的 `reconciledIndexCommit`,那是「小百科上次對齊到的 index.html 版本」,即本次 diff 的起點。
+2. **diff 出作者自上次對齊後改了什麼**:
+   `git diff <reconciledIndexCommit> HEAD -- index.html`——**整段都看過,別只靠 grep**(這次的計件規則改在註解+邏輯裡,純 grep 資料 pattern 會漏);要快速定位可再 `| grep -E '"sk_|set_|DB\.sets|SHERINE_|MASTERY|type: "(quest|mastery)"|eff: "|_RECIPES'`。
+   重點抓:新技能(`sk_`)、新套裝(`set_`/`DB.sets`)、新試煉/精通 NPC、新武器特性 `eff`、席琳套裝(`SHERINE_SET_TEXT`/`SHERINE_EFFECTS` 結構與計件規則)、`MASTERY_DATA`、客製製作(`_RECIPES`)變動。
 3. **把新內容補進對應分頁**——分兩種:
    - **讀遊戲資料、自動同步的**(通常不用改):職業專精讀 `MASTERY_DATA`、職業魔法讀 `DB.skills`、席琳套裝讀 `SHERINE_SET_TEXT`、掉落查詢純讀 `DB`。
    - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、負重 `LOAD_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、血盟 `PLEDGE_SECTIONS`、傲慢之塔 `TOWER_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
    - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格 `spBlock` 到那個面板**(並把關鍵字加進 `SPECIAL_KEYS` 讓搜尋自動展開)。原版每次改動全域掉落都要同步補這裡,不要只更新小百科。
    - **⭐ 製作不一定都在 `CRAFT_RECIPES`,有「客製製作」另開資料結構,掉落查詢/製作頁要另外補讀**:掉落查詢物品卡與小百科製作頁的製作資訊只讀 `CRAFT_RECIPES`,但**有些裝備走獨立的客製製作系統、不在 `CRAFT_RECIPES`**,例:惡魔王武器走 `DEMONKING_RECIPES`+`DEMONKING_MATS`(炎魔之影:消耗 +11 以上指定惡魔武器、繼承其強化/詞綴/席琳套裝)。症狀=「某件裝備查不到在哪製作、且常常一整批」。**遇到「明明可做卻查不到製作」→ 去 `index.html` grep `_RECIPES`/`buildXXXCraftHTML`/該裝備 id**,找到那組客製配方後,**同時補進** `afk-dex.js` 的 `buildCraftIndex`(物品卡)**和** `afk-wiki.js` 的 `renderCraft`(製作頁),兩邊都要。
    - **⭐ 取得方式只標「可控」的,潘朵拉黑市(轉蛋)是隨機池、不列(使用者決定)**:掉落查詢物品卡的「取得方式」列(`itemDetailHTML`)**只顯示靈魂之球喚回這種可控取得**(巴列斯/巴風特魔杖,走寫死的 `SOULORB_RESTORE` 對照表);**潘朵拉的黑市抽獎雖然幾乎什麼都抽得到,但太不可控、列了是雜訊,刻意不顯示**(別再依 `gachaWeight` 自動補抽獎來源)。製作/掉落另由 `craftInfoHTML` 與搜尋鈕呈現。傳說裝備頁(`afk-wiki.js` `renderLegend`/`legendAcquire`)對「特殊取得」的傳說也直接寫整條鏈:靈魂之球喚回(`LEGEND_SOULORB`,連靈魂之球/失去魔力魔杖的掉落來源都寫)、惡魔王武器(讀 `DEMONKING_RECIPES` 動態組炎魔之影客製製作)。**遇到新的喚回/兌換機制**(grep `soulorb`/`_restore`/`eff:`)→ 把結果裝備加進 `SOULORB_RESTORE`(dex)與 `LEGEND_SOULORB`(wiki)。
-4. 補完照「每次 push 前檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。
+4. 補完照「每次 push 前檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。**並把 `wiki-checkpoint.json` 更新成現在的 HEAD**:`reconciledIndexCommit`＝`git rev-parse HEAD`、`reconciledIndexBlob`＝`git rev-parse HEAD:index.html`、`reconciledAt`＝台灣時間(UTC+8),跟這次小百科改動一起 commit——錨點前進了,下次才不會重複比同一段。
 
 ### 內容鐵則(踩過、別再犯)
 
