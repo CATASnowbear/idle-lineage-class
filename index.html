@@ -3660,7 +3660,7 @@ function recomputeStats() {
     let conInc   = getConGrowth(d.con, p.cls);
     p.mhp = hpBase + (p.lv - 1) * (hpClsInc + conInc);   // 小數隱藏不捨去（顯示時取floor）
 
-    let mpBase   = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 5 : (p.cls === 'dark' ? 13 : 6));
+    let mpBase   = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 5 : (p.cls === 'dark' ? 3 : 6));
     let mpClsInc = p.cls === 'knight' ? 1 : (p.cls === 'elf' ? 2.83 : (p.cls === 'dark' ? 3 : 4.5));
     let wisInc   = getWisGrowth(d.wis);
     p.mmp = mpBase + (p.lv - 1) * (mpClsInc + wisInc);
