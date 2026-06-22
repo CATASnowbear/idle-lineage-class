@@ -7,8 +7,8 @@
  *       - iOS / 抓不到安裝事件：點了跳文字引導（分享→加入主畫面）。
  *   ● 安裝完（以 app 模式開啟）→ 連結換成 checkbox「自動更新至最新版本」（預設打勾），
  *       並在背景把全部圖（assets/）抓進圖桶，顯示「離線資源下載中 X%」直到 100%（之後就能完全離線）。
- *   ● 有新版時：
- *       - checkbox 有勾 → 自動接管、重整到最新版。
+ *   ● 更新只在「開網頁／重整網頁」那一刻檢查一次（不常駐輪詢），所以判斷時必定停在首頁，不會在操作人物／戰鬥中途跳更新。
+ *       - checkbox 有勾 → 偵測到新版直接重整套用（此時人在首頁）。
  *       - checkbox 沒勾 → 顯示「🔄 更新至最新版」連結，按了跳確認視窗，確認才更新。
  *
  * 設計重點：
@@ -50,6 +50,12 @@
   }
   function isIOS() {
     return /iPad|iPhone|iPod/.test(navigator.userAgent || '') && !window.MSStream;
+  }
+  // 是否正停在首頁(主選單可見)。遊戲中 #main-menu 會被加上 .hidden(見 index.html 的 startGame/loadGame)。
+  //   自動更新只在首頁套用——避免在操作人物/戰鬥中突然刷新打斷遊玩。
+  function onHomePage() {
+    var m = document.getElementById('main-menu');
+    return !!(m && !m.classList.contains('hidden'));
   }
   // 真的能跑 PWA/SW 的環境:有 serviceWorker、是安全環境、且 protocol 是 http/https。
   //   用「正面表列 http(s)」而不是排除 file://:SW 本來就只在 http(s) 跑,這樣連 data:/blob: 等
@@ -214,8 +220,14 @@
   function onUpdateReady() {
     waitingSW = (reg && reg.waiting) || waitingSW;
     if (!waitingSW) return;
-    if (autoUpdateOn()) applyUpdate();   // 自動：直接接管
+    if (autoUpdateOn()) autoApply();     // 自動：只在首頁套用(見 autoApply)
     else renderBar();                    // 手動：顯示「更新至最新版」
+  }
+  // 自動更新只在「停在首頁」時才重整套用。更新偵測本來就只發生在開網頁/重整那一刻(見 watchUpdates 註解),
+  //   此時必定停在首頁,所以實務上一定會套到;這道 onHomePage 檢查純粹保險——萬一偵測稍慢、使用者已點進遊戲,
+  //   就不在操作人物/戰鬥途中強制刷新打斷(使用者回報過的干擾),這個等待中的新版會留到下次開網頁/重整時自然套用。
+  function autoApply() {
+    if (onHomePage()) applyUpdate();
   }
   function applyUpdate() {
     if (!waitingSW) return;
@@ -244,7 +256,9 @@
           if (nw.state === 'installed' && navigator.serviceWorker.controller) onUpdateReady();
         });
       });
-      setInterval(function () { reg.update().catch(function () {}); }, 60000);
+      // 只在「開網頁/重整」時檢查一次更新,不做常駐輪詢——避免遊戲中途偵測到新版而打斷遊玩。
+      //   (瀏覽器本來在每次導覽就會自動重抓 sw.js 比對,這裡再主動 update() 一次確保不吃 HTTP 快取。)
+      reg.update().catch(function () {});
       maybePrecache();
     }).catch(function () {});
 
