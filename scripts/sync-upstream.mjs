@@ -41,6 +41,7 @@ const PLUGINS = [
   { file: 'afk-ui.js',       comment: '統一自製彈窗:全域接管 window.alert(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-autobuy.js',  comment: '外掛自動購買:肉 / 魔法屏障卷軸(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-pwa.js',      comment: 'PWA:安裝成免網路遊玩 + 自動/手動更新 + 背景預抓離線資源(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-transfer.js', comment: '跨裝置存檔轉移:匯出產 6 位數碼/匯入輸碼(配後端 cf-transfer Worker;可獨立維護,原作者更新後重新加回此行即可)' },
 ];
 
 function setOutput(k, v) {
