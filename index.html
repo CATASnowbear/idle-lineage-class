@@ -1002,7 +1002,7 @@ const DB = {
         "potion_ult": { n: "白色藥水", type: "pot", req: "all", p: 600, c: "text-white", d: "恢復 60 HP", val: 60, gachaWeight: 0 },
         "potion_haste": { n: "自我加速藥水", type: "pot", req: "all", p: 200, c: "text-green-300", d: "玩家攻擊速度加快33%，持續300秒", eff: "haste", dur: 300, gachaWeight: 0 },
         "potion_blue": { n: "藍色藥水", type: "pot", req: "all", p: 1046, c: "text-blue-300", d: "精神10以下MP恢復+1，11以上大幅增加，持續600秒", eff: "blue", dur: 600, gachaWeight: 0 },
-        "potion_brave": { n: "勇敢藥水", type: "pot", req: "knight", p: 880, c: "text-purple-300", d: "騎士限定，玩家攻擊速度加快33%，持續300秒", eff: "brave", dur: 300, gachaWeight: 0 },
+        "potion_brave": { n: "勇敢藥水", type: "pot", req: "knight,dragon", p: 880, c: "text-purple-300", d: "騎士／龍騎士限定，玩家攻擊速度加快33%（可與加速／覺醒／變身相乘疊加），持續300秒", eff: "brave", dur: 300, gachaWeight: 0 },
         "new_item_139": { n: "精靈餅乾", type: "pot", req: "elf", p: 1980, c: "text-yellow-200", d: "妖精限定，攻擊速度加快15%，持續300秒", eff: "elfcookie", dur: 300, gachaWeight: 0 },
         "new_item_140": { n: "慎重藥水", type: "pot", req: "mage", p: 600, c: "text-purple-300", d: "法師限定，魔法傷害+2、MP恢復+2，持續300秒", eff: "cautious", dur: 300, gachaWeight: 0 },
         "new_item_141": { n: "安特的水果", type: "pot", req: "all", p: 360, c: "text-green-300", d: "恢復 44~107 HP（僅能手動使用）", gachaWeight: 0 },
@@ -4121,7 +4121,7 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.brave > 0) spdMult *= 0.67;   // 勇敢藥水 +33%
     if(p.buffs.elfcookie > 0) spdMult *= 0.85; // 精靈餅乾 +15%
     if(p.buffs.sk_dark_walkhaste > 0) spdMult *= 0.85; // 🔧 行走加速：攻速+15%（與加速術等相乘疊加）
-    { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = (p.statuses && p.statuses.cleave > 0) || (p.mastery === 'k_cleave' && _clvW && _clvW.eff === 'cleave'); if(_clvOn) spdMult *= (p.mastery === 'k_cleave' ? 0.50 : 0.80); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加
+    { let _clvW = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; let _clvOn = !p.classicMode && ((p.statuses && p.statuses.cleave > 0) || (p.mastery === 'k_cleave' && _clvW && _clvW.eff === 'cleave')); if(_clvOn) spdMult *= (p.mastery === 'k_cleave' ? 0.50 : 0.80); }   // 切割：攻速+20%（🏅 切割精通：+50%・持切割武器常駐），與其他加速相乘疊加；🎮 經典模式停用
     { let _swMelee = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.mastery === 'e_sword' && _swMelee && !_swMelee.w2h && !_swMelee.isBow && !_swMelee.ranged) spdMult *= (1/1.5); }   // 🏅 劍術精通：持單手近戰武器攻速+50%（與加速/勇敢/餅乾/變身相乘疊加）
     { let _iw = p.eq.wpn ? DB.items[p.eq.wpn.id] : null; if(p.cls === 'illusion' && _iw && !_iw.isBow && ((p.mastery === 'i_qigu' && _iw.qigu) || (p.mastery === 'i_magicsword' && !_iw.qigu))) spdMult *= (1/1.3); }   // 🔮 奇古獸精通(裝奇古獸)／魔劍精通(裝非奇古獸)：攻速+30%
     if(p.buffs.blue > 0) d.mpR += getWisBlueBonus(d.wis);          // 藍色藥水：依精神提升MP恢復
@@ -5359,6 +5359,7 @@ function consumeArrow() {
 // ===== 法杖共鳴：裝備指定魔法杖時，一般攻擊(不論命中與否)有 智力/60 機率免費施展光箭 =====
 const WAND_LIGHTARROW_IDS = ['wpn_oakwand', 'wpn_38', 'wpn_witchwand', 'wpn_manawand', 'wpn_crystalwand', 'wpn_baless', 'wpn_wand_rasta', 'wpn_red_crystalwand', 'wpn_laia_wand', 'wpn_icequeen_wand', 'wpn_demon_scythe', 'wpn_darkmage_wand', 'wpn_baphomet_wand', 'wpn_illu_wand'];   // 🔮 幻術士魔杖：共鳴   // 🏅 共鳴：含蕾雅魔杖／冰之女王魔杖／惡魔鐮刀／黑法師之杖／🔧巴風特魔杖（👑惡魔王魔杖已改為魔爆 eff:magicburst）
 function wandLightArrowProc(target) {
+    if (player.classicMode) return;   // 🎮 經典模式：停用共鳴
     let wpn = player.eq.wpn;
     if (!wpn || !WAND_LIGHTARROW_IDS.includes(wpn.id)) return;
     if (Math.random() >= ((player.d.int || 0) / 60)) return;   // 觸發機率 = 裝備者智力 / 60
@@ -5472,6 +5473,7 @@ function procMagicStrike(t, isSpread) {
 }
 // 魔擊 proc 判定：裝備力量魔法杖時，每次攻擊(命中與否) 力量/60 機率；主目標已死則轉移到場上隨機存活怪
 function magicStrikeProc(target) {
+    if (player.classicMode) return;   // 🎮 經典模式：停用魔擊
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     if (!wpn || wpn.eff !== 'magicstrike') return;
     if (Math.random() >= ((player.d.str || 0) / 60)) return;   // 觸發機率 = 裝備者力量 / 60
@@ -5485,6 +5487,7 @@ function magicStrikeProc(target) {
 }
 // ===== 連射：發動攻擊時依機率追加 1~3 箭；每箭各自接受命中判定(可未命中/重擊/爆擊)，傷害為該箭結算的 30%；每箭也各判定月光爆裂 =====
 function rapidfireProc(arrowData) {
+    if (player.classicMode) return;   // 🎮 經典模式：停用連射
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     if (!wpn || !wpn.rapidfire) return;
     if (roll(1, 100) > wpn.rapidfire) return;
@@ -5520,6 +5523,7 @@ function rapidfireProc(arrowData) {
 function _isArmguard(shRef) { return !!(shRef && DB.items[shRef.id] && DB.items[shRef.id].armguard); }
 // ===== 反擊（單手劍）：對攻擊者打一次「必定命中、必定非重擊、傷害 50%」的一般攻擊；只打攻擊者，不轉移 =====
 function procCounter(t) {
+    if (player.classicMode) return;   // 🎮 經典模式：停用反擊
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
@@ -5539,6 +5543,7 @@ function procCounter(t) {
 }
 // ===== 居合（武士刀）：對攻擊者打一次「必定命中、可自然重擊/爆擊」的一般攻擊；只打攻擊者 =====
 function procIai(t) {
+    if (player.classicMode) return;   // 🎮 經典模式：停用居合
     if (!t || t.curHp <= 0) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
@@ -5590,7 +5595,7 @@ function dragonExtraAttackProc(target) {
         if (!res.hit) { logCombat(`<span class="font-bold" style="color:#fbbf24;">【額外攻擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); continue; }
         res.dmg = Math.floor(res.dmg * weakExposeDmgMult(t));   // 🏅 鎖刃精通
         t.curHp -= res.dmg; t.justHit = getWpnEle(player.eq.wpn, wpn); mobWake(t);
-        if (t.curHp > 0) { wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true); applyPlayerWeakExpose(t); }
+        if (t.curHp > 0) { wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode); applyPlayerWeakExpose(t); }
         if (wpn.vampPct && res.dmg > 0) player.hp = Math.min(player.mhp, player.hp + Math.floor(res.dmg * wpn.vampPct));
         let mark = (res.heavy && res.crit) ? '會心一擊' : (res.crit ? '爆擊' : (res.heavy ? '重擊' : ''));
         logCombat(`<span class="font-bold" style="color:#fbbf24;text-shadow:0 0 6px #d97706;">【額外攻擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${res.dmg} 點傷害${mark ? '（' + mark + '!）' : ''}。`, 'player');
@@ -5619,7 +5624,7 @@ function procCombo(t) {
     t.curHp -= dmg;
     t.justHit = getWpnEle(player.eq.wpn, wpn);
     mobWake(t);
-    if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true);   // 連擊亦為一般攻擊：依武器消磨硬皮
+    if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);   // 連擊亦為一般攻擊：依武器消磨硬皮
     let mark = (res.heavy && res.crit) ? '會心一擊' : (res.crit ? '爆擊' : (res.heavy ? '重擊' : ''));
     logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
     let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -5811,7 +5816,7 @@ function playerAttack() {
         }
         // === 騎士被動：看破 / 殺戮 / 屠殺（僅對近距離普攻生效，兩者獨立判定，可同時觸發）===
         let killPrefix = '';
-        if (player.cls === 'knight' && !result.ranged) {
+        if (player.cls === 'knight' && !result.ranged && !player.classicMode) {   // 🎮 經典模式：騎士無看破/殺戮被動
             // 看破：Lv1 起 5%，每10等+1%，上限 Lv100 的 15% → ×2 最終傷害
             let insightRate = Math.min(15, 5 + Math.floor(player.lv / 10));
             // 殺戮：Lv20 起 1%，每20等+1%，上限 Lv100 的 5% → ×3 最終傷害
@@ -5871,7 +5876,7 @@ function playerAttack() {
 
 		// 穿透（貝卡合金）：場上有兩名以上敵人時，普攻額外攻擊「主目標以外隨機一名敵人」，
 		// 每個波及目標各自獨立判定是否命中，命中則造成與主目標相同的傷害與屬性；僅一名敵人時與一般近戰相同（不額外攻擊）。
-        if (wpn && wpn.eff === 'pierce') {
+        if (wpn && wpn.eff === 'pierce' && !player.classicMode) {   // 🎮 經典模式：停用穿透
             let _pc = (wpn.pierceChance !== undefined) ? wpn.pierceChance : 100;   // 穿透發動機率(%)，未設定視為100%
             let otherIdx = [];
             mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0 && !m._dead && m !== target) otherIdx.push(i); });
@@ -5909,7 +5914,7 @@ function playerAttack() {
 
         // 切割：雙手劍重擊時觸發，自身攻速+20%持續2秒（與其他加速相乘疊加）
         let _cleaveProc = false;
-        if(result.heavy && wpn && wpn.eff === 'cleave') {
+        if(result.heavy && wpn && wpn.eff === 'cleave' && !player.classicMode) {   // 🎮 經典模式：停用切割
             let _wasCleave = player.statuses.cleave > 0;
             player.statuses.cleave = hasMastery('k_cleave') ? 40 : 20;   // 2秒（🏅 切割精通：4秒）
             if(!_wasCleave) { calcStats(); _cleaveProc = true; }
@@ -5923,11 +5928,11 @@ function playerAttack() {
         let _bleedWpnId = player.eq.wpn ? player.eq.wpn.id : '';
         let _canBleed = weaponHasBleed(_bleedWpnId) || (hasMastery('d_bleed') && getWeaponTags(_bleedWpnId).includes('雙刀'));
         let _bleedChance = _canBleed ? ((player.d.str || 0) / 60) : 0;
-        if (player.eq.wpn && target.curHp > 0 && Math.random() < _bleedChance) {
+        if (player.eq.wpn && target.curHp > 0 && !player.classicMode && Math.random() < _bleedChance) {   // 🎮 經典模式：停用出血
             applyBleed(target, result.dmg, hasMastery('d_bleed') ? 10 : 5, hasMastery('d_bleed'));   // 🔧 出血精通：上限 10 層 + 每層 +10% 傷害
         }
         // 單手鈍器鈍擊：命中使目標攻擊延遲 1 秒；每個敵人攻擊週期僅延遲一次（攻擊後重置），故最多 +1 秒、不會無限延遲
-        let _isBlunt1h = !!(player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('單手鈍器'));
+        let _isBlunt1h = !player.classicMode && !!(player.eq.wpn && getWeaponTags(player.eq.wpn.id).includes('單手鈍器'));   // 🎮 經典模式：停用鈍擊（延遲＋硬皮-1）
         if (player.eq.wpn && target.curHp > 0 && _isBlunt1h) {
             target._bluntShow = state.ticks + 30;   // 圖示顯示計時器：每次命中刷新（穩定亮著不閃），停手約 3 秒後熄滅
             if (!target._bluntDelayed) {
@@ -5937,7 +5942,7 @@ function playerAttack() {
             }
         }
         // 🔧 硬皮消磨：玩家一般攻擊命中時固定再磨 1（basic），並依重擊與武器（單手鈍器鈍擊 -1/重擊 -5、雙手鈍器/屠龍劍重擊 -20、其餘重擊 -2）疊加扣減
-        if (target.curHp > 0) wearHardSkin(target, player.eq.wpn ? player.eq.wpn.id : null, result.heavy, _isBlunt1h, true);
+        if (target.curHp > 0) wearHardSkin(target, player.eq.wpn ? player.eq.wpn.id : null, result.heavy, _isBlunt1h, true, player.classicMode);
         if (target.curHp > 0 && !result.ranged) applyPlayerWeakExpose(target);   // 🐉 弱點曝光：近距離命中時依鎖鏈劍/弱點精通附加堆疊
         // 🔧 蕾雅魔杖：近距離一般攻擊命中觸發冰裂術
         if (!result.ranged && target.curHp > 0 && wpn && wpn.meleeHitSpell) laiaWandHitProc(target);
@@ -6332,7 +6337,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         // 盾牌格檔：受到傷害減少50%。發動率＝受重擊時為盾牌格檔值（如100%盾→100%）；受非重擊一般攻擊時為其 30%（如100%盾→30%）
         let blocked = false;
         let blockReduced = 0;
-        if(player.eq.shield) {
+        if(player.eq.shield && !player.classicMode) {   // 🎮 經典模式：盾牌無格檔
             let _sh = DB.items[player.eq.shield.id];
             let _blockChance = (_sh && _sh.block) ? (heavy ? _sh.block : _sh.block * 0.3) : 0;   // 🛡️ 非重擊：格檔發動率為重擊的 30%
             if(_blockChance > 0 && Math.random() * 100 < _blockChance) { let _before = totalDmg; totalDmg = Math.floor(totalDmg * 0.5); blockReduced = _before - totalDmg; blocked = true; }
@@ -7769,16 +7774,16 @@ function initHardSkin(m) {
 }
 function mobHardSkin(m) { return (m && m.hardSkin > 0) ? m.hardSkin : 0; }   // 物理減傷量（供傷害公式扣減）
 // 依武器特效與重擊/鈍擊消磨硬皮值；wpnId 為攻擊者（玩家或傭兵）的武器 id
-function wearHardSkin(target, wpnId, heavy, bluntProc, basic) {
+function wearHardSkin(target, wpnId, heavy, bluntProc, basic, suppressEff) {
     if (!target || !(target.hardSkin > 0)) return;
     let tags = wpnId ? getWeaponTags(wpnId) : [];
     let dec = 0;
     let _wd = wpnId ? DB.items[wpnId] : null;
-    let _isCrush = !!(_wd && _wd.eff === 'crush');
+    let _isCrush = !suppressEff && !!(_wd && _wd.eff === 'crush');   // 🎮 經典模式：停用重擊(粉碎 -20/-1)
     if (heavy) {
-        if (_isCrush || wpnId === 'wpn_dragonslayer') dec += 20;   // 粉碎（雙手鈍器/大馬士革刀）與屠龍劍重擊 -20
-        else if (tags.includes('單手鈍器')) dec += 5;
-        else dec += 2;
+        if (_isCrush || (!suppressEff && wpnId === 'wpn_dragonslayer')) dec += 20;   // 粉碎（雙手鈍器/大馬士革刀）與屠龍劍重擊 -20
+        else if (!suppressEff && tags.includes('單手鈍器')) dec += 5;   // 🎮 經典模式：停用單手鈍器重擊 -5
+        else dec += 2;   // 一般重擊 -2（通用機制，非特效，經典仍保留）
     } else if (_isCrush) {
         dec += 1;   // 🔧 粉碎武器：一般攻擊命中(未重擊)也磨 1 硬皮值
     }
@@ -8019,7 +8024,7 @@ function allyAttackOnce(ally) {
         // 騎士被動（依協力者等級，僅近戰）：看破 Lv1起5%/每10等+1%上限15%→×2；殺戮 Lv20起1%/每20等+1%上限5%→×3；兩者同時=屠殺→×6
         let kp = '';
         let _meleePassive = (ally.cls === 'knight') || allyHasMastery(ally, 'e_sword');   // 🔧 劍術精通：妖精傭兵近戰也可看破
-        if (_meleePassive && !isRanged) {
+        if (_meleePassive && !isRanged && !ally.classicMode) {   // 🎮 經典模式：傭兵騎士無看破/殺戮被動
             let lv = ally.lv || 1;
             let insightRate = Math.min(15, 5 + Math.floor(lv / 10));
             let slayRate = (ally.cls === 'knight' && lv >= 20) ? Math.min(5, 1 + Math.floor((lv - 20) / 20)) : 0;   // 殺戮/屠殺僅騎士
@@ -8048,7 +8053,7 @@ function allyAttackOnce(ally) {
         let mark = (heavy && isCrit) ? '會心一擊' : (isCrit ? '爆擊' : (heavy ? '重擊' : ''));
         logCombat(`${kp}<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
         // 🔧 硬皮消磨：傭兵一般攻擊命中固定再磨 1（basic，與玩家同規則）；單手鈍器鈍擊另由 allyOnHitEffects 觸發
-        if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, heavy, false, true);
+        if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, heavy, false, true, ally.classicMode);
         allyOnHitEffects(ally, t, { dmg: dmg, heavy: heavy, hardSkin: _hsT });        // 🔧 命中後特效：穿透/即死/出血/鈍擊/切割（hardSkin 供穿透精通無視判定）
         if (wpn && wpn.vampPct && dmg > 0 && ally.hp != null) ally.hp = Math.min(ally.mhp || ally.hp, (ally.hp || 0) + Math.floor(dmg * wpn.vampPct));   // 🐉 嗜血者鎖鏈劍（傭兵）
         if (t.curHp > 0 && !isRanged && wpn && (wpn.weakExpose || allyHasMastery(ally, 'k_weakness'))) {   // 🐉 弱點曝光（傭兵）：鎖鏈劍/弱點精通
@@ -8068,7 +8073,7 @@ function allyComboAttack(ally, t) {
     let r = allyStrikeRoll(ally, t, {});   // 獨立命中判定
     if (!r.hit) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【協力·${ally._allyName}·連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
     let dmg = Math.max(1, Math.floor(r.dmg * (ally._setShadow5 ? 1.0 : 0.5)));
-    if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, r.heavy, false, true);
+    if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, r.heavy, false, true, ally.classicMode);
     logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【協力·${ally._allyName}·連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害。`, 'player');
     _allyDamageMob(ally, t, dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
 }
@@ -8115,7 +8120,7 @@ function allyCastMagic(ally, sk) {
     // 🔧 神官魔杖·魔爆（傭兵版）：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)對全場額外造成本次傷害30%的無屬性傷害
     {
         let _bw = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
-        if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0) {
+        if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0 && !ally.classicMode) {   // 🎮 經典模式：傭兵停用魔爆
             let _aoe = (sk.target === 'all') || (targets.length > 1);
             if (Math.random() < ((d.int || 0) / (_aoe ? 60 : 100))) {
                 let _ex = Math.max(1, Math.floor(_burstDmg * 0.3));
@@ -8235,6 +8240,7 @@ function allyMageAct(ally) {
 }
 // 妖精協力：連射（弓）— 依記錄的發動機率追加 1~3 箭，每箭約 30% 傷害，隨機命中場上敵人
 function allyRapidfire(ally) {
+    if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用連射
     let d = ally.d || {};
     let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
     let rate = (wpn && wpn.isBow && wpn.rapidfire) ? wpn.rapidfire : (ally._rapidfire || 0);   // 直接讀當前弓的連射機率（相容舊協力快照，確保普攻與三重矢都能連射）
@@ -8318,6 +8324,7 @@ function allyStrikeRoll(ally, t, opts) {
 }
 // 共鳴光箭（傭兵版）：公式同玩家 procLightArrow；回魔（傷害/10、至少1）恢復到傭兵自身 MP
 function allyProcLightArrow(ally, t) {
+    if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用共鳴
     let sk = DB.skills['sk_lightarrow'];
     if (!sk || !t || t.curHp <= 0) return;
     let d = ally.d || {};
@@ -8477,7 +8484,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
     if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(wpnInst.id) && Math.random() < ((d.int||0)/60)) {
         let t = _allyProcTarget(target); if (t) allyProcLightArrow(ally, t);
     }
-    if (wpn.eff === 'magicstrike' && Math.random() < ((d.str||0)/60)) {
+    if (wpn.eff === 'magicstrike' && !ally.classicMode && Math.random() < ((d.str||0)/60)) {   // 🎮 經典模式：傭兵停用魔擊
         let t = _allyProcTarget(target);
         if (t) {
             let res = allyStrikeRoll(ally, t, { forceHeavy: true });
@@ -8528,7 +8535,7 @@ function allyOnHitEffects(ally, t, res) {
     let wpn = DB.items[wpnInst.id];
     if (!wpn) return;
     let d = ally.d || {};
-    if (wpn.eff === 'pierce') {   // 穿透：場上有其他敵人時，依機率額外攻擊另一名敵人（各自獨立判定命中，命中才造成相同傷害）
+    if (wpn.eff === 'pierce' && !ally.classicMode) {   // 穿透：場上有其他敵人時，依機率額外攻擊另一名敵人（各自獨立判定命中）；🎮 經典模式：傭兵停用穿透
         let pc = (wpn.pierceChance !== undefined) ? wpn.pierceChance : 100;
         let others = [];
         mapState.mobs.forEach((m, i) => { if (m && m.curHp > 0 && !m._dead && m.uid !== t.uid) others.push(i); });
@@ -8558,10 +8565,10 @@ function allyOnHitEffects(ally, t, res) {
     // 匕首/矛：力量/60 機率出血；🔧 出血精通：雙刀也比照匕首觸發（力量/60）；匕首/矛/雙刀皆可疊 10 層、每秒總傷害 ×(1+0.1×層)
     let _allyCanBleed = weaponHasBleed(wpnInst.id) || (allyHasMastery(ally, 'd_bleed') && getWeaponTags(wpnInst.id).includes('雙刀'));
     let _bleedChance = _allyCanBleed ? ((d.str||0)/60) : 0;
-    if (_bleedChance > 0 && t.curHp > 0 && !t._dead && Math.random() < _bleedChance) {
+    if (_bleedChance > 0 && t.curHp > 0 && !t._dead && !ally.classicMode && Math.random() < _bleedChance) {   // 🎮 經典模式：傭兵停用出血
         applyBleed(t, res.dmg, allyHasMastery(ally, 'd_bleed') ? 10 : 5, allyHasMastery(ally, 'd_bleed'));   // 🔧 出血精通：上限 10 層 + 每層 +10%
     }
-    if (getWeaponTags(wpnInst.id).includes('單手鈍器') && t.curHp > 0 && !t._dead) {   // 鈍擊：延遲目標攻擊 1 秒（每攻擊週期僅一次，同玩家）
+    if (getWeaponTags(wpnInst.id).includes('單手鈍器') && t.curHp > 0 && !t._dead && !ally.classicMode) {   // 鈍擊：延遲目標攻擊 1 秒；🎮 經典模式：傭兵停用鈍擊
         t._bluntShow = state.ticks + 30;
         if (!t._bluntDelayed) {
             if (t._atkCd === undefined) t._atkCd = Math.max(1, Math.floor((t.atkSpd || 2) * 10));
@@ -8570,7 +8577,7 @@ function allyOnHitEffects(ally, t, res) {
         }
         wearHardSkin(t, wpnInst.id, false, true);   // 🔧 硬皮消磨：傭兵單手鈍器鈍擊 -1
     }
-    if (res.heavy && wpn.eff === 'cleave') {   // 切割：重擊時自身攻速 +20% 持續 2 秒（alliesTick 套用攻擊間隔 ×0.8）
+    if (res.heavy && wpn.eff === 'cleave' && !ally.classicMode) {   // 切割：重擊時自身攻速 +20%；🎮 經典模式：傭兵停用切割
         if (!(ally._cleaveTicks > 0)) logCombat(`<span class="text-teal-300 font-bold">【協力·${ally._allyName}】流暢的手感，攻速提升！</span>`, 'player');
         ally._cleaveTicks = allyHasMastery(ally, 'k_cleave') ? 40 : 20;   // 🔧 傭兵切割精通：持續4秒
     }
@@ -8596,6 +8603,7 @@ function allyReactCounter(mob, blocked) {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
         if (!ally || !ally.eq || !ally.eq.wpn) return;
+        if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用反擊
         if (!mob || mob._dead || mob.curHp <= 0) return;   // 攻擊者已被前一位傭兵反殺則停止
         if (!getWeaponTags(ally.eq.wpn.id).includes('單手劍')) return;
         if (getWeaponTags(ally.eq.wpn.id).includes('武士刀') && !(ally.eq.shield && !_isArmguard(ally.eq.shield))) return;   // 🛡️ 反擊/居合雙標籤武器「無真盾牌(空手或臂甲)」時→走居合、不發動反擊（唯獨裝真盾牌才反擊）
@@ -8613,6 +8621,7 @@ function allyReactIai(mob) {
     if (!player.allies || !player.allies.length) return;
     player.allies.forEach(ally => {
         if (!ally || !ally.eq || !ally.eq.wpn || (ally.eq.shield && !_isArmguard(ally.eq.shield))) return;
+        if (ally.classicMode) return;   // 🎮 經典模式：傭兵停用居合
         if (!mob || mob._dead || mob.curHp <= 0) return;
         if (!getWeaponTags(ally.eq.wpn.id).includes('武士刀')) return;
         let _iai = allyHasMastery(ally, 'k_counter');   // 🔧 傭兵反擊精通：居合必定發動、傷害+30%
@@ -8730,7 +8739,7 @@ function alliesTick() {
             } else {
                 let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
                 let _itv = Math.max(8, Math.round((wpn && wpn.spd ? wpn.spd : 1.0) * 10));
-                { let _aClvW = wpn && wpn.eff === 'cleave'; if (ally._cleaveTicks > 0 || (allyHasMastery(ally, 'k_cleave') && _aClvW)) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.50 : 0.8))); }   // 🔧 切割：攻速+20%（🏅 切割精通 +50%・持切割武器常駐）
+                { let _aClvW = wpn && wpn.eff === 'cleave'; if (!ally.classicMode && (ally._cleaveTicks > 0 || (allyHasMastery(ally, 'k_cleave') && _aClvW))) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.50 : 0.8))); }   // 🔧 切割：攻速+20%（🏅 切割精通 +50%・持切割武器常駐）；🎮 經典模式停用
                 if (allyHasMastery(ally, 'e_sword') && wpn && !wpn.w2h && !wpn.isBow && !wpn.ranged) _itv = Math.max(8, Math.round(_itv * (1/1.5)));   // 🏅 劍術精通（傭兵）：持單手近戰武器攻速+50%
                 if (ally.cls === 'illusion' && wpn && !wpn.isBow && ((allyHasMastery(ally, 'i_qigu') && wpn.qigu) || (allyHasMastery(ally, 'i_magicsword') && !wpn.qigu))) _itv = Math.max(8, Math.round(_itv * (1/1.3)));   // 🔮 奇古獸/魔劍精通（傭兵）：攻速+30%（鏡像玩家 recomputeStats spdMult）
                 ally._atkCd = _itv;
@@ -9019,7 +9028,7 @@ function castSkillInner(skId) {
     let sk = DB.skills[skId];
     if(!sk) return false;
     if(inAbsBarrier()) return false;   // 🛡️ 絕對屏障：無法施法（自動/手動皆擋）
-    if(skId === 'sk_sunlight' && KING_ROOMS[mapState.current]) { logSys('<span class="text-red-400">軍王之室中，日光術無法生效。</span>'); return false; }   // 🔧 軍王之室：日光術無效
+    if(skId === 'sk_sunlight' && KING_ROOMS[mapState.current]) { logSys('<span class="text-red-400">此區域中，日光術無法生效。</span>'); return false; }   // 🔧 軍王之室／底比斯祭壇：日光術無效
     if(skId === 'sk_magic_shield' && (player.magicShieldCd || 0) > 0) return false;   // 魔法屏障抵擋技能後冷卻中，無法施放
     
     if(player.statuses.silence > 0) {   // 🔧 沉默：所有魔法皆無法施放（含魔法相消術——只有沉默/魔法封印能擋下相消術）
@@ -9157,7 +9166,7 @@ function castSkillInner(skId) {
                 dmg = Math.floor(dmg * weakExposeDmgMult(t));   // 🏅 鎖刃精通：每層弱點曝光最終傷害+10%
                 t.curHp -= dmg; t.justHit = getWpnEle(player.eq.wpn, wpn); total += dmg; mobWake(t);
                 log.push(dmg + (res.heavy ? '(重)' : ''));
-                if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true);
+                if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);
             }
             if (consume && applied) t.weakExpose = 0;
             if (total > 0) { logCombat(`施放 ${sk.n}，連續斬擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 [${log.join(', ')}] 共 ${total} 點傷害${bonus > 0 ? `（弱點曝光 +${bonus}）` : ''}。`, 'player'); if (t.curHp <= 0) killMob(mapState.targetIdx); else renderMobs(); }
@@ -9369,7 +9378,7 @@ function castSkillInner(skId) {
             // 🔧 神官魔杖·魔爆：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)對全場額外造成本次傷害30%的無屬性傷害
             {
                 let _bw = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
-                if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0) {
+                if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0 && !player.classicMode) {   // 🎮 經典模式：停用魔爆
                     let _aoe = (sk.target === 'all') || (targets.length > 1);
                     if (Math.random() < (player.d.int || 0) / (_aoe ? 60 : 100)) {
                         let _ex = Math.max(1, Math.floor(_burstDmg * 0.3));
@@ -9460,7 +9469,7 @@ function autoActions() {
     
     const buffs = [
         { id: 'set-haste', pot: 'potion_haste', b: 'haste', buyId: 'set-auto-buy-haste' },
-        { id: 'set-brave', pot: 'potion_brave', b: 'brave', req: 'knight', buyId: 'set-auto-buy-brave' },
+        { id: 'set-brave', pot: 'potion_brave', b: 'brave', req: 'knight,dragon', buyId: 'set-auto-buy-brave' },
         { id: 'set-blue', pot: 'potion_blue', b: 'blue', buyId: 'set-auto-buy-blue' },
         { id: 'set-cautious', pot: 'new_item_140', b: 'cautious', req: 'mage', buyId: 'set-auto-buy-cautious' },
         { id: 'set-elfcookie', pot: 'new_item_139', b: 'elfcookie', req: 'elf', buyId: 'set-auto-buy-elfcookie' },
@@ -9470,7 +9479,7 @@ function autoActions() {
     buffs.forEach(cfg => {
         if (cfg.b === 'haste' && player._equipHaste) return;   // 裝備常駐加速（伊娃之盾）：不重複喝加速藥水
         if (document.getElementById(cfg.id).checked && (player.buffs[cfg.b] || 0) <= 0) {
-            if(cfg.req && player.cls !== cfg.req) return;
+            if(cfg.req && !cfg.req.split(',').includes(player.cls)) return;   // 🎮 支援逗號多職業（勇敢藥水 knight,dragon）
             let item = player.inv.find(i => i.id === cfg.pot);
             if(item) {
                  useItem(item.uid, true);
@@ -9507,6 +9516,7 @@ function autoActions() {
         let sk = DB.skills[sid];
         if(sk.type === 'buff') {
             if(sk.haste && (player.buffs.haste > 0 || player._equipHaste)) return;  // 已有加速來源（含裝備常駐），不重複施放
+            if(sid === 'sk_sunlight' && KING_ROOMS[mapState.current]) return;   // 🔧 軍王之室／底比斯祭壇：日光術無效，跳過自動施放（否則每 tick 被擋下並狂洗系統日誌）
             if(sk.darkStealth && player._darkStealthCd > state.ticks) return;   // 🔧 暗隱術：冷卻中不自動施放（須身上無暗隱術且冷卻結束才再施放）
             if(sk.awaken && player.mastery !== 'k_awaken' && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => (player.buffs[a]||0) > 0)) return;   // 🐉 覺醒互斥：已有一種覺醒生效時不自動施放其他覺醒（避免互相清除而反覆耗HP/MP）；覺醒精通可同時三種
             let chk = document.getElementById(`auto-sk-${sid}`);
@@ -11117,6 +11127,9 @@ const WEAPON_TAGS = {
     wpn_old_sword:['單手劍','武士刀']   // 🏛️ 古老的劍：反擊(單手劍)＋居合(武士刀)
 };
 function getWeaponTags(id){ return WEAPON_TAGS[id] || []; }
+// 🎮 經典模式：tooltip 不顯示已被停用的武器/盾牌特效字樣（共鳴/魔爆/連射/反擊/出血/穿透/切割/居合/魔擊/鈍擊/重擊/格檔）；連擊/月光爆裂/即死等未停用者照常顯示
+const CLASSIC_HIDDEN_EFF_LABELS = ['共鳴','魔爆','連射','反擊','出血','穿透','切割','居合','魔擊','鈍擊','重擊','格檔'];
+function filterClassicEffLabels(effArr){ return (player && player.classicMode) ? effArr.filter(e => !CLASSIC_HIDDEN_EFF_LABELS.some(h => e.startsWith(h))) : effArr; }
 function weaponHasBleed(id){ let t = getWeaponTags(id); return t.includes('匕首') || t.includes('矛'); }   // 匕首與矛皆帶出血特效
 function buildItemDescHTML(item) {
     let d = DB.items[item.id];
@@ -11230,6 +11243,7 @@ function buildItemDescHTML(item) {
         if (typeof getWeaponTags === 'function' && getWeaponTags(item.id).includes('武士刀')) _eff.push('居合');
         if (typeof getWeaponTags === 'function' && getWeaponTags(item.id).includes('單手鈍器')) _eff.push('鈍擊');
         if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(item.id)) _eff.push('共鳴');
+        _eff = filterClassicEffLabels(_eff);   // 🎮 經典模式：移除已停用特效字樣
         if (_eff.length) desc += `<br><span class="text-rose-300 font-bold">特效：${_eff.join(' / ')}</span>`;
     }
     // 👆
@@ -14879,11 +14893,11 @@ function startGame() {
 }
 
 function updateClassPotionRows() {
-    // 勇敢藥水：騎士限定；慎重藥水：法師限定；精靈餅乾：妖精限定
+    // 勇敢藥水：騎士／龍騎士限定；慎重藥水：法師限定；精靈餅乾：妖精限定
     let braveRow = document.getElementById('ui-brave-row');
     let cautiousRow = document.getElementById('ui-cautious-row');
     let elfRow = document.getElementById('ui-elfcookie-row');
-    if(braveRow) braveRow.classList.toggle('hidden', player.cls !== 'knight');
+    if(braveRow) braveRow.classList.toggle('hidden', player.cls !== 'knight' && player.cls !== 'dragon');
     if(cautiousRow) cautiousRow.classList.toggle('hidden', player.cls !== 'mage');
     if(elfRow) elfRow.classList.toggle('hidden', player.cls !== 'elf');
 }
@@ -16755,6 +16769,7 @@ window.onload = () => {
                 if(_tg.includes('武士刀'))   _eff.push('居合');
                 if(_tg.includes('單手鈍器')) _eff.push('鈍擊');
             }
+            _eff = filterClassicEffLabels(_eff);   // 🎮 經典模式：移除已停用特效字樣
             if(_eff.length) parts.push(`<div class="text-rose-300 font-bold" style="font-size:12px;">特效：${_eff.join(' / ')}</div>`);
         }
         if(typeof d.p === 'number' && d.p > 0) parts.push(`<div class="text-yellow-400" style="font-size:12px;">售價 ${d.p.toLocaleString()} 金幣</div>`);
