@@ -322,6 +322,15 @@
       (_shopIndex[id] = _shopIndex[id] || { specific: [], general: false }).general = true;
     });
   }
+  // 箭/銀箭/肉:商店以「1000 個一組」的固定價賣,不是用 d.p(對齊遊戲 renderShopItems 的特例);其餘用定價 d.p。
+  var SHOP_BUNDLE_PRICE = {
+    wpn_5: { base: 100, unit: '1000 根' }, wpn_22: { base: 200, unit: '1000 根' }, new_item_143: { base: 100, unit: '1000 個' }
+  };
+  function shopBuyPrice(id) {
+    if (SHOP_BUNDLE_PRICE[id]) return SHOP_BUNDLE_PRICE[id];
+    var d = DB.items[id];
+    return (d && d.p) ? { base: d.p, unit: '' } : null;
+  }
   function shopInfoHTML(id) {
     if (_shopIndex === null) buildShopIndex();
     var e = _shopIndex[id];
@@ -331,7 +340,9 @@
     });
     if (e.general) lines.push('<div class="m-dex-craft-where">各村莊雜貨商人皆有販售</div>');
     if (!lines.length) return '';
-    return '<div class="m-dex-craft"><div class="m-dex-craft-h">🏪 商店販售</div>' + lines.join('') + '</div>';
+    var pr = shopBuyPrice(id);
+    var priceLine = pr ? '<div class="m-dex-craft-mats">售價：' + pr.base.toLocaleString() + ' 金幣' + (pr.unit ? '（' + pr.unit + '）' : '') + '；攻城獲勝期間 8 折</div>' : '';
+    return '<div class="m-dex-craft"><div class="m-dex-craft-h">🏪 商店販售</div>' + priceLine + lines.join('') + '</div>';
   }
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
