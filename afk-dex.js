@@ -133,14 +133,22 @@
     INDEX.sort(function (a, b) { return (a.mob.lv || 0) - (b.mob.lv || 0) || String(a.mob.n).localeCompare(String(b.mob.n)); });
   }
 
-  // 裝備(武器/防具/飾品)名稱索引:讓搜尋能直接點出任一件裝備看數值——包含製作/兌換/任務取得、沒有怪會掉的(如 50 級試煉獎勵、傳說裝備)
+  // 物品名稱索引:讓搜尋能直接點出物品看詳情——
+  //   ① 所有裝備(武器/防具/飾品):含製作/兌換/任務取得、沒有怪會掉的(如 50 級試煉獎勵、傳說裝備)
+  //   ② 商店有賣的非裝備(魔法書/藥水/卷軸/布料/精靈・黑暗水晶…):這些既不一定被怪掉、又不是裝備,
+  //      不收的話「只有商店賣」的東西完全搜不到(使用者回報的就是這個);收進來才查得到、點開看「商店販售」。
   var ITEM_INDEX = [];
   function buildItemIndex() {
     ITEM_INDEX = [];
+    var shopSet = {};
+    if (typeof SHOP_LISTS !== 'undefined' && SHOP_LISTS) {
+      for (var k in SHOP_LISTS) (SHOP_LISTS[k] || []).forEach(function (sid) { shopSet[sid] = true; });
+    }
     for (var id in DB.items) {
       var d = DB.items[id];
       if (!d || !d.n) continue;
-      if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') continue;
+      var isEquip = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc');
+      if (!isEquip && !shopSet[id]) continue;
       ITEM_INDEX.push({ id: id, n: d.n, hay: String(d.n).toLowerCase() });
     }
     ITEM_INDEX.sort(function (a, b) { return a.n.length - b.n.length || a.n.localeCompare(b.n); });   // 名稱短的(較接近完整匹配)排前面
@@ -152,7 +160,7 @@
     if (!ms.length) return '';
     var more = ms.length > ITEM_MATCH_MAX; if (more) ms = ms.slice(0, ITEM_MATCH_MAX);
     var names = ms.map(function (it) { return '<span class="m-dex-iname" data-id="' + esc(it.id) + '" title="看數值">' + hl(it.n, q) + '</span>'; }).join('、');
-    return '<div class="m-dex-card"><div class="m-dex-imatch-h">🔎 符合的裝備（點名稱看數值）</div><div class="m-dex-imatch">' + names + (more ? '　…還有更多，請輸入更精確的名稱' : '') + '</div></div>';
+    return '<div class="m-dex-card"><div class="m-dex-imatch-h">🔎 符合的物品（點名稱看詳情）</div><div class="m-dex-imatch">' + names + (more ? '　…還有更多，請輸入更精確的名稱' : '') + '</div></div>';
   }
 
   // ----- 搜尋 + 渲染 ------------------------------------------------------
@@ -165,7 +173,7 @@
     var clearBtn = document.getElementById('m-dex-clear');
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
-    if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜裝備名可直接點看數值</div>'; return; }
+    if (!q) { results.innerHTML = '<div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜物品名可直接點看詳情</div>'; return; }
     // 全域特殊掉落規則:每條只要「內文含查詢字」或「關鍵字雙向命中」就展開+金框+標色,可同時多條(如搜「祝福」會中 賦予祝福卷軸 與 施法卷軸)
     var special = false, firstHit = null;
     Array.prototype.forEach.call(document.querySelectorAll('.m-dex-sp-item'), function (it) {
@@ -180,7 +188,7 @@
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
     if (!hits.length) {
-      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些裝備沒有固定掉落的怪，多為製作／兌換／任務取得）</div>'); return; }
+      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些物品沒有固定掉落的怪，多為商店／製作／兌換／任務取得）</div>'); return; }
       results.innerHTML = special
         ? '<div class="m-dex-hint">「' + esc(input.value.trim()) + '」沒有固定掉落的怪物，請見下方<b>「全域特殊掉落規則」</b>。</div>'
         : '<div class="m-dex-hint">找不到符合的怪物或裝備</div>';
@@ -290,6 +298,42 @@
     return '<div class="m-dex-craft"><div class="m-dex-craft-h">🔨 製作</div>' + blocks + '</div>';
   }
 
+  // ----- 商店販售:讀遊戲 SHOP_LISTS(NPC→販售物品)+ DB.towns(NPC→村莊) ------------
+  //   潘朵拉黑市是 type:"exchange"、不在 SHOP_LISTS,故自然不列入(使用者要求不列)。
+  //   通用消耗品(SHOP_LISTS.default,各村雜貨商人都賣)歸成一句「各村莊雜貨商人」,不逐家列;
+  //   具名商人(武器商溫諾、魔法商巴耶斯、精靈水晶琳達…)只列「該商人獨有/非通用」的品項。
+  var _shopIndex = null;   // itemId -> { specific: [{name, town}], general: bool }
+  function buildShopIndex() {
+    _shopIndex = {};
+    if (typeof SHOP_LISTS === 'undefined' || !SHOP_LISTS) return;
+    if (_npcInfo === null) buildNpcInfo();
+    var defaultSet = {};
+    (SHOP_LISTS.default || []).forEach(function (id) { defaultSet[id] = true; });
+    for (var npcId in SHOP_LISTS) {
+      if (npcId === 'default') continue;
+      var info = _npcInfo[npcId] || { name: npcId, town: '' };
+      (SHOP_LISTS[npcId] || []).forEach(function (id) {
+        if (defaultSet[id]) return;   // 通用消耗品 → 歸「各村莊雜貨商人」,不重複掛在具名商人下
+        var e = (_shopIndex[id] = _shopIndex[id] || { specific: [], general: false });
+        if (!e.specific.some(function (s) { return s.name === info.name && s.town === info.town; })) e.specific.push({ name: info.name, town: info.town });
+      });
+    }
+    (SHOP_LISTS.default || []).forEach(function (id) {
+      (_shopIndex[id] = _shopIndex[id] || { specific: [], general: false }).general = true;
+    });
+  }
+  function shopInfoHTML(id) {
+    if (_shopIndex === null) buildShopIndex();
+    var e = _shopIndex[id];
+    if (!e) return '';
+    var lines = e.specific.map(function (s) {
+      return '<div class="m-dex-craft-where">在 <b>' + esc(s.name) + (s.town ? '（' + esc(s.town) + '）' : '') + '</b> 販售</div>';
+    });
+    if (e.general) lines.push('<div class="m-dex-craft-where">各村莊雜貨商人皆有販售</div>');
+    if (!lines.length) return '';
+    return '<div class="m-dex-craft"><div class="m-dex-craft-h">🏪 商店販售</div>' + lines.join('') + '</div>';
+  }
+
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
   var IT_REQ = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
@@ -371,7 +415,7 @@
     var desc = d.d ? '<div class="m-dex-idesc">' + d.d + '</div>' : '';   // d 為遊戲內建文字(可含 <br>),原樣顯示
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
     return '<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>' +
-      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc + craftInfoHTML(id) + searchBtn;
+      (rows.length ? '<table class="m-dex-itable"><tbody>' + rows.join('') + '</tbody></table>' : '') + desc + craftInfoHTML(id) + shopInfoHTML(id) + searchBtn;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
@@ -515,13 +559,13 @@
       '<div id="m-dex-card-wrap">' +
         '<div id="m-dex-head">' +
           '<span id="m-dex-inwrap">' +
-            '<input id="m-dex-input" type="text" placeholder="搜尋 怪物 / 地圖 / 掉落物 / 裝備…" autocomplete="off">' +
+            '<input id="m-dex-input" type="text" placeholder="搜尋 怪物 / 地圖 / 掉落物 / 物品…" autocomplete="off">' +
             '<button id="m-dex-clear" type="button" title="清除" aria-label="清除">✕</button>' +
           '</span>' +
           '<button id="m-dex-close" type="button" title="關閉">✕</button>' +
         '</div>' +
         '<label id="m-dex-sherine-row"><input id="m-dex-sherine" type="checkbox"> 席琳的世界掉落率（×3）</label>' +
-        '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜裝備名可直接點看數值</div></div>' +
+        '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜物品名可直接點看詳情</div></div>' +
         specialPanelHTML() +
       '</div>' +
       '<div id="m-dex-itempop"><div id="m-dex-itempop-card"><button id="m-dex-itempop-close" type="button" title="關閉" aria-label="關閉">✕</button><div id="m-dex-itempop-body"></div></div></div>';
