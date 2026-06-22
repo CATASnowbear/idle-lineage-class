@@ -38,7 +38,13 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
     else fn();
   }
-  function autoUpdateOn() { return localStorage.getItem(PREF_AUTOUPDATE) !== '0'; }
+  // 自動更新偏好「只管已安裝的 App」。一般瀏覽器分頁永遠拿最新——它沒有手動更新 UI,
+  //   且 localStorage 是 App 與瀏覽器同源共用,App 取消勾選會把旗標設成 '0',
+  //   若瀏覽器分頁也照這旗標,就會永遠不更新又無從手動更新而卡死(使用者回報過)。
+  function autoUpdateOn() {
+    if (!isStandalone()) return true;
+    return localStorage.getItem(PREF_AUTOUPDATE) !== '0';
+  }
   function isStandalone() {
     return (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches ||
             window.matchMedia('(display-mode: fullscreen)').matches)) ||
@@ -83,7 +89,12 @@
       '#afk-pwa-bar .afk-pwa-update{color:#fbbf24;font-weight:bold;}' +
       '#afk-pwa-bar .afk-pwa-prog{color:#34d399;}' +
       '#afk-pwa-bar .afk-pwa-done{color:#34d399;}' +
-      '#afk-pwa-bar .afk-pwa-ver{color:#64748b;font-size:11px;margin-top:2px;letter-spacing:.3px;}';
+      '#afk-pwa-bar .afk-pwa-ver{color:#64748b;font-size:11px;margin-top:2px;letter-spacing:.3px;}' +
+      // 更新過場：套用更新到實際重整之間（SW skip-waiting→activate 有秒級延遲），蓋全螢幕轉圈避免「沒反應」的錯覺
+      '#afk-pwa-updating{position:fixed;inset:0;z-index:100000;background:rgba(8,12,20,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#e2e8f0;font-size:15px;}' +
+      '#afk-pwa-updating .afk-pwa-spin{width:42px;height:42px;border:4px solid #334155;border-top-color:#7dd3fc;border-radius:50%;animation:afkPwaSpin .8s linear infinite;}' +
+      '#afk-pwa-updating .afk-pwa-updating-text{letter-spacing:.5px;}' +
+      '@keyframes afkPwaSpin{to{transform:rotate(360deg);}}';
     document.head.appendChild(s);
   }
 
@@ -206,7 +217,19 @@
     else renderBar();                    // 手動：顯示「更新至最新版」
   }
   function applyUpdate() {
-    if (waitingSW) { updateApplied = true; waitingSW.postMessage({ type: 'skip-waiting' }); }
+    if (!waitingSW) return;
+    updateApplied = true;
+    showUpdatingOverlay();   // 立刻給回饋，使用者按完「確定更新」不會覺得沒反應
+    waitingSW.postMessage({ type: 'skip-waiting' });
+    // 保險：萬一 controllerchange 沒如期觸發（卡 waiting），逾時也強制重整，不讓過場停在那
+    setTimeout(function () { if (!refreshing) { refreshing = true; location.reload(); } }, 8000);
+  }
+  function showUpdatingOverlay() {
+    if (document.getElementById('afk-pwa-updating')) return;
+    var o = document.createElement('div');
+    o.id = 'afk-pwa-updating';
+    o.innerHTML = '<div class="afk-pwa-spin"></div><div class="afk-pwa-updating-text">正在更新至最新版…</div>';
+    document.body.appendChild(o);
   }
 
   function watchUpdates() {
