@@ -26,4 +26,4 @@ new_sqlite_classes = ["Transfer"]
 ALLOW_ORIGINS = "https://pp771007.github.io,http://localhost:8799,http://127.0.0.1:8799,null"
 TTL_MS = "600000"
 RATE_PER_MIN = "30"
-MAX_SAVE_BYTES = "2000000"
+MAX_SAVE_BYTES = "5000000"
