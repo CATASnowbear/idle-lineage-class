@@ -1250,7 +1250,8 @@
         t.npcs.forEach(function (n) { if (n && n.id && !npcInfo[n.id]) npcInfo[n.id] = { name: n.n, town: t.n }; });
       }
     }
-    var itemName = function (id) { return (DB.items[id] && DB.items[id].n) || id; };
+    // 'gold' 是貨幣(存在 player.gold,不在 DB.items),配方材料用到時要自己給中文名
+    var itemName = function (id) { return id === 'gold' ? '金幣' : ((DB.items[id] && DB.items[id].n) || id); };
     var note = '<div class="m-wiki-note">各製作 NPC 能做的裝備／道具與所需材料。想知道某件東西在哪做，直接用上面搜尋打它的名字。</div>';
     var html = note;
     for (var npcId in CRAFT_RECIPES) {
