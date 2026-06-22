@@ -15,9 +15,6 @@ import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { stampSwVersion } from './stamp-sw-version.mjs';
 
-const BG_PREFIX = 'assets/background/';   // 場景大圖目錄(由 sw.js 做 cache-first 快取)
-const SW_FILE = 'sw.js';
-
 // 算 git blob SHA(跟 GitHub 樹狀 API 回的 .sha 同演算法),用來判斷既有 asset 內容有沒有被作者換過
 function gitBlobSha(buf) {
   return createHash('sha1').update('blob ' + buf.length + '\0').update(buf).digest('hex');
@@ -107,24 +104,12 @@ try {
   console.warn('[warn] 補圖階段出錯(不致命,繼續):', e.message);
 }
 
-// 4b. 既有「背景大圖」被換 → bump sw.js 的 IMG_VERSION,讓玩家端 Service Worker 自動清舊快取、重抓新圖
-//     (新增背景圖不必 bump:新檔名新 URL,cache-first 本來就會抓。只有同名換內容才需要。)
-const bgChanged = assetsChanged.filter((p) => p.startsWith(BG_PREFIX));
-let swVersion = '';
-if (bgChanged.length && existsSync(SW_FILE)) {
-  const sw = readFileSync(SW_FILE, 'utf8');
-  const m = sw.match(/const IMG_VERSION(\s*=\s*)'img-v(\d+)';/);
-  if (m) {
-    swVersion = 'img-v' + (parseInt(m[2], 10) + 1);
-    writeFileSync(SW_FILE, sw.replace(m[0], `const IMG_VERSION${m[1]}'${swVersion}';`));
-    console.log(`[sw] 既有背景圖更新 ${bgChanged.length} 張 → bump IMG_VERSION 至 ${swVersion}`);
-  } else {
-    console.warn('[warn] 找不到 sw.js 的 IMG_VERSION,未能自動 bump,請手動處理。');
-  }
-}
+// 4b. 圖桶失效不再「整桶倒掉」(舊作法:既有圖被換就 bump IMG_VERSION → 重抓全部 30MB)。
+//     改走「逐張對帳」:manifest 帶每張圖的 git blob sha,玩家端 SW(sw.js reconcileImages)
+//     比對只清掉 sha 對不上的那幾張。所以這裡不動 sw.js,只負責把帶 sha 的 manifest 產出來(見 4c)。
 
-// 4c. 重產 assets-manifest.json(PWA 背景預抓清單):走訪本地 assets/,列出全部圖檔路徑。
-//     內容一樣時 git 不會視為改動;assets 有增減才會進 commit。
+// 4c. 重產 assets-manifest.json(PWA 預抓清單 + 逐張對帳依據):走訪本地 assets/,列出 [路徑, git blob sha]。
+//     sha 由 4 階段已抓好的本地檔即時算;內容沒變時 sha 不變 → git 不視為改動,assets/sha 有變才進 commit。
 function walkAssets(dir) {
   const out = [];
   for (const name of readdirSync(dir)) {
@@ -136,7 +121,8 @@ function walkAssets(dir) {
   return out;
 }
 if (existsSync('assets')) {
-  writeFileSync('assets-manifest.json', JSON.stringify(walkAssets('assets').sort()) + '\n');
+  const manifest = walkAssets('assets').sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
+  writeFileSync('assets-manifest.json', JSON.stringify(manifest) + '\n');
 }
 
 // 4d. stamp sw.js 的 CODE_VERSION(程式桶版本):依 index.html＋全部外掛 js 內容算 hash。
@@ -153,9 +139,7 @@ const gameTitle = (titleMatch ? titleMatch[1] : '放置天堂').trim();
 setOutput('changed', changed ? 'true' : 'false');
 setOutput('html_changed', htmlChanged ? 'true' : 'false');
 setOutput('assets_added', String(assetsAdded.length));
-setOutput('assets_changed', String(assetsChanged.length));   // 既有 asset 被換過(全部,含非背景)
-setOutput('bg_changed', String(bgChanged.length));           // 其中屬於背景大圖的張數(驅動 commit/release 警示)
-setOutput('sw_version', swVersion);                          // 圖桶 bump 後的新版本(沒 bump 則為空字串)
+setOutput('assets_changed', String(assetsChanged.length));   // 既有 asset 被換過(玩家端逐張對帳只重抓這些)
 setOutput('code_version', codeVersion);                      // 程式桶版本(依 index.html＋外掛內容 hash)
 setOutput('game_title', gameTitle);
 console.log(`index.html 變更: ${htmlChanged} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length}`);

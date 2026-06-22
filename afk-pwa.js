@@ -259,7 +259,7 @@
       // 只在「開網頁/重整」時檢查一次更新,不做常駐輪詢——避免遊戲中途偵測到新版而打斷遊玩。
       //   (瀏覽器本來在每次導覽就會自動重抓 sw.js 比對,這裡再主動 update() 一次確保不吃 HTTP 快取。)
       reg.update().catch(function () {});
-      maybePrecache();
+      syncImages(false);   // 每次載入:對帳清舊圖(線上/已安裝都跑)+(已安裝未抓滿則)背景預抓
     }).catch(function () {});
 
     navigator.serviceWorker.addEventListener('controllerchange', function () {
@@ -286,29 +286,38 @@
     if (ctrl) ctrl.postMessage({ type: 'get-version' });
   }
 
-  // ----- 背景預抓（安裝後把整包圖抓進圖桶，抓滿即可完全離線）---------------
-  function maybePrecache() {
-    if (!isStandalone()) return;                      // 只有「裝成 app」的人才抓那 30MB，純線上逛的人不抓
-    if (localStorage.getItem(PRECACHE_DONE) === '1') { precacheFinished = true; renderBar(); return; }
-    startPrecache();
+  // ----- 圖桶對帳 + 背景預抓 ----------------------------------------------
+  // 抓最新 assets-manifest.json(每筆 [path, sha];manifest 走網路、永遠最新),交給 cb 用。
+  function withManifest(cb) {
+    fetch('assets-manifest.json', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (manifest) { if (manifest && manifest.length) cb(manifest); })
+      .catch(function () {});
   }
-  function startPrecache() {
+  // 每次載入都把最新 manifest 送給 SW:
+  //   ● reconcile(線上逛、已安裝都跑)→ 只清掉 sha 對不上的舊圖,作者換一張只重抓一張、不重載整包。
+  //   ● precache(只在「已安裝且尚未抓滿」或剛安裝 forcePrecache)→ 把整包圖抓進圖桶,抓滿即可完全離線。
+  //   precache 不會樂觀補記 sha(只在實際抓到才記),故與 reconcile 同時跑也不會記錯,毋須等待排序。
+  //   首次安裝尚未接管(無 controller)→ 等接管後再跑(此時快取為空,reconcile 是 no-op、precache 照抓)。
+  function syncImages(forcePrecache) {
     var ctrl = navigator.serviceWorker.controller;
-    if (!ctrl) {   // SW 還沒接管這個分頁 → 等接管後再抓
+    if (!ctrl) {
       navigator.serviceWorker.addEventListener('controllerchange', function once() {
         navigator.serviceWorker.removeEventListener('controllerchange', once);
-        startPrecache();
+        syncImages(forcePrecache);
       });
       return;
     }
-    fetch('assets-manifest.json', { cache: 'no-cache' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (urls) {
-        if (!urls || !urls.length) return;
-        precaching = true; precacheTotal = urls.length; precacheDone = 0; renderBar();
-        ctrl.postMessage({ type: 'precache-images', urls: urls });
-      })
-      .catch(function () {});
+    var precacheDoneFlag = localStorage.getItem(PRECACHE_DONE) === '1';
+    var doPrecache = forcePrecache || (isStandalone() && !precacheDoneFlag);
+    if (!doPrecache && isStandalone() && precacheDoneFlag) { precacheFinished = true; renderBar(); }
+    withManifest(function (manifest) {
+      ctrl.postMessage({ type: 'reconcile-images', manifest: manifest });
+      if (doPrecache) {
+        precaching = true; precacheTotal = manifest.length; precacheDone = 0; renderBar();
+        ctrl.postMessage({ type: 'precache-images', manifest: manifest });
+      }
+    });
   }
 
   // ----- 安裝事件 ---------------------------------------------------------
@@ -321,7 +330,7 @@
     window.addEventListener('appinstalled', function () {
       deferredPrompt = null;
       renderBar();
-      startPrecache();   // 剛裝好就開始把圖抓滿
+      syncImages(true);   // 剛裝好就開始把圖抓滿(forcePrecache:此刻分頁仍是瀏覽器模式、isStandalone 還是 false)
     });
   }
 
