@@ -38,13 +38,11 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
     else fn();
   }
-  // 自動更新偏好「只管已安裝的 App」。一般瀏覽器分頁永遠拿最新——它沒有手動更新 UI,
-  //   且 localStorage 是 App 與瀏覽器同源共用,App 取消勾選會把旗標設成 '0',
-  //   若瀏覽器分頁也照這旗標,就會永遠不更新又無從手動更新而卡死(使用者回報過)。
-  function autoUpdateOn() {
-    if (!isStandalone()) return true;
-    return localStorage.getItem(PREF_AUTOUPDATE) !== '0';
-  }
+  // 自動更新偏好是「全網域共用的一個 pin」——本來就只能這樣:一個 origin 只有一個 Service Worker,
+  //   App 與瀏覽器分頁共用它(也共用這個 localStorage 旗標)。cache-first 下不可能 App 留舊版、瀏覽器跑新版並存,
+  //   誰把新版 SW 啟用(skip-waiting)就是全體一起換。故「關閉自動更新」= App 與瀏覽器都不會被自動推上去,
+  //   要更新得自己按更新鈕(App 與瀏覽器都有提供,見 renderBar)。這樣「開瀏覽器」不會反過來把想留舊版的 App 強推到新版。
+  function autoUpdateOn() { return localStorage.getItem(PREF_AUTOUPDATE) !== '0'; }
   function isStandalone() {
     return (window.matchMedia && (window.matchMedia('(display-mode: standalone)').matches ||
             window.matchMedia('(display-mode: fullscreen)').matches)) ||
@@ -116,16 +114,19 @@
     if (!b) return;
     if (!pwaCapable() && !isStandalone()) { b.innerHTML = ''; return; }   // file:// 等非 PWA 環境:不顯示任何 PWA UI(裝不了,顯示只會誤導)
     var html = '';
+    // 關了自動更新 + 有等待中的新版 → 顯示手動更新連結。App 與瀏覽器分頁都要顯示:
+    //   關閉是全網域共用的 pin,瀏覽器分頁也不會被自動推上去,所以這裡要給它一個手動更新的入口,
+    //   否則「不自動更新、又沒得手動更新」就會卡死(使用者回報過的舊 bug)。
+    var updateLink = (!autoUpdateOn() && waitingSW)
+      ? '<div><button type="button" class="afk-pwa-link afk-pwa-update" id="afk-pwa-update">🔄 更新至最新版</button></div>'
+      : '';
     if (!isStandalone()) {
       // 還沒安裝：純文字連結（非大按鈕）
-      html = '<button type="button" class="afk-pwa-link" id="afk-pwa-install">📥 安裝成免網路遊玩</button>';
+      html = '<button type="button" class="afk-pwa-link" id="afk-pwa-install">📥 安裝成免網路遊玩</button>' + updateLink;
     } else {
       // 已安裝：自動更新 checkbox（預設打勾）
       html = '<label class="afk-pwa-chk"><input type="checkbox" id="afk-pwa-auto"' + (autoUpdateOn() ? ' checked' : '') + '> 自動更新至最新版本</label>';
-      // 沒勾 + 有等待中的新版 → 顯示手動更新連結
-      if (!autoUpdateOn() && waitingSW) {
-        html += '<div><button type="button" class="afk-pwa-link afk-pwa-update" id="afk-pwa-update">🔄 更新至最新版</button></div>';
-      }
+      html += updateLink;
       // 背景預抓進度
       if (precaching) {
         var pct = precacheTotal ? Math.floor(precacheDone / precacheTotal * 100) : 0;
