@@ -19,6 +19,9 @@
 (function () {
   'use strict';
 
+  // ⚙ 功能開關:false = 首頁不顯示「存檔轉移」入口(後端與程式都保留,日後改 true 即可開回)。
+  var ENABLED = false;
+
   // ⚙ 部署 cf-transfer Worker 後,把這裡換成你的網址(見 cf-transfer/README.md),並 bump 本檔 ?v=。
   var API = 'https://transfer.pp771007.workers.dev';
   function apiReady() { return API && API.indexOf('YOUR-SUBDOMAIN') === -1; }
@@ -341,6 +344,8 @@
 
   // ----- 啟動 -------------------------------------------------------------
   function init() {
+    // 即使停用也照常 log hooks OK,避免自動同步的冒煙測試誤判掛點失效。
+    if (!ENABLED) { console.log('[AFK-transfer] hooks OK — 功能已停用（ENABLED=false，首頁不顯示入口）。'); return; }
     var menu = $('main-menu');
     if (!menu) { console.warn('[AFK-transfer] 找不到 #main-menu，存檔轉移停用。'); return; }
     injectCSS();
