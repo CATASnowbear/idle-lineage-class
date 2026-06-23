@@ -745,7 +745,7 @@
     { t: '✨ 魅力（CHA）', lines: [
       '主管「召喚」與「誘捕（帶寵物）」的數量與戰力，是召喚流派的核心屬性。',
       '<b>召喚術／造屍術</b>：<b>只召喚 1 隻</b>，魅力提升的是牠「每輪攻擊段數」＝ <b>魅力 ÷ 6</b>（無條件捨去）——是同一隻多打幾下，<b>不是召喚更多隻</b>。',
-      '<b>屬性精靈</b>：這個才是隻數隨魅力增加——預設 1 隻，學了「精靈精通」後 ＝ <b>1 ＋ 魅力 ÷ 20</b> 隻（最多 4 隻）。',
+      '<b>屬性精靈</b>：這個才是隻數隨魅力增加——預設 1 隻，學了「精靈精通」後 ＝ <b>1 ＋ 魅力 ÷ 10</b> 隻（無條件捨去，最多 7 隻）。',
       '召喚物的命中與傷害也隨魅力提升（有「召喚精通」時，造屍／召喚術的命中傷害判定用 魅力 ×1.2）。',
       '<b>誘捕（帶寵物／狗）數量</b>：能同時帶的誘捕寵物（項圈）數 ＝ <b>魅力 ÷ 7</b>（無條件捨去）——魅力 60 時最多 <b>8 隻</b>。被迷魅／誘捕的夥伴，其命中與傷害隨「完整魅力」提升（這部分連超過 60 的魅力都算進去）。完整玩法見「帶寵物」分頁。',
       '上述「數量」（召喚段數／精靈隻數／帶寵上限）一律以魅力 <b>60</b> 封頂；超過 60 只再加命中與傷害，不再增加數量。',
@@ -1401,13 +1401,68 @@
   }
 
   function renderStats() {
-    var note = '<div class="m-wiki-note">角色有六種能力值，各自影響戰鬥與生存的不同面向。下面先列各項作用，再說明上限、配點與「萬能藥」。</div>';
-    function card(s) {
+    var note = '<div class="m-wiki-note">六種能力值。每項先講作用，再用<b>數值表</b>列出「練到某個數字時實際給多少」——表格直接讀遊戲的計算函式產生，<b>會跟著改版自動更新</b>，不是手抄。自然值（基礎＋配點＋萬能藥）上限 60，裝備／套裝可再往上疊破 60，所以表列到 80。</div>';
+    var BP = [10, 20, 30, 40, 50, 60, 70, 80];
+    function sgn(n) { return (n > 0 ? '+' : '') + n; }
+    function tbl(cols) {
+      var head = '<tr><th>能力值</th>' + cols.map(function (c) { return '<th>' + c.h + '</th>'; }).join('') + '</tr>';
+      var body = BP.map(function (v) {
+        return '<tr><td>' + v + '</td>' + cols.map(function (c) {
+          var x; try { x = c.f(v); } catch (e) { x = '—'; }
+          return '<td>' + x + '</td>';
+        }).join('') + '</tr>';
+      }).join('');
+      return '<div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
+    }
+    // 各屬性數值表:呼叫 index.html 的全域計算函式即時產生(缺函式→該表優雅降級為空)
+    var TABLES = {
+      str: function () { return (typeof getStrMeleeDmg === 'function') ? tbl([
+        { h: '近戰傷害', f: function (v) { return sgn(getStrMeleeDmg(v)); } },
+        { h: '近戰命中', f: function (v) { return sgn(getStrMeleeHit(v)); } },
+        { h: '爆擊率', f: function (v) { return getStrMeleeCrit(v) + '%'; } }
+      ]) : ''; },
+      dex: function () { return (typeof getDexRangedDmg === 'function') ? tbl([
+        { h: '遠程傷害', f: function (v) { return sgn(getDexRangedDmg(v)); } },
+        { h: '遠程命中', f: function (v) { return sgn(getDexRangedHit(v)); } },
+        { h: '爆擊率', f: function (v) { return getDexRangedCrit(v) + '%'; } },
+        { h: '防禦(AC)', f: function (v) { return getDexAC(v); } },
+        { h: '迴避', f: function (v) { return sgn(getDexER(v)); } }
+      ]) : ''; },
+      con: function () { return (typeof getConHpRegenMax === 'function') ? tbl([
+        { h: 'HP恢復/次', f: function (v) { var m = getConHpRegenMax(v); return m > 0 ? ('1~' + m) : '—'; } },
+        { h: '藥水額外', f: function (v) { return '+' + getConPotionPct(v) + '%'; } }
+      ]) : ''; },
+      int: function () { return (typeof getIntMagicDmg === 'function') ? tbl([
+        { h: '魔法傷害', f: function (v) { return sgn(getIntMagicDmg(v)); } },
+        { h: '魔法命中', f: function (v) { return sgn(getIntMagicHit(v)); } },
+        { h: '爆擊率', f: function (v) { return getIntMagicCrit(v) + '%'; } },
+        { h: '額外MP', f: function (v) { return sgn(getIntExtraMp(v)); } },
+        { h: 'MP消耗減', f: function (v) { return getIntMpReduce(v) + '%'; } }
+      ]) : ''; },
+      wis: function () { return (typeof getWisMpRegen === 'function') ? tbl([
+        { h: 'MP恢復/次', f: function (v) { return getWisMpRegen(v); } },
+        { h: '擊殺回MP', f: function (v) { return getWisMpOnKill(v); } },
+        { h: '魔防', f: function (v) { return sgn(getWisMR(v)); } },
+        { h: '藍藥加成', f: function (v) { return sgn(getWisBlueBonus(v)); } }
+      ]) : ''; },
+      cha: function () { return tbl([
+        { h: '召喚段數', f: function (v) { return Math.max(1, Math.floor(Math.min(60, v) / 6)); } },
+        { h: '精靈隻數※', f: function (v) { return Math.min(7, 1 + Math.floor(Math.min(60, v) / 10)); } },
+        { h: '帶寵上限', f: function (v) { return Math.min(8, Math.floor(v / 7)); } }
+      ]); }
+    };
+    var ORDER = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    function statCard(s, i) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + TABLES[ORDER[i]]() + '</div>';
+    }
+    function capCard(s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }
-    return note + STATS_SECTIONS.map(card).join('') +
-      '<div class="m-wiki-sub">上限・配點・萬能藥</div>' + STAT_CAP_SECTIONS.map(card).join('');
+    return note + STATS_SECTIONS.map(statCard).join('') +
+      '<div class="m-wiki-desc" style="margin:8px 2px;color:#94a3b8;font-size:12px;">※ 精靈隻數為「學了精靈精通」時，未學固定 1 隻。召喚段數／精靈隻數的「數量」以魅力 <b>60</b> 封頂（表中 70／80 與 60 相同）、帶寵上限封頂 8；傷害與命中則用完整魅力、可超過 60。其餘各表的傷害／命中／恢復等可隨裝備疊破 60。</div>' +
+      '<div class="m-wiki-sub">上限・配點・萬能藥</div>' + STAT_CAP_SECTIONS.map(capCard).join('');
   }
 
   function renderTower() {
@@ -1579,6 +1634,13 @@
       '.m-wiki-kv b{color:#e2e8f0;margin-right:8px;}',
       '.c-mapunlock{color:#fca5a5;}',
       '.c-mappath{color:#7dd3fc;}',
+      '.m-wiki-stbl-wrap{overflow-x:auto;margin-top:9px;-webkit-overflow-scrolling:touch;}',
+      '.m-wiki-stbl{border-collapse:collapse;font-size:12px;width:100%;min-width:max-content;}',
+      '.m-wiki-stbl th,.m-wiki-stbl td{border:1px solid #1e293b;padding:3px 8px;text-align:center;white-space:nowrap;}',
+      '.m-wiki-stbl th{background:#0f1d33;color:#fcd34d;font-weight:bold;}',
+      '.m-wiki-stbl thead th:first-child,.m-wiki-stbl tbody td:first-child{position:sticky;left:0;color:#86efac;font-weight:bold;background:#111c30;}',
+      '.m-wiki-stbl tbody tr:nth-child(even) td{background:#0d1828;}',
+      '.m-wiki-stbl tbody tr:nth-child(even) td:first-child{background:#0d1828;}',
       '.m-wiki-lv{font-size:13px;font-weight:bold;color:#a5b4fc;background:#1e293b;border-radius:6px;padding:4px 10px;margin-top:4px;}',
       '.m-wiki-spell{background:#111c30;border:1px solid #243049;border-radius:8px;padding:8px 11px;}',
       '.m-wiki-spell-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}',
