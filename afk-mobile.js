@@ -568,9 +568,17 @@
         if (!btn) continue;
         var sum = slotSummary(i + 1);
         if (!sum) continue;   // 空存檔位維持原本單行「存檔 N　（空）」
+        btn.textContent = '';
+        // 👤 補回作者新加的存檔大頭貼(原 textContent='' 會連 img 一起清掉);路徑規則同原作 assets/save/<avatar>.jpg
+        if (sum.avatar) {
+          var av = document.createElement('img'); av.className = 'm-slot-av'; av.alt = '';
+          av.src = 'assets/save/' + String(sum.avatar).replace('黑暗妖精', '黑妖').replace('幻術士', '幻術師') + '.jpg';
+          av.onerror = function () { this.style.display = 'none'; };   // 缺檔自動隱藏
+          btn.appendChild(av);
+        }
         var l1 = document.createElement('span'); l1.className = 'm-slot-l1'; l1.textContent = '存檔 ' + (i + 1) + '　' + sum.cls;
         var l2 = document.createElement('span'); l2.className = 'm-slot-l2'; l2.textContent = 'Lv.' + sum.lv + '　' + sum.name;
-        btn.textContent = ''; btn.appendChild(l1); btn.appendChild(l2);
+        btn.appendChild(l1); btn.appendChild(l2);
       }
     }
     var wrapped = function () { orig.apply(this, arguments); if (mql.matches) reformat(); };
@@ -842,6 +850,7 @@
       'body.m-mobile #slot-list{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:1fr !important;}',
       'body.m-mobile #slot-list > div{flex-wrap:nowrap !important;align-items:stretch !important;}',
       'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:3px !important;line-height:1.25 !important;}',   /* 載入存檔鈕:左 2/3,文字直向兩行 */
+      'body.m-mobile #slot-list .m-slot-av{width:40px;height:40px;border-radius:6px;object-fit:cover;object-position:top;border:1px solid rgba(148,163,184,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(0,0,0,.5);}',   /* 👤 存檔大頭貼:置中直欄最上方 */
       'body.m-mobile #slot-list .m-slot-l1{font-size:1rem;}',   /* 第一行:存檔編號 + 職業 */
       'body.m-mobile #slot-list .m-slot-l2{font-size:.9rem;font-weight:bold;color:#cbd5e1;}',   /* 第二行:等級 + 暱稱 */
       'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
