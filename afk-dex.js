@@ -52,6 +52,7 @@
     if (!menu) { console.warn('[AFK-dex] 找不到 #main-menu,查詢功能停用。'); return; }
     injectButton(menu);
     buildModal();
+    injectAutoNav('m-afk-nav-dex', '📖 掉落查詢', openModal);   // 自動化設定面板:遊戲中也能開
     console.log('[AFK-dex] hooks OK — 怪物/掉落查詢已啟用(' + INDEX.length + ' 隻怪)。');
   }
 
@@ -492,6 +493,31 @@
     row.appendChild(b);
     row.appendChild(nt);
     menu.appendChild(row);
+  }
+
+  // ----- 自動化設定面板「🔌 外掛 · 查詢」列:遊戲中也能開掉落查詢/小百科 ------
+  // dex 與 wiki 各自注入自己的鈕到同一列(共用 id),呼叫各自 openModal,零耦合;誰先載入誰建列。
+  function injectAutoNav(btnId, label, onClick) {
+    var panel = document.getElementById('automation-panel');
+    if (!panel) return;
+    var scroll = panel.querySelector('.overflow-y-auto') || panel;
+    var row = document.getElementById('m-afk-navrow');
+    if (!row) {
+      row = document.createElement('div');
+      row.id = 'm-afk-navrow';
+      row.className = 'bg-slate-800 p-3 rounded-lg border border-slate-700';
+      row.innerHTML = '<div class="text-sm text-amber-400 mb-2 border-b border-slate-700 pb-1 font-bold">🔌 外掛 · 查詢</div>' +
+        '<div id="m-afk-navrow-btns" style="display:flex;gap:8px;"></div>';
+      scroll.appendChild(row);
+    }
+    if (document.getElementById(btnId)) return;
+    var b = document.createElement('button');
+    b.id = btnId; b.type = 'button';
+    b.className = 'btn py-2 text-sm bg-slate-700 hover:bg-slate-600 border-slate-500';
+    b.style.flex = '1';
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    row.querySelector('#m-afk-navrow-btns').appendChild(b);
   }
 
   // ----- 全域特殊掉落規則 -------------------------------------------------
