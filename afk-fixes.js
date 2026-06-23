@@ -187,5 +187,39 @@
     } catch (e) { console.warn('[AFK-fixes] favicon 注入失敗,已略過:', e); }
   })();
 
+  /* --------------------------------------------------------------------------
+   * 修正#5:saveGame 空白角色防呆 — 攔下「未載入角色就存檔」避免覆蓋真實存檔
+   *
+   * 問題:原作 saveGame 只防 player.dead,沒防「未載入角色」。主選單時 player 是空白預設
+   *   (cls:null, lv:1),此時若有任何程式(早年的存檔轉移外掛踩過、或未來新外掛手滑)呼叫
+   *   saveGame,會把空白 player 寫進 lineage_idle_save_<currentSlot>(currentSlot 預設 1)→
+   *   覆蓋第 1 格真實存檔成 Lv.1 null,且原作此路徑不留備份 → 永久損失。
+   * 解法:在最外層包住 saveGame,偵測「player 空白(cls 為 null)」就攔下不存(console.warn 留痕)。
+   *   cls 在創角 startGame() 一開始(player.cls = curCreate.cls)就設好、之後才有任何遊戲內存檔,
+   *   故此防呆只擋「主選單空白」這唯一壞狀態,不會誤擋任何一次合法存檔。判斷本身若出錯則放行走
+   *   原存檔(fail-open,不新增風險)。afk-fixes 在 afk-offline 之後載入 → 此包裝是最外層,
+   *   空白時連離線錨點 stamp 都不會跑。
+   * 何時可移除:原作者自己在 saveGame 開頭加了「未載入角色(!player.cls)就 return」防呆時,
+   *   本段即多餘,可整段刪掉。
+   * ------------------------------------------------------------------------ */
+  (function () {
+    try {
+      if (typeof window.saveGame !== 'function' || window.saveGame.__blankGuard) return;
+      var orig = window.saveGame;
+      var guarded = function () {
+        try {
+          if (typeof player === 'undefined' || !player || !player.cls) {   // 空白/未載入角色:擋
+            console.warn('[AFK-fixes] saveGame 在未載入角色狀態被呼叫,已攔截(避免空白存檔覆蓋真實存檔)。');
+            return;
+          }
+        } catch (e) { /* 判斷本身出錯 → 不擋,走原存檔(維持原行為) */ }
+        return orig.apply(this, arguments);
+      };
+      guarded.__blankGuard = true;
+      window.saveGame = guarded;
+      console.log('[AFK-fixes] saveGame 空白角色防呆 已掛上');
+    } catch (e) { console.warn('[AFK-fixes] saveGame 空白角色防呆 安裝失敗,已略過:', e); }
+  })();
+
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
 })();

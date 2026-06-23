@@ -27,13 +27,21 @@ const TREE_API      = `https://api.github.com/repos/${UPSTREAM_USER}/${REPO}/git
 const rawUrl = (p) => `https://raw.githubusercontent.com/${UPSTREAM_USER}/${REPO}/main/` +
                       p.split('/').map(encodeURIComponent).join('/');
 
+// ⚠ 此陣列的「順序」會原樣寫進 index.html 的 <script>,有兩個「換順序會默默退化、測不出來」的點:
+//   1) afk-extradata 建議在 afk-dex / afk-wiki 之前(它定義 AFK_EXTRA,後兩者讀;晚載最壞是補充
+//      文字暫時讀不到、優雅降級,不會當掉)。
+//   2) afk-fixes 建議在 afk-offline 之後——防呆包在最外層最乾淨(空白時最先擋、連 stamp 都不跑)。
+//      註:就算順序反了,saveGame 空白角色防呆仍夾在「呼叫端→原作 saveGame」之間、照樣擋住毀檔
+//      (已實測),只是 offline 的 stamp 在選單會多跑一次 no-op。真正會失去存檔保護的是「afk-fixes
+//      整支沒載入」,不是順序錯。
+//   重排前留意上面兩點即可。
 const PLUGINS = [
-  { file: 'afk-offline.js', comment: '離線掛機外掛(可獨立維護;原作者更新後重新加回此行即可)' },
+  { file: 'afk-offline.js', comment: '離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-mobile.js',  comment: '手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-extradata.js', comment: '共用補充資料(掉落查詢+小百科共用的手動清單;純資料無 DOM,需先於 dex/wiki 載入)' },
   { file: 'afk-dex.js',     comment: '怪物/掉落查詢外掛(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-wiki.js',    comment: '小百科外掛(專精/武器特性/職業魔法;可獨立維護,原作者更新後重新加回此行即可)' },
-  { file: 'afk-fixes.js',   comment: '通用修正外掛(補原作者坑,桌機/手機通用;可獨立維護,原作者更新後重新加回此行即可)' },
+  { file: 'afk-fixes.js',   comment: '通用修正外掛(補原作者坑,桌機/手機通用;含 saveGame 空白角色防呆,建議排在 afk-offline 之後最乾淨——順序反了防呆仍擋得住毀檔,只是不夠乾淨;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-sw.js',      comment: '背景大圖快取 Service Worker 註冊(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-toast.js',   comment: '手機 toast 提示(點按鈕的系統日誌訊息浮現;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-statpts.js', comment: '能力值面板補點數分解 始/升/藥/總(可獨立維護;原作者更新後重新加回此行即可)' },
