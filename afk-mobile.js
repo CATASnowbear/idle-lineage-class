@@ -879,7 +879,7 @@
          原作改版(換 id / 重排)規則自動失效、桌機不受影響。
          #slot-list 改 grid + grid-auto-rows:1fr → 每列自動拉成跟最高那列等高(有/無備份、名稱折一行或兩行都一致),
          不寫死高度、名稱變長也會自己同步。 */
-      'body.m-mobile #slot-list{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:1fr !important;}',
+      'body.m-mobile #slot-list{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:1fr !important;max-height:none !important;overflow:visible !important;}',   /* 拆掉內層捲動:原生 max-h-[85vh]+overflow-y-auto 會與外層 #creation-screen 形成雙 scrollbar,手機改讓整頁(外層)單一捲動 */
       'body.m-mobile #slot-list > div{flex-wrap:nowrap !important;align-items:stretch !important;}',
       'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:3px !important;line-height:1.25 !important;}',   /* 載入存檔鈕:左 2/3,文字直向兩行 */
       'body.m-mobile #slot-list .m-slot-av{width:40px;height:40px;border-radius:6px;object-fit:cover;object-position:top;border:1px solid rgba(148,163,184,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(0,0,0,.5);}',   /* 👤 存檔大頭貼:置中直欄最上方 */
