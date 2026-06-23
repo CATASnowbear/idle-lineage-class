@@ -1427,7 +1427,7 @@
   }
 
   function renderStats() {
-    var note = '<div class="m-wiki-note">六種能力值。每項先講作用，再用<b>數值表</b>列出「練到某個數字時實際給多少」——表格直接讀遊戲的計算函式產生，<b>會跟著改版自動更新</b>，不是手抄。<br><b>關於上限</b>：自然值（基礎＋配點＋萬能藥）最多 60；裝備／套裝可再疊破 60。屬性本身<b>沒有「80 上限」</b>——表只是列到 80，因為遊戲數值換算大多到 79~80 就<b>封頂不再成長</b>（再高也沒用）；數量類（召喚／精靈／帶寵）與魔防更早、在 60 就封頂。<b>唯一例外</b>：升級的 <b>HP／MP 成長</b>（體質／精神）<b>沒有上限</b>，練越高每級加越多（見體質／精神卡片，用公式表示、不在下表）。</div>';
+    var note = '<div class="m-wiki-note">數值直接讀遊戲計算、會自動更新。自然值（基礎＋配點＋萬能藥）上限 60，裝備／套裝可再往上疊。</div>';
     var BP = [10, 20, 30, 40, 50, 60, 70, 80];
     function sgn(n) { return (n > 0 ? '+' : '') + n; }
     function tbl(cols) {
@@ -1501,7 +1501,7 @@
       return '<div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl m-wiki-captbl"><thead><tr><th>屬性</th><th>效果</th><th>封頂於</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     }
     var capSection = '<div class="m-wiki-sub">📊 各效果在多少能力值封頂</div>' +
-      '<div class="m-wiki-note">練到「封頂於」那個數字後，再加這項屬性就<b>不會再加這個效果</b>了。多數要練到 78~80，但<b>有些很早就封頂</b>（如智力的 MP 消耗減在 45、魅力帶寵在 56、迴避／魔防／召喚數量在 60）——這些練過頭是浪費。<b>升級 HP／MP 成長</b>則無上限、越高越多。</div>' +
+      '<div class="m-wiki-note">練到「封頂於」的值後，再加就<b>不會再加這效果</b>（練過頭是浪費）；升級 HP／MP 成長例外、<b>無上限</b>。</div>' +
       '<div class="m-wiki-card">' + capTableHTML() + '</div>';
     function statCard(s, i) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
