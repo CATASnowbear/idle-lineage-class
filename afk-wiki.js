@@ -933,8 +933,8 @@
       state.magicCls = b.getAttribute('data-magiccls');
       render();
     });
-    document.getElementById('m-wiki-close').addEventListener('click', closeModal);
-    m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });
+    document.getElementById('m-wiki-close').addEventListener('click', userCloseTop);
+    m.addEventListener('click', function (e) { if (e.target === m) userCloseTop(); });
   }
   function openModal() {
     var m = document.getElementById('m-wiki-modal');
@@ -943,10 +943,29 @@
     state.q = '';   // 每次開啟清空搜尋
     var input = document.getElementById('m-wiki-input'); if (input) input.value = '';
     var clearBtn = document.getElementById('m-wiki-clear'); if (clearBtn) clearBtn.classList.remove('show');
+    var wasOpen = m.classList.contains('open');
     m.classList.add('open');
     render();
+    if (!wasOpen && !m.getAttribute('data-standalone')) _pushNav();   // 開啟壓一層歷史 → 手機返回鍵可關
   }
   function closeModal() { var m = document.getElementById('m-wiki-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
+
+  // ----- 手機返回鍵 / ESC 關閉(小百科只有 modal 一層) -----
+  var _navDepth = 0, _suppressPop = false;
+  function _isModalClosable() { var m = document.getElementById('m-wiki-modal'); return !!(m && m.classList.contains('open') && !m.getAttribute('data-standalone')); }   // 獨立頁常駐 modal 不算可關層
+  function _pushNav() { _navDepth++; try { history.pushState({ afkWikiNav: _navDepth }, ''); } catch (e) {} }
+  function userCloseTop() {   // X鈕 / 點背景 / ESC:關 modal,並退掉對應歷史
+    if (!_isModalClosable()) return;
+    document.getElementById('m-wiki-modal').classList.remove('open');
+    if (_navDepth > 0) { _navDepth--; _suppressPop = true; try { history.back(); } catch (e) { _suppressPop = false; } }
+  }
+  window.addEventListener('popstate', function () {
+    if (_suppressPop) { _suppressPop = false; return; }
+    if (_navDepth > 0 && _isModalClosable()) { _navDepth--; document.getElementById('m-wiki-modal').classList.remove('open'); }   // 手機實體返回鍵
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && _isModalClosable()) { e.preventDefault(); userCloseTop(); }
+  });
 
   function tabHTML(key, cls) {
     if (key === 'mastery') return renderMastery(cls);

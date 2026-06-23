@@ -449,11 +449,35 @@
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
+    var wasOpen = pop.classList.contains('open');
     document.getElementById('m-dex-itempop-body').innerHTML = itemDetailHTML(id);
     pop.classList.add('open');
     var c = document.getElementById('m-dex-itempop-card'); if (c) c.scrollTop = 0;
+    if (!wasOpen) _pushNav();   // 開啟(非同層換內容)才壓一層歷史 → 手機返回鍵可關
   }
   function closeItemPop() { var pop = document.getElementById('m-dex-itempop'); if (pop) pop.classList.remove('open'); }
+
+  // ----- 手機返回鍵 / ESC 關閉(以 history state 鏡射 modal→物品彈窗 兩層) -----
+  var _navDepth = 0, _suppressPop = false;
+  function _isPop() { var p = document.getElementById('m-dex-itempop'); return !!(p && p.classList.contains('open')); }
+  function _isModalClosable() { var m = document.getElementById('m-dex-modal'); return !!(m && m.classList.contains('open') && !m.getAttribute('data-standalone')); }   // 獨立頁的常駐 modal 不算可關層
+  function _hideTop() {   // 關掉最上層(彈窗優先,其次 modal);有關到回 true
+    if (_isPop()) { document.getElementById('m-dex-itempop').classList.remove('open'); return true; }
+    if (_isModalClosable()) { document.getElementById('m-dex-modal').classList.remove('open'); return true; }
+    return false;
+  }
+  function _pushNav() { _navDepth++; try { history.pushState({ afkDexNav: _navDepth }, ''); } catch (e) {} }
+  function userCloseTop() {   // X鈕 / 點背景 / ESC:關最上層,並把對應的歷史也退掉(讓返回鍵堆疊一致)
+    if (!_hideTop()) return;
+    if (_navDepth > 0) { _navDepth--; _suppressPop = true; try { history.back(); } catch (e) { _suppressPop = false; } }
+  }
+  window.addEventListener('popstate', function () {
+    if (_suppressPop) { _suppressPop = false; return; }   // 由 userCloseTop 程式觸發的 back,已關過,不重複
+    if (_navDepth > 0) { _navDepth--; _hideTop(); }        // 手機實體返回鍵
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && (_isPop() || _isModalClosable())) { e.preventDefault(); userCloseTop(); }
+  });
 
   function cardHTML(h, mult, q) {
     var modeLabel = mult > 1 ? '（席琳的世界 ×3）' : (mult < 1 ? '（經典模式 ×1/10）' : '');
@@ -642,7 +666,7 @@
     document.body.appendChild(m);
     document.getElementById('m-dex-input').addEventListener('input', doSearch);
     document.getElementById('m-dex-mode').addEventListener('change', doSearch);
-    document.getElementById('m-dex-close').addEventListener('click', closeModal);
+    document.getElementById('m-dex-close').addEventListener('click', userCloseTop);
     document.getElementById('m-dex-clear').addEventListener('click', function () {
       var i = document.getElementById('m-dex-input');
       i.value = ''; doSearch(); i.focus();
@@ -659,20 +683,20 @@
       doSearch();
       var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
     });
-    m.addEventListener('click', function (e) { if (e.target === m) closeModal(); });   // 點背景關閉
-    document.getElementById('m-dex-itempop-close').addEventListener('click', closeItemPop);
-    document.getElementById('m-dex-itempop').addEventListener('click', function (e) { if (e.target.id === 'm-dex-itempop') closeItemPop(); });   // 點彈窗背景關閉
+    m.addEventListener('click', function (e) { if (e.target === m) userCloseTop(); });   // 點背景關閉
+    document.getElementById('m-dex-itempop-close').addEventListener('click', userCloseTop);
+    document.getElementById('m-dex-itempop').addEventListener('click', function (e) { if (e.target.id === 'm-dex-itempop') userCloseTop(); });   // 點彈窗背景關閉
     // 詳情卡裡的「查有哪些怪會掉這件」→ 關卡片 + 以物品名搜尋
     document.getElementById('m-dex-itempop-body').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('.m-dex-pop-search') : null;
       if (!b) return;
-      closeItemPop();
+      userCloseTop();   // 關彈窗(並退一層歷史),再以物品名搜尋
       var i = document.getElementById('m-dex-input');
       if (i) { i.value = b.getAttribute('data-item') || ''; doSearch(); }
       var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
     });
   }
-  function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); } }
+  function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) _pushNav(); } }
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
 
   // ----- CSS --------------------------------------------------------------
