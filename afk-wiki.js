@@ -755,7 +755,7 @@
       '同時提升你自己的<b>防禦與迴避</b>——越高越不容易被怪打中。'
     ]},
     { t: '❤️ 體質（CON）', lines: [
-      '決定每升一級的 <b>HP 成長量</b>（體質越高，等級帶來的血越多）。',
+      '<b>每升一級的 HP 成長量 ＝（體質−8）× 每點成長率</b>，<b>無上限、越高越多</b>（不像下表會在 80 封頂）。每點成長率：騎士／龍騎士 <b>1.5</b>、法師／妖精 <b>0.8</b>、黑暗妖精／幻術士 <b>0.5</b>。例：體質 60 騎士每級 +78 HP、法師 +41.6、黑暗妖精 +26；體質 80 騎士每級 +108 HP。',
       '決定 <b>HP 自然恢復</b>的上限，並和力量一起撐起<b>負重上限</b>。',
       '還會提升<b>喝 HP 藥水的回復量</b>。'
     ]},
@@ -764,7 +764,7 @@
       '魔杖類特性靠智力觸發：魔杖「共鳴」、光箭機率 ＝<b>智力 ÷ 60</b>；神官魔杖「魔爆」＝單體 <b>智力 ÷ 100</b>、全體 <b>智力 ÷ 60</b>。'
     ]},
     { t: '🧠 精神（WIS）', lines: [
-      '決定<b>魔防</b>、<b>MP 自然恢復</b>，以及每升一級的 <b>MP 成長量</b>。',
+      '決定<b>魔防</b>與 <b>MP 自然恢復</b>（見下表）。<b>每升一級的 MP 成長量 ＝（精神−9）× 0.5</b>，<b>無上限、越高越多</b>（不像下表會在 80 封頂）。例：精神 60 每級 +25.5 MP、精神 80 每級 +35.5 MP。',
       '喝藍藥水的 MP 恢復加成、擊殺怪物回 MP 也看精神。',
       '妖精「鏡反射」的反彈機率 ＝<b>精神</b>%（每 1 點精神 +1%）。'
     ]},
@@ -1427,7 +1427,7 @@
   }
 
   function renderStats() {
-    var note = '<div class="m-wiki-note">六種能力值。每項先講作用，再用<b>數值表</b>列出「練到某個數字時實際給多少」——表格直接讀遊戲的計算函式產生，<b>會跟著改版自動更新</b>，不是手抄。<br><b>關於上限</b>：自然值（基礎＋配點＋萬能藥）最多 60；裝備／套裝可再疊破 60。屬性本身<b>沒有「80 上限」</b>——表只是列到 80，因為遊戲數值換算大多到 79~80 就<b>封頂不再成長</b>（再高也沒用）；數量類（召喚／精靈／帶寵）與魔防更早、在 60 就封頂。</div>';
+    var note = '<div class="m-wiki-note">六種能力值。每項先講作用，再用<b>數值表</b>列出「練到某個數字時實際給多少」——表格直接讀遊戲的計算函式產生，<b>會跟著改版自動更新</b>，不是手抄。<br><b>關於上限</b>：自然值（基礎＋配點＋萬能藥）最多 60；裝備／套裝可再疊破 60。屬性本身<b>沒有「80 上限」</b>——表只是列到 80，因為遊戲數值換算大多到 79~80 就<b>封頂不再成長</b>（再高也沒用）；數量類（召喚／精靈／帶寵）與魔防更早、在 60 就封頂。<b>唯一例外</b>：升級的 <b>HP／MP 成長</b>（體質／精神）<b>沒有上限</b>，練越高每級加越多（見體質／精神卡片，用公式表示、不在下表）。</div>';
     var BP = [10, 20, 30, 40, 50, 60, 70, 80];
     function sgn(n) { return (n > 0 ? '+' : '') + n; }
     function tbl(cols) {
@@ -1440,54 +1440,80 @@
       }).join('');
       return '<div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
     }
-    // 各屬性數值表:呼叫 index.html 的全域計算函式即時產生(缺函式→該表優雅降級為空)
-    var TABLES = {
-      str: function () { return (typeof getStrMeleeDmg === 'function') ? tbl([
+    // 各屬性的「效果欄位」定義(呼叫 index.html 全域函式;缺函式→空陣列優雅降級)。逐級表與封頂表共用同一份。
+    var COLS = {
+      str: (typeof getStrMeleeDmg === 'function') ? [
         { h: '近戰傷害', f: function (v) { return sgn(getStrMeleeDmg(v)); } },
         { h: '近戰命中', f: function (v) { return sgn(getStrMeleeHit(v)); } },
         { h: '爆擊率', f: function (v) { return getStrMeleeCrit(v) + '%'; } }
-      ]) : ''; },
-      dex: function () { return (typeof getDexRangedDmg === 'function') ? tbl([
+      ] : [],
+      dex: (typeof getDexRangedDmg === 'function') ? [
         { h: '遠程傷害', f: function (v) { return sgn(getDexRangedDmg(v)); } },
         { h: '遠程命中', f: function (v) { return sgn(getDexRangedHit(v)); } },
         { h: '爆擊率', f: function (v) { return getDexRangedCrit(v) + '%'; } },
         { h: '防禦(AC)', f: function (v) { return getDexAC(v); } },
         { h: '迴避', f: function (v) { return sgn(getDexER(v)); } }
-      ]) : ''; },
-      con: function () { return (typeof getConHpRegenMax === 'function') ? tbl([
+      ] : [],
+      con: (typeof getConHpRegenMax === 'function') ? [
         { h: 'HP恢復/次', f: function (v) { var m = getConHpRegenMax(v); return m > 0 ? ('1~' + m) : '—'; } },
         { h: '藥水額外', f: function (v) { return '+' + getConPotionPct(v) + '%'; } }
-      ]) : ''; },
-      int: function () { return (typeof getIntMagicDmg === 'function') ? tbl([
+      ] : [],
+      int: (typeof getIntMagicDmg === 'function') ? [
         { h: '魔法傷害', f: function (v) { return sgn(getIntMagicDmg(v)); } },
         { h: '魔法命中', f: function (v) { return sgn(getIntMagicHit(v)); } },
         { h: '爆擊率', f: function (v) { return getIntMagicCrit(v) + '%'; } },
         { h: '額外MP', f: function (v) { return sgn(getIntExtraMp(v)); } },
         { h: 'MP消耗減', f: function (v) { return getIntMpReduce(v) + '%'; } }
-      ]) : ''; },
-      wis: function () { return (typeof getWisMpRegen === 'function') ? tbl([
+      ] : [],
+      wis: (typeof getWisMpRegen === 'function') ? [
         { h: 'MP恢復/次', f: function (v) { return getWisMpRegen(v); } },
         { h: '擊殺回MP', f: function (v) { return getWisMpOnKill(v); } },
         { h: '魔防', f: function (v) { return sgn(getWisMR(v)); } },
         { h: '藍藥加成', f: function (v) { return sgn(getWisBlueBonus(v)); } }
-      ]) : ''; },
-      cha: function () { return tbl([
+      ] : [],
+      cha: [
         { h: '召喚段數', f: function (v) { return Math.max(1, Math.floor(Math.min(60, v) / 6)); } },
         { h: '精靈隻數※', f: function (v) { return Math.min(7, 1 + Math.floor(Math.min(60, v) / 10)); } },
         { h: '帶寵上限', f: function (v) { return Math.min(8, Math.floor(v / 7)); } }
-      ]); }
+      ]
     };
     var ORDER = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
+    var STAT_LABEL = { str: '💪 力量', dex: '🏹 敏捷', con: '❤️ 體質', int: '🔮 智力', wis: '🧠 精神', cha: '✨ 魅力' };
+    var GROWTH_ROW = { con: '升級HP成長', wis: '升級MP成長' };   // 線性、無上限,獨立列出
+    // 動態找封頂:輸出在哪個能力值起不再變化(掃到 130,與超高值相同的最小值即封頂點)
+    function findCap(f) {
+      try {
+        var top = String(f(130));
+        for (var v = 1; v <= 130; v++) { if (String(f(v)) === top) return v; }
+      } catch (e) {}
+      return null;
+    }
+    function capTableHTML() {
+      var rows = '';
+      ORDER.forEach(function (key) {
+        var cols = COLS[key] || [];
+        cols.forEach(function (c, i) {
+          var cap = findCap(c.f);
+          rows += '<tr><td>' + (i === 0 ? STAT_LABEL[key] : '') + '</td><td>' + c.h + '</td><td>' + (cap != null ? ('能力值 ' + cap) : '—') + '</td></tr>';
+        });
+        if (GROWTH_ROW[key]) rows += '<tr><td></td><td>' + GROWTH_ROW[key] + '</td><td class="cap-none">無上限</td></tr>';
+      });
+      return '<div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl m-wiki-captbl"><thead><tr><th>屬性</th><th>效果</th><th>封頂於</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    }
+    var capSection = '<div class="m-wiki-sub">📊 各效果在多少能力值封頂</div>' +
+      '<div class="m-wiki-note">練到「封頂於」那個數字後，再加這項屬性就<b>不會再加這個效果</b>了。多數要練到 78~80，但<b>有些很早就封頂</b>（如智力的 MP 消耗減在 45、魅力帶寵在 56、迴避／魔防／召喚數量在 60）——這些練過頭是浪費。<b>升級 HP／MP 成長</b>則無上限、越高越多。</div>' +
+      '<div class="m-wiki-card">' + capTableHTML() + '</div>';
     function statCard(s, i) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + TABLES[ORDER[i]]() + '</div>';
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + ((COLS[ORDER[i]] || []).length ? tbl(COLS[ORDER[i]]) : '') + '</div>';
     }
     function capCard(s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }
-    return note + STATS_SECTIONS.map(statCard).join('') +
-      '<div class="m-wiki-desc" style="margin:8px 2px;color:#94a3b8;font-size:12px;">※ 精靈隻數為「學了精靈精通」時，未學固定 1 隻。召喚段數／精靈隻數的「數量」以魅力 <b>60</b> 封頂（表中 70／80 與 60 相同）、帶寵上限封頂 8；傷害與命中則用完整魅力、可超過 60。其餘各表的傷害／命中／恢復等可隨裝備疊破 60。</div>' +
+    return note + capSection +
+      '<div class="m-wiki-sub">各屬性逐級數值</div>' + STATS_SECTIONS.map(statCard).join('') +
+      '<div class="m-wiki-desc" style="margin:8px 2px;color:#94a3b8;font-size:12px;">※ 精靈隻數為「學了精靈精通」時，未學固定 1 隻。召喚段數／精靈隻數的「數量」以魅力 <b>60</b> 封頂（表中 70／80 與 60 相同）、帶寵上限封頂 8；傷害與命中則用完整魅力、可超過 60。</div>' +
       '<div class="m-wiki-sub">上限・配點・萬能藥</div>' + STAT_CAP_SECTIONS.map(capCard).join('');
   }
 
@@ -1667,6 +1693,9 @@
       '.m-wiki-stbl thead th:first-child,.m-wiki-stbl tbody td:first-child{position:sticky;left:0;color:#86efac;font-weight:bold;background:#111c30;}',
       '.m-wiki-stbl tbody tr:nth-child(even) td{background:#0d1828;}',
       '.m-wiki-stbl tbody tr:nth-child(even) td:first-child{background:#0d1828;}',
+      '.m-wiki-captbl td{text-align:left;}',
+      '.m-wiki-captbl td:last-child{text-align:center;color:#fcd34d;}',
+      '.m-wiki-captbl td.cap-none{color:#86efac;font-weight:bold;}',
       '.m-wiki-lv{font-size:13px;font-weight:bold;color:#a5b4fc;background:#1e293b;border-radius:6px;padding:4px 10px;margin-top:4px;}',
       '.m-wiki-spell{background:#111c30;border:1px solid #243049;border-radius:8px;padding:8px 11px;}',
       '.m-wiki-spell-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}',
