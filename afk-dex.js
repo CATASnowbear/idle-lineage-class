@@ -4,7 +4,7 @@
  * 首頁(#main-menu)加一顆「📖 怪物 / 掉落查詢」按鈕,開搜尋面板。
  *   - 單一搜尋框:可同時搜 怪物名 / 地圖名 / 掉落物名;有輸入才顯示結果(空的不渲染,不卡)。
  *   - 每筆結果是「怪物卡」:數值 + 出沒地圖 + 掉落清單(物品名 + 機率%)。
- *   - 「席琳的世界」checkbox:勾選時掉落率顯示 ×3(上限 100%)。
+ *   - 「掉落率模式」下拉(一般/席琳的世界 ×3/經典模式 ×1/10):重算怪卡掉落率顯示(席琳上限 100%)。
  *   - 純讀取遊戲全域資料(DB.mobs / DB.maps / MOB_DROPS / DB.items),不改遊戲;桌機手機共用。
  *
  * 掛接:在 index.html 的 </body> 前加一行 <script src="afk-dex.js"></script>
@@ -170,7 +170,8 @@
     var results = document.getElementById('m-dex-results');
     if (!input || !results) return;
     syncUrl();   // 同步搜尋字到網址(獨立頁才會動)
-    var sherine = document.getElementById('m-dex-sherine').checked;
+    var modeEl = document.getElementById('m-dex-mode');
+    var mult = modeEl ? parseFloat(modeEl.value) : 1;
     var clearBtn = document.getElementById('m-dex-clear');
     if (clearBtn) clearBtn.classList.toggle('show', !!input.value);   // 有字才顯示清除鈕
     var q = (input.value || '').trim().toLowerCase();
@@ -197,7 +198,7 @@
     }
     var truncated = hits.length > MAX_RESULTS;
     if (truncated) hits = hits.slice(0, MAX_RESULTS);
-    var html = itemHTML + hits.map(function (h) { return cardHTML(h, sherine, q); }).join('');
+    var html = itemHTML + hits.map(function (h) { return cardHTML(h, mult, q); }).join('');
     if (truncated) html += '<div class="m-dex-hint">符合的太多,只顯示前 ' + MAX_RESULTS + ' 筆,請輸入更精確的關鍵字。</div>';
     results.innerHTML = html;
   }
@@ -437,7 +438,8 @@
   }
   function closeItemPop() { var pop = document.getElementById('m-dex-itempop'); if (pop) pop.classList.remove('open'); }
 
-  function cardHTML(h, sherine, q) {
+  function cardHTML(h, mult, q) {
+    var modeLabel = mult > 1 ? '（席琳的世界 ×3）' : (mult < 1 ? '（經典模式 ×1/10）' : '');
     var m = h.mob;
     var tags = '';
     if (m.boss) tags += '<span class="m-dex-tag tag-boss">BOSS</span>';
@@ -454,7 +456,7 @@
       : '—';
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
-          var pct = d[2] * (sherine ? 3 : 1); if (pct > 100) pct = 100;
+          var pct = d[2] * mult; if (pct > 100) pct = 100;
           return '<tr>' +
             '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span></td>' +
             '<td class="m-dex-pct">' + fmtPct(pct) + '%</td>' +
@@ -464,7 +466,7 @@
     return '<div class="m-dex-card">' +
       '<div class="m-dex-name">' + hl(m.n, q) + ' ' + tags + '</div>' + stats +
       '<div class="m-dex-sub">出沒地圖</div><div class="m-dex-maps">' + mapsHTML + '</div>' +
-      '<div class="m-dex-sub">掉落' + (sherine ? '（席琳的世界 ×3）' : '') + '</div>' + dropsHTML +
+      '<div class="m-dex-sub">掉落' + modeLabel + '</div>' + dropsHTML +
       '</div>';
   }
 
@@ -501,8 +503,9 @@
       '<b>怪物卡上顯示的是「一般」掉落機率</b>，下列狀態會整體放大／縮小：',
       '<b>席琳的世界</b>：被席琳化的怪掉落機率 <b>×3</b>；其中「恩賜怪」更高，<b>×10</b>',
       '<b>經典模式</b>：所有物品掉落機率 <b>×1/10</b>',
-      '<b>會被上述倍率影響</b>：怪物卡掉落、黑暗妖精武器、黑精靈水晶、龍騎士掉落、等級 40+ 頭目的賦予祝福卷軸、區域額外掉落',
-      '<b>固定、不受倍率影響</b>：席琳結晶、萬能藥（屬性藥）、黑魔石、銀礦石、進化果實（各條另有標註）'
+      '<b>會被上述倍率影響</b>：各怪本身的掉落（每隻怪卡片上列的那些）、黑暗妖精武器、黑精靈水晶、龍騎士掉落、等級 40+ 頭目的賦予祝福卷軸、區域額外掉落',
+      '<b>固定、不受倍率影響</b>：席琳結晶、萬能藥（屬性藥）、黑魔石、銀礦石、進化果實（各條另有標註）',
+      '上方的「<b>掉落率模式</b>」下拉可把席琳／經典倍率直接套到怪卡的掉落數字'
     ] },
     { id: 'panacea', title: '🧪 萬能藥（屬性藥）', keys: ['萬能藥', '屬性藥'], lines: [
       '條件：怪物等級 40 以上、且不是血盟',
@@ -588,14 +591,15 @@
           '</span>' +
           '<button id="m-dex-close" type="button" title="關閉">✕</button>' +
         '</div>' +
-        '<label id="m-dex-sherine-row"><input id="m-dex-sherine" type="checkbox"> 席琳的世界掉落率（×3）</label>' +
+        '<div id="m-dex-sherine-row"><label for="m-dex-mode">掉落率模式</label>' +
+          '<select id="m-dex-mode"><option value="1">一般模式</option><option value="3">席琳的世界（×3）</option><option value="0.1">經典模式（×1/10）</option></select></div>' +
         '<div id="m-dex-results"><div class="m-dex-hint">輸入 怪物名 / 地圖 / 掉落物 開始搜尋；搜物品名可直接點看詳情</div></div>' +
         specialPanelHTML() +
       '</div>' +
       '<div id="m-dex-itempop"><div id="m-dex-itempop-card"><button id="m-dex-itempop-close" type="button" title="關閉" aria-label="關閉">✕</button><div id="m-dex-itempop-body"></div></div></div>';
     document.body.appendChild(m);
     document.getElementById('m-dex-input').addEventListener('input', doSearch);
-    document.getElementById('m-dex-sherine').addEventListener('change', doSearch);
+    document.getElementById('m-dex-mode').addEventListener('change', doSearch);
     document.getElementById('m-dex-close').addEventListener('click', closeModal);
     document.getElementById('m-dex-clear').addEventListener('click', function () {
       var i = document.getElementById('m-dex-input');
@@ -657,8 +661,9 @@
       '#m-dex-clear:active{background:#64748b;}',
       '#m-dex-close{flex:0 0 auto;width:42px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;border-radius:8px;font-size:16px;cursor:pointer;font-family:inherit;}',
       '#m-dex-close:active{background:#334155;}',
-      '#m-dex-sherine-row{display:flex;align-items:center;gap:8px;padding:9px 14px;color:#cbd5e1;font-size:14px;border-bottom:1px solid #1e293b;cursor:pointer;flex:0 0 auto;}',
-      '#m-dex-sherine-row input{width:17px;height:17px;}',
+      '#m-dex-sherine-row{display:flex;align-items:center;gap:8px;padding:9px 14px;color:#cbd5e1;font-size:14px;border-bottom:1px solid #1e293b;flex:0 0 auto;}',
+      '#m-dex-sherine-row label{flex:0 0 auto;}',
+      '#m-dex-mode{background:#1e293b;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:4px 8px;font-size:14px;font-family:inherit;outline:none;cursor:pointer;}',
       '#m-dex-results{flex:1 1 auto;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}',
       '.m-dex-hint{color:#94a3b8;text-align:center;padding:22px 8px;font-size:14px;line-height:1.6;}',
       '.m-dex-card{background:#111c30;border:1px solid #334155;border-radius:10px;padding:12px;}',
