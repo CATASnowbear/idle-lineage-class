@@ -42,8 +42,8 @@
     return;
   }
 
-  // 依存檔位分開的設定鍵 / 讀寫(currentSlot 1~6;無效則視為關閉)
-  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1 && n <= 6; }
+  // 依存檔位分開的設定鍵 / 讀寫(有選到存檔位即有效,不綁格數;currentSlot 由原作設成真實格號)
+  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1; }
   function prefKey(base) { return LS_PREFIX + base + '_' + currentSlot; }
   function prefOn(base)  { try { return validSlot() && localStorage.getItem(prefKey(base)) === '1'; } catch (e) { return false; } }
   function prefSet(base, on) { try { if (validSlot()) localStorage.setItem(prefKey(base), on ? '1' : '0'); } catch (e) {} }

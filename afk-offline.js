@@ -60,7 +60,7 @@
   }
 
   // ----- 小工具 -----------------------------------------------------------
-  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1 && n <= 6; }  // 原作存檔位 1~6(upstream: showSlotSelect 的 for n=1..6);原作加格時這裡上限要跟著調
+  function validSlot() { var n = +currentSlot; return Number.isInteger(n) && n >= 1; }  // 「有沒有選到存檔位」即可,不綁格數:currentSlot 由原作設成真實格號,故無需追蹤上限(原作加格不必再改這)
   function tsKey()      { return TS_PREFIX + currentSlot; }
   function mapKey()     { return 'afk_map_' + currentSlot; }
   function prideKey()   { return 'afk_pride_' + currentSlot; }
