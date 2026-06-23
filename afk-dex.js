@@ -108,6 +108,17 @@
     return id;
   }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
+  // 龍騎士掉落表附註:職業限定的任務道具標「🐉僅X」(讀 TRIAL_ITEM_CLASS);書板/鎖鏈劍全職可掉→不附註
+  var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士' };
+  function dragonDropNote(id) {
+    try {
+      if (typeof TRIAL_ITEM_CLASS !== 'undefined' && TRIAL_ITEM_CLASS[id]) {
+        var c = TRIAL_ITEM_CLASS[id]; var arr = Array.isArray(c) ? c : [c];
+        return '🐉僅' + arr.map(function (x) { return _CLS_CN[x] || x; }).join('／');
+      }
+    } catch (e) {}
+    return null;
+  }
 
   // ----- 預先建索引(只跑一次) ---------------------------------------------
   function buildIndexes() {
@@ -117,15 +128,18 @@
       var mob = DB.mobs[id];
       // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
       var maps = (mobToMaps[id] || []).map(mapNameOf).filter(function (n, i, a) { return a.indexOf(n) === i; });
-      // 合併「全部掉落表」:除了 MOB_DROPS,還有黑暗武器(DARK_WEAPON_DROPS)、三階黑暗精靈水晶(DARK_CRYSTAL_DROPS)
-      // 也是獨立掉落表、不在 MOB_DROPS,漏了就查不到。三張都用「怪物名」當 key、同格式 [[id,%]]。
+      // 合併「全部掉落表」:除了 MOB_DROPS,還有黑暗武器(DARK_WEAPON_DROPS)、三階黑暗精靈水晶(DARK_CRYSTAL_DROPS)、
+      // 龍騎士掉落表(DRAGON_DROPS)也是獨立掉落表、不在 MOB_DROPS,漏了就查不到(間諜書/書板/鎖鏈劍)。各表都用「怪物名」當 key、格式 [[id,%]]。
+      // 龍騎士表的「任務道具」是職業限定(TRIAL_ITEM_CLASS),掉落格附註「🐉僅X」;書板/鎖鏈劍則全職可掉、不附註。
+      function _tagged(list, noteFn) { return (list || []).map(function (e) { return [e[0], e[1], noteFn ? noteFn(e[0]) : null]; }); }
       var raw = [].concat(
-        (typeof MOB_DROPS !== 'undefined' && MOB_DROPS[mob.n]) || [],
-        (typeof DARK_WEAPON_DROPS !== 'undefined' && DARK_WEAPON_DROPS[mob.n]) || [],
-        (typeof DARK_CRYSTAL_DROPS !== 'undefined' && DARK_CRYSTAL_DROPS[mob.n]) || []
+        _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[mob.n] : null),
+        _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[mob.n] : null),
+        _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null),
+        _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null, dragonDropNote)
       );
       var drops = raw
-        .map(function (e) { return [e[0], itemNameOf(e[0]), e[1]]; })
+        .map(function (e) { return [e[0], itemNameOf(e[0]), e[1], e[2]]; })   // [id, 名稱, 機率%, 附註]
         .filter(function (d) { return DB.items[d[0]]; });
       drops.sort(function (a, b) { return b[2] - a[2]; });   // 機率高→低
       var hay = (mob.n + ' ' + maps.join(' ') + ' ' + drops.map(function (d) { return d[1]; }).join(' ')).toLowerCase();
@@ -150,7 +164,9 @@
       var d = DB.items[id];
       if (!d || !d.n) continue;
       var isEquip = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc');
-      if (!isEquip && !shopSet[id]) continue;
+      // ③ 有手動「取得方式」(itemAcquire)的:如龍騎士書板(skillbk、非商店、無怪掉)→ 兌換取得,收進來才搜得到
+      var hasAcq = !!(window.AFK_EXTRA && AFK_EXTRA.itemAcquire && AFK_EXTRA.itemAcquire[id]);
+      if (!isEquip && !shopSet[id] && !hasAcq) continue;
       ITEM_INDEX.push({ id: id, n: d.n, hay: String(d.n).toLowerCase() });
     }
     ITEM_INDEX.sort(function (a, b) { return a.n.length - b.n.length || a.n.localeCompare(b.n); });   // 名稱短的(較接近完整匹配)排前面
@@ -458,8 +474,9 @@
     var dropsHTML = h.drops.length
       ? '<table class="m-dex-drops"><tbody>' + h.drops.map(function (d) {
           var pct = d[2] * mult; if (pct > 100) pct = 100;
+          var tag = d[3] ? ' <span class="m-dex-droptag">' + esc(d[3]) + '</span>' : '';
           return '<tr>' +
-            '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span></td>' +
+            '<td><span class="m-dex-iname" data-id="' + esc(d[0]) + '" title="看詳情">' + hl(d[1], q) + '</span>' + tag + '</td>' +
             '<td class="m-dex-pct">' + fmtPct(pct) + '%</td>' +
             '</tr>';
         }).join('') + '</tbody></table>'
@@ -701,6 +718,7 @@
       '.m-dex-stat b{color:#94a3b8;font-weight:normal;margin-right:2px;}',
       '.m-dex-sub{font-size:12px;color:#fcd34d;font-weight:bold;margin:8px 0 3px;}',
       '.m-dex-maps{font-size:13px;color:#e2e8f0;line-height:1.6;}',
+      '.m-dex-droptag{font-size:11px;color:#fca5a5;background:#3b1d2a;border:1px solid #7f3a4a;border-radius:4px;padding:0 5px;margin-left:2px;white-space:nowrap;}',
       '.m-dex-maplink{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-maplink:active{color:#38bdf8;}',
       /* 掉落物:點名稱=看詳情(慣例:點物品就是看它);查掉落來源的按鈕收進詳情卡裡。 */
