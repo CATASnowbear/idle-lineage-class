@@ -3867,6 +3867,8 @@ function initCombatLogLock() {
 
 // ⚡ 快速強化（批次強化）狀態：wpn=武器分頁、arm=防具分頁（含飾品）。sel 為 uid→true 的勾選集合。
 let quickEnh = { wpn: { active: false, target: 6, sel: {} }, arm: { active: false, target: 6, sel: {} } };
+// 🗑️ 快速廢品（批次標記廢品）狀態：wpn/arm/item 三分頁；啟用時預先勾選「已是廢品」者。sel 為 uid→true。（與快速強化同分頁互斥）
+let quickJunk = { wpn: { active: false, sel: {} }, arm: { active: false, sel: {} }, item: { active: false, sel: {} } };
 
 // ===== ⚔️ 戰鬥日誌來源過濾（敵人/玩家/傭兵/召喚/夥伴）=====
 // _combatSrc：目前正在記錄的戰鬥訊息來源，由各攻擊派發點設定；為 null 時依顏色 type 推定（'enemy'→敵人，其餘→玩家）。
@@ -11530,9 +11532,10 @@ function renderTabs(force) {
     let aDiv = document.getElementById('tab-armors'); aDiv.innerHTML = '';
     let iDiv = document.getElementById('tab-items'); iDiv.innerHTML = '';
 
-    // ⚡ 快速強化頭部（武器/防具分頁頂端，類似裝備分頁的負重列）
-    wDiv.appendChild(buildQuickEnhanceHeader('wpn'));
-    aDiv.appendChild(buildQuickEnhanceHeader('arm'));
+    // ⚡🗑️ 快速操作頭部：武器/防具分頁＝[快速強化][快速廢品]；道具分頁＝[快速廢品]
+    wDiv.appendChild(buildQuickHeader('wpn'));
+    aDiv.appendChild(buildQuickHeader('arm'));
+    iDiv.appendChild(buildQuickHeader('item'));
 
 player.inv.forEach(i => {
     if(!DB.items[i.id]) return;
@@ -11581,11 +11584,17 @@ player.inv.forEach(i => {
 
     // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
     let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
+    let _qjType = (d.type === 'wpn') ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : 'item');   // 🗑️ 快速廢品分頁歸屬（含箭矢→武器分頁、其餘→道具分頁）
     if (_qeType && quickEnh[_qeType].active && !i.lock) {
         let _checked = !!quickEnh[_qeType].sel[i.uid];
         el.innerHTML = `<div class="flex items-center justify-between gap-2">${_rowInner}<input type="checkbox" class="pointer-events-none w-4 h-4 mr-1 flex-shrink-0" ${_checked ? 'checked' : ''}></div>`;
         if (_checked) el.className += ' ring-2 ring-blue-500/70';
         el.onclick = () => toggleQuickItem(_qeType, i.uid);
+    } else if (quickJunk[_qjType].active && !i.lock) {
+        let _checked = !!quickJunk[_qjType].sel[i.uid];
+        el.innerHTML = `<div class="flex items-center justify-between gap-2">${_rowInner}<input type="checkbox" class="pointer-events-none w-4 h-4 mr-1 flex-shrink-0" ${_checked ? 'checked' : ''}></div>`;
+        if (_checked) el.className += ' ring-2 ring-amber-500/70';
+        el.onclick = () => toggleQuickJunkItem(_qjType, i.uid);
     } else {
         el.innerHTML = _rowInner;
         // 保留點擊開啟 Modal 功能 (所有項目皆可點擊)
@@ -12423,7 +12432,7 @@ function buildQuickEnhanceHeader(type) {
 
 // 注意：renderTabs 有「背包/裝備內容簽章」快取，內容未變會提早 return。快速強化只改 quickEnh 狀態（不在簽章內），
 //       故這些切換一律用 renderTabs(true) 強制重建，否則畫面不會更新。
-function toggleQuickEnhance(type) { let st = quickEnh[type]; st.active = true; if (st.target == null) st.target = 6; st.sel = {}; renderTabs(true); }
+function toggleQuickEnhance(type) { if (quickJunk[type] && quickJunk[type].active) { quickJunk[type].active = false; quickJunk[type].sel = {}; } let st = quickEnh[type]; st.active = true; if (st.target == null) st.target = 6; st.sel = {}; renderTabs(true); }
 function cancelQuickEnhance(type) { let st = quickEnh[type]; st.active = false; st.sel = {}; renderTabs(true); }
 function quickEnhanceSelectAll(type, checked) { let st = quickEnh[type]; st.sel = {}; if (checked) _qeEligibleItems(type).forEach(i => st.sel[i.uid] = true); renderTabs(true); }
 function toggleQuickItem(type, uid) { let st = quickEnh[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
@@ -12474,6 +12483,70 @@ function runQuickEnhance(type) {
     parts.push(`<span class="text-red-400">爆裝 ${destroyed} 件</span>`);
     logSys(`<span class="text-blue-300 font-bold">快速強化完成（目標 +${goal}）：</span>${parts.join('、')}，消耗 ${usedTotal} 張卷軸。`);
     calcStats();
+    renderTabs(true);
+    saveGame();
+}
+
+// ========== 🗑️ 快速廢品（批次標記廢品）==========
+// 該分頁可批次標記廢品的背包物品（未鎖定）：wpn=武器(含箭矢)、arm=防具/飾品、item=其餘（藥水/卷軸/書/材料等）
+function _qjEligibleItems(type) {
+    return player.inv.filter(i => {
+        let d = DB.items[i.id]; if (!d || i.lock) return false;
+        if (type === 'wpn') return d.type === 'wpn';
+        if (type === 'arm') return d.type === 'arm' || d.type === 'acc';
+        return d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc';
+    });
+}
+// ⚡🗑️ 分頁頂端快速操作表頭：武器/防具＝[快速強化][快速廢品]；道具＝[快速廢品]（強化進行中沿用原強化表頭）
+function buildQuickHeader(type) {
+    let hasEnh = (type === 'wpn' || type === 'arm');
+    if (hasEnh && quickEnh[type].active) return buildQuickEnhanceHeader(type);   // 強化進行中：沿用原強化表頭
+    let jnk = quickJunk[type];
+    let hdr = document.createElement('div');
+    hdr.className = 'sticky top-0 z-10 mb-1 bg-slate-900 pb-1';
+    if (jnk.active) {   // 快速廢品進行中：取消／確認／全選（無數值選擇）
+        let eligible = _qjEligibleItems(type);
+        let allSel = eligible.length > 0 && eligible.every(i => jnk.sel[i.uid]);
+        let someSel = eligible.some(i => jnk.sel[i.uid]);
+        hdr.innerHTML = `<div class="flex items-center gap-1 bg-slate-900/80 border border-amber-800/60 rounded p-1">
+            <button onclick="cancelQuickJunk('${type}')" class="btn border-slate-600 bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs font-bold text-white rounded">取消</button>
+            <button onclick="runQuickJunk('${type}')" class="btn border-amber-600 bg-amber-800 hover:bg-amber-700 px-2 py-1 text-xs font-bold text-amber-100 rounded">確認</button>
+            <label class="flex items-center gap-1 text-xs text-slate-300 cursor-pointer select-none whitespace-nowrap ml-auto"><input type="checkbox" ${allSel ? 'checked' : ''} onchange="quickJunkSelectAll('${type}', this.checked)"> 全選</label>
+        </div>`;
+        let cb = hdr.querySelector('label input'); if (cb) cb.indeterminate = someSel && !allSel;
+        return hdr;
+    }
+    // 皆未啟用：顯示按鈕（武器/防具有強化＋廢品；道具僅廢品）
+    let btns = '';
+    if (hasEnh) btns += `<button onclick="toggleQuickEnhance('${type}')" class="flex-1 btn border-blue-700 bg-blue-900/70 hover:bg-blue-800 py-1.5 text-sm font-bold text-blue-200 rounded shadow">⚡ 快速強化</button>`;
+    btns += `<button onclick="toggleQuickJunk('${type}')" class="flex-1 btn border-amber-700 bg-amber-900/60 hover:bg-amber-800 py-1.5 text-sm font-bold text-amber-200 rounded shadow">🗑️ 快速廢品</button>`;
+    hdr.innerHTML = `<div class="flex gap-1">${btns}</div>`;
+    return hdr;
+}
+// 啟用快速廢品：取消同分頁快速強化＋預先勾選「已是廢品」者（用戶要求：廢品一開始就是勾選中）
+function toggleQuickJunk(type) {
+    if ((type === 'wpn' || type === 'arm') && quickEnh[type].active) { quickEnh[type].active = false; quickEnh[type].sel = {}; }
+    let st = quickJunk[type]; st.active = true; st.sel = {};
+    _qjEligibleItems(type).forEach(i => { if (i.junk) st.sel[i.uid] = true; });
+    renderTabs(true);
+}
+function cancelQuickJunk(type) { let st = quickJunk[type]; st.active = false; st.sel = {}; renderTabs(true); }
+function quickJunkSelectAll(type, checked) { let st = quickJunk[type]; st.sel = {}; if (checked) _qjEligibleItems(type).forEach(i => st.sel[i.uid] = true); renderTabs(true); }
+function toggleQuickJunkItem(type, uid) { let st = quickJunk[type]; if (st.sel[uid]) delete st.sel[uid]; else st.sel[uid] = true; renderTabs(true); }
+// 確認：依勾選最終狀態設定每件 junk（勾＝廢品、未勾＝取消廢品），同步 junkPrefs（記憶/取消記憶）
+function runQuickJunk(type) {
+    let st = quickJunk[type];
+    if (!player.junkPrefs) player.junkPrefs = {};
+    let marked = 0, unmarked = 0;
+    _qjEligibleItems(type).forEach(i => {
+        let want = !!st.sel[i.uid];
+        if (want === !!i.junk) return;   // 無變動
+        i.junk = want;
+        if (want) { player.junkPrefs[itemSig(i)] = true; marked++; }
+        else { delete player.junkPrefs[itemSig(i)]; unmarked++; }
+    });
+    st.active = false; st.sel = {};
+    logSys(`<span class="text-amber-300 font-bold">快速廢品完成：</span>標記 ${marked} 件、取消 ${unmarked} 件。`);
     renderTabs(true);
     saveGame();
 }
