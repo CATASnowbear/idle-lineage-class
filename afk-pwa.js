@@ -31,7 +31,10 @@
   var waitingSW = null;      // 等待接管的新版 SW
   var refreshing = false;    // 防止 controllerchange 無限重整
   var updateApplied = false;  // 是否「我們主動套用更新」(只有這種 controllerchange 才重整)
-  var precaching = false, precacheDone = 0, precacheTotal = 0, precacheFinished = false;
+  var precaching = false, precacheFinished = false;
+  var precachePhase = '';     // 'check'=檢查離線資源 / 'download'=下載圖片
+  var precacheTotal = 0, precacheCheck = 0;   // 階段1:總圖數 / 已檢查數
+  var precacheNeed = 0, precacheDone = 0;     // 階段2:要下載數 / 已下載數
   var deferredPrompt = null; // 攔下來的 beforeinstallprompt，供安裝連結點擊時用
   var buildId = '';          // 目前這版的 build 時間(向控制中的 SW 問,僅供畫面辨識)
 
@@ -135,10 +138,15 @@
       // 已安裝：自動更新 checkbox（預設打勾）
       html = '<label class="afk-pwa-chk"><input type="checkbox" id="afk-pwa-auto"' + (autoUpdateOn() ? ' checked' : '') + '> 自動更新至最新版本</label>';
       html += updateLink;
-      // 背景預抓進度
+      // 背景預抓進度（兩階段各自讀條）
       if (precaching) {
-        var pct = precacheTotal ? Math.floor(precacheDone / precacheTotal * 100) : 0;
-        html += '<div class="afk-pwa-prog">離線資源下載中 ' + pct + '%（' + precacheDone + '/' + precacheTotal + '）</div>';
+        if (precachePhase === 'download' && precacheNeed > 0) {
+          var dpct = Math.floor(precacheDone / precacheNeed * 100);
+          html += '<div class="afk-pwa-prog">⬇️ 下載圖片 ' + dpct + '%（' + precacheDone + '/' + precacheNeed + '）</div>';
+        } else {
+          var cpct = precacheTotal ? Math.floor(precacheCheck / precacheTotal * 100) : 0;
+          html += '<div class="afk-pwa-prog">🔍 檢查離線資源 ' + cpct + '%</div>';
+        }
       } else if (precacheFinished) {
         html += '<div class="afk-pwa-done">✅ 已可完全離線遊玩</div>';
       }
@@ -273,7 +281,9 @@
 
     navigator.serviceWorker.addEventListener('message', function (e) {
       var d = e.data || {};
-      if (d.type === 'precache-progress') { precacheDone = d.done; precacheTotal = d.total; renderBar(); }
+      if (d.type === 'precache-check') { precachePhase = 'check'; precacheCheck = d.checked; precacheTotal = d.total; renderBar(); }
+      else if (d.type === 'precache-check-done') { precachePhase = 'download'; precacheNeed = d.need; precacheDone = 0; renderBar(); }
+      else if (d.type === 'precache-progress') { precachePhase = 'download'; precacheDone = d.done; precacheNeed = d.need; renderBar(); }
       else if (d.type === 'precache-done') { precaching = false; precacheFinished = true; localStorage.setItem(PRECACHE_DONE, '1'); if (_pendingSig) { localStorage.setItem(MANIFEST_SIG, _pendingSig); _pendingSig = null; } renderBar(); }
       else if (d.type === 'version') { if (d.build && d.build !== '0000-0000') { buildId = d.build; renderBar(); } }
     });
@@ -321,7 +331,10 @@
       if (!doPrecache && isStandalone() && precacheDoneFlag) { precacheFinished = true; renderBar(); }
       if (doPrecache) {
         _pendingSig = sig;
-        precaching = true; precacheTotal = manifest.length; precacheDone = 0; precacheFinished = false; renderBar();
+        precaching = true; precacheFinished = false;
+        precachePhase = 'check'; precacheTotal = manifest.length; precacheCheck = 0;
+        precacheNeed = 0; precacheDone = 0;
+        renderBar();
         ctrl.postMessage({ type: 'precache-images', manifest: manifest });
       }
     });

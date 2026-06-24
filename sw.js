@@ -18,8 +18,8 @@
  *
  * 背景預抓：頁面送 {type:'precache-images', manifest:[[path,sha],...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
  * ========================================================================== */
-const CODE_VERSION = 'code-1b23a87780d0';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0624-0854'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-f807e156b740';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0624-0936'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
@@ -113,36 +113,56 @@ async function reconcileImages(manifest, client) {
   if (client) client.postMessage({ type: 'reconcile-done', evicted });
 }
 
-// 背景把圖桶抓滿:分批、跳過已是最新的,逐批回報進度給發起的分頁。順手把每張的 sha 記進對照表。
+// 背景把圖桶抓滿,分兩階段、各自回報進度給發起的分頁:
+//   階段1「檢查」:掃 manifest 找出哪些圖需要下載(stale)。已記錄 sha 且相符的瞬間略過、不碰磁碟,
+//     所以「沒變動」時這階段幾乎即時完成。回報 {type:'precache-check', checked, total}。
+//   階段2「下載」:只抓階段1 圈出的 stale 圖(分批),回報 {type:'precache-progress', done, need}。
+//   沒有要抓的(need=0)就只跑階段1、直接結束。順手把每張抓到的 sha 記進對照表。
 async function precacheImages(manifest, client) {
   const entries = manifestEntries(manifest);
   const cache = await caches.open(IMG_CACHE);
   const hashes = await readImgHashes(cache);
   const total = entries.length;
+
+  // ── 階段1:檢查 ──
+  const toFetch = [];
+  let checked = 0;
+  const CHECK_BATCH = 100;
+  for (let i = 0; i < total; i += CHECK_BATCH) {
+    const batch = entries.slice(i, i + CHECK_BATCH);
+    await Promise.all(batch.map(async (en) => {
+      if (en.sha && hashes[en.path] === en.sha) return;   // 快路徑:記錄相符=最新,免讀磁碟
+      const cached = await cache.match(en.path);
+      // 對不上(沒快取、或記錄的 sha≠manifest)就排進下載。不樂觀補記:沒記過 sha 的舊快取交給 reconcile
+      // 用實際 bytes 驗證,這裡若硬補記可能把破損期殘留的舊圖誤標成最新。
+      if (!cached || (en.sha && hashes[en.path] !== en.sha)) toFetch.push(en);
+    }));
+    checked = Math.min(checked + CHECK_BATCH, total);
+    if (client) client.postMessage({ type: 'precache-check', checked, total });
+  }
+
+  const need = toFetch.length;
+  if (client) client.postMessage({ type: 'precache-check-done', need, total });
+
+  // ── 階段2:下載 ──
   let done = 0;
   const BATCH = 8;
-  for (let i = 0; i < total; i += BATCH) {
-    const batch = entries.slice(i, i + BATCH);
+  for (let i = 0; i < need; i += BATCH) {
+    const batch = toFetch.slice(i, i + BATCH);
     await Promise.all(batch.map(async (en) => {
       try {
-        const cached = await cache.match(en.path);
-        // 對不上(沒快取、或記錄的 sha≠manifest)就重抓。不樂觀補記:沒記過 sha 的舊快取交給 reconcile
-        // 用實際 bytes 驗證,這裡若硬補記可能把破損期殘留的舊圖誤標成最新。
-        const stale = !cached || (en.sha && hashes[en.path] !== en.sha);
-        if (stale) {
-          const res = await fetch(en.path, { cache: 'no-cache' });
-          if (res && (res.ok || res.type === 'opaque')) {
-            await cache.put(en.path, res.clone());
-            if (en.sha) hashes[en.path] = en.sha;
-          }
+        const res = await fetch(en.path, { cache: 'no-cache' });
+        if (res && (res.ok || res.type === 'opaque')) {
+          await cache.put(en.path, res.clone());
+          if (en.sha) hashes[en.path] = en.sha;
         }
       } catch (err) { /* 單張失敗不中斷整批 */ }
       done++;
     }));
-    if (client) client.postMessage({ type: 'precache-progress', done, total });
+    if (client) client.postMessage({ type: 'precache-progress', done, need });
   }
   await writeImgHashes(cache, hashes);
-  if (client) client.postMessage({ type: 'precache-done', total });
+  if (client) client.postMessage({ type: 'precache-done', total, downloaded: need });
 }
 
 // cache-first + 連網補存。ok(200)或 opaque(跨網域)都存。
