@@ -35,6 +35,7 @@
   var precachePhase = '';     // 'check'=檢查離線資源 / 'download'=下載圖片
   var precacheTotal = 0, precacheCheck = 0;   // 階段1:總圖數 / 已檢查數
   var precacheNeed = 0, precacheDone = 0;     // 階段2:要下載數 / 已下載數
+  var precachePending = 0;    // 檢查完發現有 N 張待下載、但等使用者按「下載」才開始(已安裝、更新帶新圖時)
   var deferredPrompt = null; // 攔下來的 beforeinstallprompt，供安裝連結點擊時用
   var buildId = '';          // 目前這版的 build 時間(向控制中的 SW 問,僅供畫面辨識)
 
@@ -97,6 +98,7 @@
       '#afk-pwa-bar .afk-pwa-chk input{width:15px;height:15px;cursor:pointer;}' +
       '#afk-pwa-bar .afk-pwa-update{color:#fbbf24;font-weight:bold;}' +
       '#afk-pwa-bar .afk-pwa-prog{color:#34d399;}' +
+      '#afk-pwa-bar .afk-pwa-dl{color:#fbbf24;margin-left:4px;}' +
       '#afk-pwa-bar .afk-pwa-done{color:#34d399;}' +
       '#afk-pwa-bar .afk-pwa-ver{color:#64748b;font-size:11px;margin-top:2px;letter-spacing:.3px;}' +
       // 更新過場：套用更新到實際重整之間（SW skip-waiting→activate 有秒級延遲），蓋全螢幕轉圈避免「沒反應」的錯覺
@@ -147,6 +149,10 @@
           var cpct = precacheTotal ? Math.floor(precacheCheck / precacheTotal * 100) : 0;
           html += '<div class="afk-pwa-prog">🔍 檢查離線資源 ' + cpct + '%</div>';
         }
+      } else if (precachePending > 0) {
+        // 檢查完發現有新圖,但不自動抓——顯示張數 + 一顆小「下載」連結,點了才開始
+        html += '<div class="afk-pwa-prog">🆕 有 ' + precachePending + ' 張新圖待下載' +
+                '<button type="button" class="afk-pwa-link afk-pwa-dl" id="afk-pwa-dl">下載</button></div>';
       } else if (precacheFinished) {
         html += '<div class="afk-pwa-done">✅ 已可完全離線遊玩</div>';
       }
@@ -166,6 +172,8 @@
     if (upd) upd.addEventListener('click', function () {
       confirmBox('要更新到最新版本嗎？更新後會重新載入遊戲（進度已存檔，不會遺失）。', applyUpdate);
     });
+    var dl = document.getElementById('afk-pwa-dl');
+    if (dl) dl.addEventListener('click', startPrecacheDownload);
   }
 
   // 自製確認視窗（不用原生 confirm：iOS 會抑制；樣式比照登出視窗的深色卡片）
@@ -282,9 +290,19 @@
     navigator.serviceWorker.addEventListener('message', function (e) {
       var d = e.data || {};
       if (d.type === 'precache-check') { precachePhase = 'check'; precacheCheck = d.checked; precacheTotal = d.total; renderBar(); }
-      else if (d.type === 'precache-check-done') { precachePhase = 'download'; precacheNeed = d.need; precacheDone = 0; renderBar(); }
+      else if (d.type === 'precache-check-done') {
+        if (d.checkOnly) {
+          // 只檢查模式:有缺就顯示「N 張待下載」按鈕,沒缺就直接標記已抓滿(避免下次又重檢查)
+          precaching = false;
+          if (d.need > 0) { precachePending = d.need; }
+          else { precachePending = 0; precacheFinished = true; commitPrecacheDone(); }
+          renderBar();
+        } else {
+          precachePhase = 'download'; precacheNeed = d.need; precacheDone = 0; renderBar();
+        }
+      }
       else if (d.type === 'precache-progress') { precachePhase = 'download'; precacheDone = d.done; precacheNeed = d.need; renderBar(); }
-      else if (d.type === 'precache-done') { precaching = false; precacheFinished = true; localStorage.setItem(PRECACHE_DONE, '1'); if (_pendingSig) { localStorage.setItem(MANIFEST_SIG, _pendingSig); _pendingSig = null; } renderBar(); }
+      else if (d.type === 'precache-done') { precaching = false; precachePending = 0; precacheFinished = true; commitPrecacheDone(); renderBar(); }
       else if (d.type === 'version') { if (d.build && d.build !== '0000-0000') { buildId = d.build; renderBar(); } }
     });
 
@@ -308,8 +326,9 @@
   }
   // 每次載入都把最新 manifest 送給 SW:
   //   ● reconcile(線上逛、已安裝都跑)→ 只清掉 sha 對不上的舊圖,作者換一張只重抓一張、不重載整包。
-  //   ● precache(只在「已安裝且尚未抓滿」或剛安裝 forcePrecache)→ 把整包圖抓進圖桶,抓滿即可完全離線。
-  //   precache 不會樂觀補記 sha(只在實際抓到才記),故與 reconcile 同時跑也不會記錯,毋須等待排序。
+  //       已安裝(isStandalone)時帶 deferReplaced:被換掉的舊圖先留著,等使用者按下載再覆寫(見 sw.js)。
+  //   ● 首次安裝(forcePrecache)→ 直接把整包圖抓滿(裝了就離線,不打擾)。
+  //   ● 之後已安裝、資產集有變/沒抓滿 → 只「檢查」算出 N 張待下載,由使用者按「下載」鈕才抓(checkOnly)。
   //   首次安裝尚未接管(無 controller)→ 等接管後再跑(此時快取為空,reconcile 是 no-op、precache 照抓)。
   function syncImages(forcePrecache) {
     var ctrl = navigator.serviceWorker.controller;
@@ -322,22 +341,40 @@
     }
     var precacheDoneFlag = localStorage.getItem(PRECACHE_DONE) === '1';
     withManifest(function (manifest) {
-      ctrl.postMessage({ type: 'reconcile-images', manifest: manifest });
-      // 🔧 程式更新後資產集若變了(新增/換圖)→簽章變→重跑預抓把新圖抓進圖桶(SW 預抓會跳過已快取同 sha 的,只抓新/變動的,不重載整包)。
-      //    沒這個的話:抓滿一次後 PRECACHE_DONE='1' 永遠跳過預抓,而 reconcile 只清舊圖不抓全新圖 → 新圖離線找不到。
+      ctrl.postMessage({ type: 'reconcile-images', manifest: manifest, deferReplaced: isStandalone() });
       var sig = _manifestSig(manifest);
       var manifestChanged = localStorage.getItem(MANIFEST_SIG) !== sig;
-      var doPrecache = forcePrecache || (isStandalone() && (!precacheDoneFlag || manifestChanged));
-      if (!doPrecache && isStandalone() && precacheDoneFlag) { precacheFinished = true; renderBar(); }
-      if (doPrecache) {
-        _pendingSig = sig;
-        precaching = true; precacheFinished = false;
-        precachePhase = 'check'; precacheTotal = manifest.length; precacheCheck = 0;
-        precacheNeed = 0; precacheDone = 0;
-        renderBar();
-        ctrl.postMessage({ type: 'precache-images', manifest: manifest });
+      // checkNeeded:已安裝、且(沒抓滿過 或 資產集變了)→ 要算 N 張待下載。forcePrecache 不在此列(它直接抓滿)。
+      var checkNeeded = !forcePrecache && isStandalone() && (!precacheDoneFlag || manifestChanged);
+      if (!forcePrecache && !checkNeeded) {
+        if (isStandalone() && precacheDoneFlag) { precacheFinished = true; renderBar(); }   // 已抓滿且無變動 → 顯示「✅ 已可完全離線」
+        return;
       }
+      _pendingSig = sig;
+      startPrecache(manifest, checkNeeded);   // forcePrecache→完整抓;checkNeeded→只檢查
     });
+  }
+  // 啟動預抓:checkOnly=true 只檢查(回報 N 張待下載、等使用者點下載);false 直接走完整檢查+下載。
+  function startPrecache(manifest, checkOnly) {
+    var ctrl = navigator.serviceWorker.controller;
+    if (!ctrl) return;
+    precaching = true; precacheFinished = false; precachePending = 0;
+    precachePhase = 'check'; precacheTotal = manifest.length; precacheCheck = 0;
+    precacheNeed = 0; precacheDone = 0;
+    renderBar();
+    ctrl.postMessage({ type: 'precache-images', manifest: manifest, checkOnly: !!checkOnly });
+  }
+  // 使用者按「下載」→ 抓最新 manifest 走完整下載(SW 會很快重跑一次檢查再抓,維持無狀態較穩)。
+  function startPrecacheDownload() {
+    withManifest(function (manifest) {
+      _pendingSig = _manifestSig(manifest);
+      startPrecache(manifest, false);
+    });
+  }
+  // 抓滿(或檢查後發現本來就齊全)→ 記住「已完整離線 + 這份資產簽章」,下次同簽章就不再檢查。
+  function commitPrecacheDone() {
+    localStorage.setItem(PRECACHE_DONE, '1');
+    if (_pendingSig) { localStorage.setItem(MANIFEST_SIG, _pendingSig); _pendingSig = null; }
   }
   var _pendingSig = null;
   // 圖清單便宜簽章:筆數 + 所有 git-blob-sha 的滾動雜湊;新增一張或換一張都會變
