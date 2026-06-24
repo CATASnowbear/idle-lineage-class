@@ -669,7 +669,7 @@
     { t: '風木城專屬：風木地監', lines: [
       '攻下<b>風木城</b>後，城堡擁有的 24 小時內會多開一個<b>「風木地監」</b>狩獵地圖（肯特城、海音城沒有這個）。',
       '裡面有殭屍／骷髏／史巴托／食屍鬼／食人魔（含食人魔王）／地獄犬等，還有 BOSS <b>巴列斯</b>。',
-      '巴列斯會掉「失去魔力的巴列斯魔杖」——配上靈魂之球可喚醒成傳說武器<b>巴列斯魔杖</b>（細節見「傳說裝備」與「任務」）。想刷巴列斯，攻下風木城開風木地監是主要管道。',
+      '巴列斯會掉「失去魔力的巴列斯魔杖」——配上靈魂之球可喚醒成傳說武器<b>巴列斯魔杖</b>（細節見「裝備」與「任務」）。想刷巴列斯，攻下風木城開風木地監是主要管道。',
       '完整怪表可在「掉落查詢」搜「風木地監」；地監隨城堡開放，城堡擁有時間（24 小時）一過就關。'
     ]},
     { t: '魔物追蹤', lines: [
@@ -851,7 +851,7 @@
     { k: 'ally', n: '傭兵' },
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
-    { k: 'legend', n: '傳說裝備' },
+    { k: 'equip', n: '裝備' },
     { k: 'enhance', n: '強化' },
     { k: 'craft', n: '製作' },
     { k: 'load', n: '負重' },
@@ -861,7 +861,7 @@
     { k: 'oblivion', n: '遺忘之島' },
     { k: 'kingroom', n: '軍王之室' }
   ];
-  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all' };
+  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', equipCls: 'all' };
 
   // 把內文裡任何「分頁名」(夾在「」裡、且整段剛好等於某個分頁名)做成可點的跳頁連結。
   // 用「整段精確等於分頁名」當條件:像「席琳套裝」「席琳的世界」不會誤中分頁「席琳」,避免把一般引號詞變連結。
@@ -929,6 +929,16 @@
         render();
         return;
       }
+      // 裝備分頁:點裝備名展開/收合詳情
+      var eqHead = e.target.closest ? e.target.closest('[data-eq]') : null;
+      if (eqHead) {
+        var det = eqHead.parentNode ? eqHead.parentNode.querySelector('.m-eq-detail') : null;
+        if (det) det.style.display = (det.style.display === 'none') ? '' : 'none';
+        return;
+      }
+      // 裝備分頁的「職業篩選」
+      var eqcls = e.target.closest ? e.target.closest('[data-equipcls]') : null;
+      if (eqcls) { state.equipCls = eqcls.getAttribute('data-equipcls'); render(); return; }
       var b = e.target.closest ? e.target.closest('[data-magiccls]') : null;
       if (!b) return;
       state.magicCls = b.getAttribute('data-magiccls');
@@ -979,7 +989,7 @@
     if (key === 'pets') return renderPets();
     if (key === 'ally') return renderAlly();
     if (key === 'set') return renderSet();
-    if (key === 'legend') return renderLegend();
+    if (key === 'equip') return renderEquip();
     if (key === 'enhance') return renderEnhance();
     if (key === 'craft') return renderCraft();
     if (key === 'sherine') return renderSherine();
@@ -1021,7 +1031,7 @@
     { key: 'ally', cls: false, label: '傭兵' },
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
-    { key: 'legend', cls: false, label: '傳說裝備' },
+    { key: 'equip', cls: false, label: '裝備' },
     { key: 'enhance', cls: false, label: '強化' },
     { key: 'craft', cls: false, label: '製作' },
     { key: 'load', cls: false, label: '負重' },
@@ -1126,7 +1136,7 @@
     clsRow.style.display = showCls ? 'flex' : 'none';
     var _allBtn = clsRow.querySelector('.m-wiki-clsbtn-all'); if (_allBtn) _allBtn.style.display = (state.tab === 'quest') ? '' : 'none';   // 全職業鈕只在任務分頁
     document.querySelectorAll('#m-wiki-cls .m-wiki-clsbtn').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-cls') === state.cls); });
-    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : tabHTML(state.tab, state.cls), state.tab);
+    body.innerHTML = linkifyTabs((state.tab === 'magic') ? renderMagic(state.magicCls) : (state.tab === 'equip') ? renderEquip(state.equipCls) : tabHTML(state.tab, state.cls), state.tab);
   }
 
   function renderMastery(cls) {
@@ -1289,123 +1299,92 @@
     return note + cards;
   }
 
-  // 傳說裝備(legend:true):直接讀遊戲 DB,作者新增會自動出現。效果文字用遊戲內建描述(d 欄,玩家可見、即時)。
-  // 成套才有價值的傳說防具(死亡騎士/克特/惡魔/四大軍王,d 內含「套裝」)不在此重列,改一行連到「套裝」分頁。
-  var LEGEND_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', all: '全職業' };
-  var LEGEND_SLOT_CN = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
-  var LEGEND_RES_CN = { resFire: '火', resWater: '水', resWind: '風', resEarth: '地' };
-  function legendReqCN(r) { return String(r == null ? '' : r).split(',').map(function (x) { return LEGEND_REQ_CN[x] || x; }).join('／'); }
-  function isLegendSetPiece(d) { return !!(d.d && d.d.indexOf('套裝') >= 0); }   // 成套傳說(死亡騎士/克特/惡魔/四大軍王…):套裝加成另見「套裝」分頁
-  // 完整數值:把這件裝備實際提供的能力全列出來(只列防禦會誤導,漏掉的屬性也要寫)
-  function legendStats(d) {
-    var sgn = function (v) { return (v > 0 ? '+' : '') + v; };
-    var st = [];
-    if (d.type === 'wpn') {
-      if (d.dmgS != null) st.push('攻擊力 對小型 ' + d.dmgS + '／對大型 ' + d.dmgL);
-      if (d.dmgBonus) st.push('額外傷害 ' + sgn(d.dmgBonus));
-      if (d.hit) st.push('命中 ' + sgn(d.hit));
-      if (d.mdmg) st.push('魔法傷害 ' + sgn(d.mdmg));
-    }
-    if (d.ac != null && (d.type === 'arm' || d.type === 'acc')) st.push('防禦(AC) ' + sgn(-d.ac));
-    ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(function (k) { if (d[k]) st.push(STAT_LABEL[k] + ' ' + sgn(d[k])); });
-    if (d.mr) st.push('魔防 ' + sgn(d.mr));
-    if (d.mhp) st.push('HP上限 ' + sgn(d.mhp));
-    if (d.mmp) st.push('MP上限 ' + sgn(d.mmp));
-    if (d.hpR) st.push('HP自然恢復 ' + sgn(d.hpR));
-    if (d.mpR) st.push('MP自然恢復 ' + sgn(d.mpR));
-    Object.keys(LEGEND_RES_CN).forEach(function (k) { if (d[k]) st.push(LEGEND_RES_CN[k] + '屬性抗性 ' + sgn(d[k])); });
-    if (d.block) st.push('格擋 ' + d.block);
-    if (d.weightCap) st.push('負重上限 ' + sgn(d.weightCap));
-    if (d.mrPerEn) st.push('每強化 +1 魔防 +' + d.mrPerEn);
-    if (d.immStone) st.push('免疫石化');
-    if (d.immPoison) st.push('免疫中毒');
-    return st.join('、');
+  // 裝備總覽:直接讀遊戲 DB.items 依部位分組。數值用遊戲自己的 buildItemDescHTML(永遠與遊戲一致、作者新增自動跟上),
+  // 取得方式接掉落查詢的 AFK_DEX_API.acquireHTML。每件「詳情」常駐 DOM(display:none)→ 連完整數值/特效都進統一搜尋;
+  // 詳情與整頁 HTML 都建一次就快取(_equipDetail/_equipHtml)→ 搜尋每次重渲染 441 件也不卡。
+  var EQUIP_FILTERS = [['all', '全部'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士'], ['royal', '王族']];
+  var EQUIP_GROUPS = [
+    { k: 'wpn', n: '⚔️ 武器' }, { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' },
+    { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
+    { k: 'boots', n: '🥾 鞋子' }, { k: 'belt', n: '🎗️ 腰帶' }, { k: 'ring', n: '💍 戒指' },
+    { k: 'amulet', n: '📿 項鍊' }, { k: 'tshirt', n: '👕 內衣' }, { k: 'pet', n: '🐾 寵物裝備' }
+  ];
+  var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
+  function equipGroupKey(d) { return (d.type === 'wpn') ? 'wpn' : (d.slot || 'other'); }
+  // 某職業能否裝備:用遊戲真實規則(與遊戲顯示一致),非單看 req
+  function classCanEquip(d, id, cls) {
+    if (cls === 'all') return true;
+    try {
+      if (cls === 'dark' && typeof darkEquipOk === 'function') return darkEquipOk(d, id);
+      if (cls === 'illusion' && typeof illusionEquipOk === 'function') return illusionEquipOk(d, id);
+      if (cls === 'dragon' && typeof dragonEquipOk === 'function') return dragonEquipOk(d, id);
+      if (cls === 'warrior' && typeof warriorEquipOk === 'function') return warriorEquipOk(d, id);
+      if (cls === 'royal' && typeof royalEquipOk === 'function') return royalEquipOk(d, id);
+      if (typeof reqAllowsClass === 'function') return reqAllowsClass(d, cls);
+    } catch (e) {}
+    return true;
   }
-  // 獨特效果:成套件 → 指向「套裝」分頁(套裝加成不在此重列);其餘 → 取 d 的機制描述
-  function legendSpecial(d) {
-    if (isLegendSetPiece(d)) return '套裝效果見「套裝」分頁。';
-    return d.d ? friendly(String(d.d).replace(/<br\s*\/?>/gi, '　')) : '';
-  }
-  // 傳回該傳說裝的「取得方式」HTML(無特殊取得鏈則回空字串,交給頁尾通則+掉落查詢);id 用來對共用清單與配方
-  function legendAcquire(d, id) {
-    // 手動補充的喚回鏈走共用清單 afk-extradata.js(掉落查詢也讀同一份);只放「能動態算」以外的
-    var exa = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
-    if (exa && exa.chain) return exa.chain;
-    // 惡魔王武器:讀遊戲 DEMONKING_RECIPES 動態組出炎魔之影客製製作鏈(作者改配方會自動跟著變)
-    if (typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES) {
-      var r = null;
-      for (var i = 0; i < DEMONKING_RECIPES.length; i++) {
-        if (DEMONKING_RECIPES[i].result === id) { r = DEMONKING_RECIPES[i]; break; }
+  // 詳情:數值用遊戲 buildItemDescHTML(base 實例 en:0)、取得方式用掉落查詢 API;建一次快取
+  var _equipDetail = {};
+  function equipDetailHTML(id) {
+    if (_equipDetail[id] !== undefined) return _equipDetail[id];
+    var html = '';
+    try {
+      if (typeof buildItemDescHTML === 'function') {
+        var base = { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false };
+        html += '<div class="m-eq-stats" style="margin-top:4px;line-height:1.8;">' + buildItemDescHTML(base) + '</div>';
       }
-      if (r) {
-        var matStr = (typeof DEMONKING_MATS !== 'undefined' && DEMONKING_MATS)
-          ? DEMONKING_MATS.map(function (m) { return esc(((DB.items[m.id] && DB.items[m.id].n) || m.id) + '×' + m.cnt); }).join('、') : '';
-        return '在「炎魔之影（炎魔謁見所）」客製製作：消耗 +11 以上的「' + esc(r.srcName) + '」×1'
-          + (matStr ? '＋' + matStr : '') + '，會繼承來源武器的強化值／詞綴／席琳套裝（材料詳見「製作」分頁）。';
-      }
-    }
-    // 一般製作的傳說武器(如古代神之槍):讀 CRAFT_RECIPES 找製作 NPC,作者新增配方會自動跟著變
-    if (typeof CRAFT_RECIPES !== 'undefined' && CRAFT_RECIPES) {
-      for (var npcId in CRAFT_RECIPES) {
-        var recs = CRAFT_RECIPES[npcId]; if (!recs) continue;
-        for (var j = 0; j < recs.length; j++) {
-          if (recs[j].result === id) {
-            var info = craftNpcInfo(npcId);
-            return '由「' + esc(info.name) + (info.town ? '（' + esc(info.town) + '）' : '') + '」製作（材料詳見「製作」分頁）。';
-          }
-        }
-      }
-    }
-    return '';
+    } catch (e) {}
+    try { if (window.AFK_DEX_API && AFK_DEX_API.acquireHTML) html += '<div style="margin-top:6px;">' + AFK_DEX_API.acquireHTML(id) + '</div>'; } catch (e) {}
+    _equipDetail[id] = html;
+    return html;
   }
-  // NPC id → { name, town }(查 DB.towns;查不到回 id)
-  function craftNpcInfo(npcId) {
-    if (typeof DB !== 'undefined' && DB.towns) {
-      for (var tid in DB.towns) {
-        var t = DB.towns[tid]; if (!t || !t.npcs) continue;
-        for (var i = 0; i < t.npcs.length; i++) if (t.npcs[i] && t.npcs[i].id === npcId) return { name: t.npcs[i].n, town: t.n };
-      }
-    }
-    return { name: npcId, town: '' };
+  // 列表精簡行(一眼看重點);詳情常駐隱藏故搜尋仍涵蓋全部內容
+  function equipCompact(d) {
+    var bits = [];
+    if (d.type === 'wpn') { if (d.dmgS != null) bits.push('攻擊 ' + d.dmgS + '/' + d.dmgL); if (d.hit) bits.push('命中 ' + (d.hit > 0 ? '+' : '') + d.hit); }
+    else if (d.ac != null) bits.push('防禦(AC) ' + ((-d.ac) >= 0 ? '+' : '') + (-d.ac));
+    if (d.req && d.req !== 'all') bits.push((EQUIP_REQ_CN[d.req] || d.req) + '專用');
+    return bits.join('　');
   }
-  // 傳說武器的「武器特性」:種類內建特性(居合/反擊/出血…)+ eff 特性,讀共用清單;proc 特殊攻擊已在描述呈現故不重列
-  function legendWeaponTraits(d, id) {
-    if (!d || d.type !== 'wpn') return '';
-    var EFF = (window.AFK_EXTRA && AFK_EXTRA.weaponTraitEff) || {};
-    var TAG = (window.AFK_EXTRA && AFK_EXTRA.weaponTagTrait) || {};
-    var wt = [];
-    if (d.eff && EFF[d.eff]) wt.push(EFF[d.eff]);
-    var tags = (typeof getWeaponTags === 'function') ? (getWeaponTags(id) || []) : [];
-    tags.forEach(function (tg) { if (TAG[tg]) wt.push(TAG[tg]); });
-    if (d.rapidfire) wt.push('連射');
-    if (d.unBonus) wt.push('對不死／狼人額外傷害');
-    return wt.filter(function (v, i) { return wt.indexOf(v) === i; }).join('、');
-  }
-  function renderLegend() {
-    var groups = { wpn: [], arm: [], acc: [] };
+  var _equipHtml = {};
+  function renderEquip(cls) {
+    cls = cls || 'all';
+    if (_equipHtml[cls] !== undefined) return _equipHtml[cls];
+    var filterRow = '<div class="m-wiki-mfilter">' + EQUIP_FILTERS.map(function (f) {
+      return '<button type="button" class="m-wiki-mfbtn' + (f[0] === cls ? ' on' : '') + '" data-equipcls="' + f[0] + '">' + f[1] + '</button>';
+    }).join('') + '</div>';
+    var note = '<div class="m-wiki-note">依<b>部位</b>列出全部裝備(讀遊戲資料、作者新增自動出現)。上方可<b>篩職業</b>;<b>點任一件展開完整數值與取得方式</b>(數值與遊戲內顯示一致)。搜尋會連展開內容一起命中。</div>';
+    var buckets = {};
     Object.keys(DB.items).forEach(function (id) {
       var d = DB.items[id];
-      if (!d || !d.legend || !groups[d.type]) return;
-      groups[d.type].push({ d: d, id: id });   // 帶 id(取得方式要對共用清單/配方);成套件也列進來,套裝加成連去套裝頁
+      if (!d || !d.n) return;
+      if (d.type !== 'wpn' && d.type !== 'arm' && d.type !== 'acc') return;
+      if (!classCanEquip(d, id, cls)) return;
+      var gk = equipGroupKey(d);
+      (buckets[gk] = buckets[gk] || []).push({ id: id, d: d });
     });
     function card(e) {
-      var d = e.d;
-      var meta = legendReqCN(d.req) + (LEGEND_SLOT_CN[d.slot] ? '　|　' + LEGEND_SLOT_CN[d.slot] : (d.type === 'wpn' ? '　|　武器' : ''));
-      var special = legendSpecial(d), stats = legendStats(d), acq = legendAcquire(d, e.id), wtraits = legendWeaponTraits(d, e.id);
-      return '<div class="m-wiki-card">' +
-        '<div class="m-wiki-name"><span class="c-legend">' + esc(d.n) + '</span></div>' +
-        '<div class="m-wiki-desc" style="color:#94a3b8;font-size:12px;">' + esc(meta) + '</div>' +
-        (special ? '<div class="m-wiki-desc" style="margin-top:3px;">' + esc(special) + '</div>' : '') +
-        (wtraits ? '<div class="m-wiki-desc" style="margin-top:3px;color:#fbbf24;">武器特性：' + esc(wtraits) + '</div>' : '') +
-        (stats ? '<div class="m-wiki-desc" style="margin-top:3px;color:#cbd5e1;">數值：' + esc(stats) + '</div>' : '') +
-        (acq ? '<div class="m-wiki-desc" style="margin-top:3px;color:#a5b4fc;">🔑 取得：' + acq + '</div>' : '') +
+      var d = e.d, id = e.id;
+      var nameCls = d.legend ? 'c-legend' : 'text-slate-100';
+      return '<div class="m-wiki-card m-eq-card">' +
+        '<div class="m-eq-head" data-eq="' + esc(id) + '" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:baseline;">' +
+          '<span class="' + nameCls + ' font-bold">' + esc(d.n) + (d.legend ? ' ✦' : '') + '</span>' +
+          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;">' + esc(equipCompact(d)) + '</span>' +
+        '</div>' +
+        '<div class="m-eq-detail" style="display:none;border-top:1px solid #1e293b;margin-top:6px;padding-top:6px;">' + equipDetailHTML(id) + '</div>' +
       '</div>';
     }
-    var note = '<div class="m-wiki-note">「傳說」是最高稀有度（名字呈<span class="c-legend">琥珀金</span>）。每件列出獨特效果與完整數值；<b>成套的傳說裝（死亡騎士／克特／惡魔／四大軍王等）也列在這，套裝加成請點「套裝」分頁看</b>。掉落來源到「掉落查詢」搜裝備名；武器特殊攻擊詳見「武器特性」分頁。</div>';
-    var html = note;
-    if (groups.wpn.length) html += '<div class="m-wiki-sub">⚔️ 傳說武器</div>' + groups.wpn.map(card).join('');
-    if (groups.arm.length) html += '<div class="m-wiki-sub">🛡 傳說防具</div>' + groups.arm.map(card).join('');
-    if (groups.acc.length) html += '<div class="m-wiki-sub">💍 傳說飾品</div>' + groups.acc.map(card).join('');
+    var html = filterRow + note;
+    var total = 0;
+    EQUIP_GROUPS.forEach(function (g) {
+      var list = buckets[g.k]; if (!list || !list.length) return;
+      list.sort(function (a, b) { return (b.d.p || 0) - (a.d.p || 0) || String(a.d.n).localeCompare(String(b.d.n)); });
+      total += list.length;
+      html += '<div class="m-wiki-sub">' + g.n + '（' + list.length + '）</div>' + list.map(card).join('');
+    });
+    if (!total) html += '<div class="m-wiki-hint">這個職業沒有可裝備的裝備。</div>';
+    _equipHtml[cls] = html;
     return html;
   }
 

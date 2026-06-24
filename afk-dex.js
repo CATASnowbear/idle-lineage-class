@@ -383,6 +383,41 @@
     return !!(acq && acq.short);                                             // 手動補的取得方式(兌換/試煉/喚回…)
   }
 
+  // ===== 對外 API:給小百科「裝備」分頁重用「取得方式」呈現(手動/製作/商店/怪物掉落) =====
+  //   小百科裝備頁的「數值」用遊戲自己的 buildItemDescHTML,取得方式則接這裡(與掉落查詢同一套來源判斷)。
+  var _dropBy = null;   // itemId -> [怪名…](去重):哪些怪會掉這件
+  function buildDropBy() {
+    _dropBy = {};
+    INDEX.forEach(function (h) {
+      (h.drops || []).forEach(function (dr) {
+        var iid = dr[0]; if (!iid) return;
+        var arr = (_dropBy[iid] = _dropBy[iid] || []);
+        if (arr.indexOf(h.mob.n) < 0) arr.push(h.mob.n);
+      });
+    });
+  }
+  function acquireHTML(id) {
+    if (!INDEX.length) buildIndexes();
+    if (_dropBy === null) buildDropBy();
+    var d = DB.items[id]; if (!d) return '';
+    var parts = [];
+    var exa = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
+    if (exa && exa.short) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🔑 取得方式</div><div class="m-dex-craft-mats">' + esc(exa.short) + '</div></div>');
+    parts.push(craftInfoHTML(id));
+    parts.push(shopInfoHTML(id));
+    var mobs = _dropBy[id];
+    if (mobs && mobs.length) {
+      var cap = 12, more = mobs.length > cap;
+      parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">👹 怪物掉落</div><div class="m-dex-craft-mats">' +
+        mobs.slice(0, cap).map(esc).join('、') + (more ? ' …等 ' + mobs.length + ' 種' : '') + '（機率見掉落查詢）</div></div>');
+    }
+    var body = parts.filter(Boolean).join('');
+    if (body) return body;
+    return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">' +
+      ((d.gachaWeight > 0) ? '目前沒有固定取得途徑' : '取得方式：—') + '</div></div>';
+  }
+  window.AFK_DEX_API = { acquireHTML: acquireHTML };
+
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
   var IT_REQ = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
