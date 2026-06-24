@@ -1736,6 +1736,8 @@
   function renderMagic(magicCls) {
     magicCls = magicCls || 'all';
     var html = magicFilterRow(magicCls);
+    // ⚔️ 攻擊魔法實際傷害公式(以 castSkill 為準):別只比「威力」骰子,階級係數才是大頭
+    html += '<div class="m-wiki-note">⚔️ <b>攻擊魔法的實際傷害不只看「威力」骰子。</b>每段傷害 ≈ <b>骰子 ×（1＋階級÷3）×（1＋魔法傷害÷16）</b>，<b>法師</b>再 ×（1.5＋階級÷20），最後扣目標魔防(MR)。<b>階級越高、倍率越大</b>——所以高階魔法即使骰子看起來差不多甚至略低，實際往往更強。<br>例：流星雨(10 階，骰 6~60) 看似低於冰雪暴(8 階，骰 8~64)，但把階級係數乘進去後<b>流星雨實際約強 14%</b>。下面每條的「威力」是<b>骰子基礎值</b>，比強度請連階級一起看。</div>';
     if (magicCls !== 'all') {
       var rows = [];
       for (var id in DB.skills) {
@@ -1763,7 +1765,7 @@
       var sk2 = DB.skills[id2]; if (!sk2 || !sk2.n) continue;
       var c = magicCat(id2, sk2); if (c) cats[c].push({ id: id2, sk: sk2 });
     }
-    html += '<div class="m-wiki-note">魔法分「<b>法師魔法</b>」（法師的本職法術，共 1~10 階）與各職業<b>專屬魔法</b>。法師魔法其他職業到對應等級也能學低階——每條都標「<b>可學</b>」＝哪個職業幾級可學。<b>幻術士</b>用記憶水晶、<b>龍騎士</b>用書板學各自的專屬魔法。攻擊魔法「威力」為基礎值，實際傷害再隨智力與魔法傷害提升。</div>';
+    html += '<div class="m-wiki-note">魔法分「<b>法師魔法</b>」（法師的本職法術，共 1~10 階）與各職業<b>專屬魔法</b>。法師魔法其他職業到對應等級也能學低階——每條都標「<b>可學</b>」＝哪個職業幾級可學。<b>幻術士</b>用記憶水晶、<b>龍騎士</b>用書板學各自的專屬魔法。</div>';
     cats.mage.sort(function (a, b) { return (a.sk.tier - b.sk.tier) || a.sk.n.localeCompare(b.sk.n); });
     html += '<div class="m-wiki-sub">🪄 法師魔法（1~10 階）</div>';
     var curTier = null;
