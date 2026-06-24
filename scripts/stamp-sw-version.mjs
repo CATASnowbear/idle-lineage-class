@@ -52,6 +52,16 @@ export function stampSwVersion() {
 
   if (next !== sw) { writeFileSync(SW_FILE, next); console.log('[stamp] CODE_VERSION →', version); }
   else console.log('[stamp] CODE_VERSION 不變（內容相同）:', version);
+
+  // version.json:給頁面端「獨立於 SW 機制」判斷有沒有落後線上最新版用。
+  //   走網路、永遠最新、不進任何快取(見 sw.js fetch handler 不攔截 .json);內容與 CODE_VERSION/BUILD_ID 同源。
+  //   每次都寫(沒變動則內容相同、不影響);自動同步 workflow 的 git add 要含它,否則線上不會更新。
+  const buildNow = (next.match(/const BUILD_ID\s*=\s*'([^']*)';/) || [])[1] || '';
+  const vjson = JSON.stringify({ code: version, build: buildNow }) + '\n';
+  if (!existsSync('version.json') || readFileSync('version.json', 'utf8') !== vjson) {
+    writeFileSync('version.json', vjson);
+    console.log('[stamp] version.json →', version, buildNow);
+  }
   return version;
 }
 

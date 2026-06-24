@@ -38,6 +38,10 @@
   var precachePending = 0;    // 檢查完發現有 N 張待下載、但等使用者按「下載」才開始(已安裝、更新帶新圖時)
   var deferredPrompt = null; // 攔下來的 beforeinstallprompt，供安裝連結點擊時用
   var buildId = '';          // 目前這版的 build 時間(向控制中的 SW 問,僅供畫面辨識)
+  var runningCode = '';      // 控制中 SW 回報的 CODE_VERSION(= 目前畫面這份程式的版本),供 version.json 比對
+  var latestCode = '';       // version.json 回報的線上最新 code
+  var latestStale = false;   // 比對結果:目前是不是落後線上最新版
+  var FORCED_CODE = 'afk_pwa_forced_code';   // 已用「頁面端強制刷新」把內容換到的最新 code,防 iOS 下 SW 不換版→無限重整
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
@@ -130,7 +134,7 @@
     // 關了自動更新 + 有等待中的新版 → 顯示手動更新連結。App 與瀏覽器分頁都要顯示:
     //   關閉是全網域共用的 pin,瀏覽器分頁也不會被自動推上去,所以這裡要給它一個手動更新的入口,
     //   否則「不自動更新、又沒得手動更新」就會卡死(使用者回報過的舊 bug)。
-    var updateLink = (!autoUpdateOn() && waitingSW)
+    var updateLink = (!autoUpdateOn() && (waitingSW || latestStale))
       ? '<div><button type="button" class="afk-pwa-link afk-pwa-update" id="afk-pwa-update">🔄 更新至最新版</button></div>'
       : '';
     if (!isStandalone()) {
@@ -166,11 +170,11 @@
     if (auto) auto.addEventListener('change', function () {
       localStorage.setItem(PREF_AUTOUPDATE, this.checked ? '1' : '0');
       renderBar();
-      if (this.checked && waitingSW) applyUpdate();   // 勾回自動更新且有等待中新版 → 立刻套用
+      if (this.checked && (waitingSW || latestStale)) applyLatest();   // 勾回自動更新且落後 → 立刻套用最新
     });
     var upd = document.getElementById('afk-pwa-update');
     if (upd) upd.addEventListener('click', function () {
-      confirmBox('要更新到最新版本嗎？更新後會重新載入遊戲（進度已存檔，不會遺失）。', applyUpdate);
+      confirmBox('要更新到最新版本嗎？更新後會重新載入遊戲（進度已存檔，不會遺失）。', applyLatest);
     });
     var dl = document.getElementById('afk-pwa-dl');
     if (dl) dl.addEventListener('click', startPrecacheDownload);
@@ -249,6 +253,7 @@
   }
   function applyUpdate() {
     if (!waitingSW) return;
+    if (updateApplied || refreshing) return;   // 防重複套用:native(reg.waiting)與 version.json 兩條偵測可能同時觸發
     updateApplied = true;
     showUpdatingOverlay();   // 立刻給回饋，使用者按完「確定更新」不會覺得沒反應
     waitingSW.postMessage({ type: 'skip-waiting' });
@@ -261,6 +266,111 @@
     o.id = 'afk-pwa-updating';
     o.innerHTML = '<div class="afk-pwa-spin"></div><div class="afk-pwa-updating-text">正在更新至最新版…</div>';
     document.body.appendChild(o);
+  }
+
+  // ----- 落後偵測(獨立於 SW 機制,治本)-------------------------------------
+  // 為什麼不只靠 SW 自己的更新偵測(reg.waiting/updatefound):iOS Safari 對 SW 更新又懶又黏,reg.waiting 常常根本不亮,
+  //   靠它判斷「有沒有新版」會漏。改抓 version.json(SW 不攔截、永遠走網路最新)跟「目前這份的 code」比對,到處都準。
+  //   落後且「使用者要最新(自動更新開著)」才在首頁自動修;想留舊版(關自動更新)的完全不碰,只給一個手動更新入口。
+  function checkFreshness() {
+    if (!runningCode) return;                    // 還不知道自己是哪版 → 等 version 訊息再說
+    fetch('version.json', { cache: 'no-cache' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (v) {
+        if (!v || !v.code) return;               // 抓不到/格式怪 → 當作沒事
+        latestCode = v.code;
+        latestStale = (v.code !== runningCode);
+        if (!latestStale) { localStorage.removeItem(FORCED_CODE); return; }   // 已是最新 → 清掉防呆旗標
+        // 已經用頁面端強制刷新把「內容」換到這個最新 code 了(只是該支 SW 還沒換版、仍報舊 code)→ 別再修,免無限重整。
+        //   此時內容其實已是最新,版號顯示成最新才對。
+        if (localStorage.getItem(FORCED_CODE) === v.code) { if (v.build) buildId = v.build; renderBar(); return; }
+        if (autoUpdateOn()) maybeAutoApplyLatest();   // 要最新卻落後 → 首頁自動修(下面會 reload,顯示不重要)
+        else renderBar();                             // 想留舊版 → 不動 buildId(照顯示他實際在跑的版本),只給手動更新入口
+      })
+      .catch(function () { /* 離線/連不到 → 安靜放棄,絕不把「沒網路」誤判成「落後」 */ });
+  }
+  // 自動修:只在首頁(不打斷戰鬥)。不在首頁就這次先不動,等下次回首頁/重整(我們手機版「回首頁」本身就 reload)再修。
+  function maybeAutoApplyLatest() {
+    if (updateApplied || refreshing) return;
+    if (!onHomePage()) { renderBar(); return; }
+    applyLatest();
+  }
+  // 套用最新:有等待中的新版 SW → 走原本最便宜的 skip-waiting;沒有(iOS 常態)→ 頁面端強制刷新。
+  function applyLatest() {
+    if (updateApplied || refreshing) return;
+    if (waitingSW) { applyUpdate(); return; }
+    forceCodeRefresh();
+  }
+  // 頁面端強制刷新:不靠 SW 換版、也不需 SW 支援新訊息——直接用 Cache API 把最新 index.html 覆寫進程式桶,
+  //   重整後(還是那支舊 SW 在控制)cache-first 就會回到剛覆寫的新版(新 index.html 內的 ?v= 新 JS 會自動連網抓)。
+  //   離線安全鐵則:① 只有抓成功(res.ok)才覆寫,絕不先刪再抓 → 抓失敗時舊快取原封不動;② 失敗(含離線)不重整、不留旗標。
+  function forceCodeRefresh() {
+    if (!('caches' in window) || !latestCode) return;
+    updateApplied = true;
+    showUpdatingOverlay();
+    var settled = false;
+    var t = setTimeout(function () { if (!settled) { settled = true; abortRefresh(); } }, 12000);   // 沒回應就收掉遮罩、不盲目重整
+    (async function () {
+      var keys = await caches.keys();
+      // 精準鎖定「控制中 SW 的程式桶」——桶名就等於它的 CODE_VERSION(= runningCode);
+      //   換版瞬間若同時存在新舊兩個 code 桶,用前綴取 [0] 可能挑錯,故優先用 runningCode 命中。
+      var codeBucket = (keys.indexOf(runningCode) !== -1) ? runningCode
+                       : keys.filter(function (k) { return k.indexOf('code-') === 0; })[0];
+      if (!codeBucket) return false;
+      var cache = await caches.open(codeBucket);
+      // 先找出 SW 當初存「導覽」用的那個 key(用 pathname 比對,通常是 '/' 或 '/index.html')。
+      //   先找、晚點再抓,避免把下面 cache-buster 那筆也比中。
+      var existing = await cache.keys();
+      var navKey = null;
+      for (var i = 0; i < existing.length; i++) {
+        var u = new URL(existing[i].url);
+        if (u.origin === location.origin && u.pathname === location.pathname) { navKey = existing[i]; break; }
+      }
+      if (!navKey) return false;   // 導覽根本沒被快取 → 不是 cache-first 卡舊版的情境,不需強刷
+      // ★ 關鍵:同源 fetch 會被「正在控制的舊 SW」攔成 cache-first → 直接抓只會拿回舊的。
+      //   加 cache-buster query 讓 SW 的 cache.match 落空 → 它只好走網路 → 才真的拿到最新 index.html。
+      var bust = location.origin + location.pathname + '?__afkfresh=' + Date.now();
+      var res = await fetch(bust, { cache: 'reload' });
+      if (!res || !res.ok) return false;
+      var html = await res.text();
+      // 防呆:抓回來的要「長得像我們的遊戲」(含外掛 script 字樣)才覆寫。擋掉 captive portal / proxy 對任何網址
+      //   都回 200 假頁的情況——否則會把登入頁當 index.html 快取起來、cache-first 下連離線都壞。
+      if (html.indexOf('afk-pwa.js') === -1) return false;
+      await cache.put(navKey, new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } }));   // 覆寫進「真正的導覽 key」
+      try { await cache.delete(bust); } catch (e) {}   // 清掉 SW 順手快取的 cache-buster 那筆 junk
+      return true;
+    })().then(function (ok) {
+      if (settled) return;
+      settled = true; clearTimeout(t);
+      if (!ok) { abortRefresh(); return; }   // 失敗(含離線、導覽沒被快取、抓到非遊戲頁)→ 不重整、不留旗標,維持現狀
+      // 旗標一定要「確認寫得進去」才 reload:萬一 localStorage 寫不進(如配額爆 QuotaExceededError),
+      //   盲目 reload 會變成「旗標沒記成 → 下次又 force-refresh」的迴圈,且可能卡在更新遮罩。
+      //   寫不成就放棄這次:不 reload、收掉遮罩(內容其實已覆寫進快取,下次載入自然就是新版),絕不迴圈也不卡死。
+      var flagged = false;
+      try { localStorage.setItem(FORCED_CODE, latestCode); flagged = (localStorage.getItem(FORCED_CODE) === latestCode); } catch (e) { flagged = false; }
+      if (flagged && !refreshing) { refreshing = true; location.reload(); }
+      else abortRefresh();
+    }).catch(function () { if (!settled) { settled = true; clearTimeout(t); abortRefresh(); } });
+  }
+  function abortRefresh() {
+    updateApplied = false;
+    var o = document.getElementById('afk-pwa-updating');
+    if (o && o.parentNode) o.parentNode.removeChild(o);
+  }
+  // 載入時清掉「上一輪 force-refresh 殘留的 cache-buster junk」——治本、不靠 forceCodeRefresh 裡那行會跟 SW 搶輸的立即刪。
+  //   在「新的一次載入」時掃,此刻舊 SW 背景存檔早就落定、沒有 race;把 code 桶內所有帶 __afkfresh= 的 key 清光。
+  //   所以 junk 最多只會是「本次 session 剛產生的一筆」,下次載入就被掃掉,不會累積。離線也安全(純本機快取操作)。
+  function sweepBusterJunk() {
+    if (!('caches' in window)) return;
+    caches.keys().then(function (keys) {
+      keys.filter(function (k) { return k.indexOf('code-') === 0; }).forEach(function (k) {
+        caches.open(k).then(function (cache) {
+          cache.keys().then(function (reqs) {
+            reqs.forEach(function (r) { if (r.url.indexOf('__afkfresh=') !== -1) cache.delete(r); });
+          });
+        });
+      });
+    }).catch(function () {});
   }
 
   function watchUpdates() {
@@ -277,6 +387,7 @@
       // 只在「開網頁/重整」時檢查一次更新,不做常駐輪詢——避免遊戲中途偵測到新版而打斷遊玩。
       //   (瀏覽器本來在每次導覽就會自動重抓 sw.js 比對,這裡再主動 update() 一次確保不吃 HTTP 快取。)
       reg.update().catch(function () {});
+      sweepBusterJunk();   // 每次載入清掉上一輪 force-refresh 殘留的 cache-buster junk(避免累積)
       syncImages(false);   // 每次載入:對帳清舊圖(線上/已安裝都跑)+(已安裝未抓滿則)背景預抓
     }).catch(function () {});
 
@@ -303,7 +414,11 @@
       }
       else if (d.type === 'precache-progress') { precachePhase = 'download'; precacheDone = d.done; precacheNeed = d.need; renderBar(); }
       else if (d.type === 'precache-done') { precaching = false; precachePending = 0; precacheFinished = true; commitPrecacheDone(); renderBar(); }
-      else if (d.type === 'version') { if (d.build && d.build !== '0000-0000') { buildId = d.build; renderBar(); } }
+      else if (d.type === 'version') {
+        if (d.code) runningCode = d.code;
+        if (d.build && d.build !== '0000-0000') { buildId = d.build; renderBar(); }
+        checkFreshness();   // 拿到「目前這份的版本」後,跟 version.json 比對是否落後線上最新版
+      }
     });
 
     askVersion();
