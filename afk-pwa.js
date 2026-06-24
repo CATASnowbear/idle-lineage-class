@@ -100,13 +100,10 @@
   function renderBar() {
     var b = bar();
     if (!b) return;
-    if (!pwaCapable() && !isStandalone()) { b.innerHTML = ''; return; }   // file:// 等非 PWA 環境:不顯示任何 PWA UI(裝不了,顯示只會誤導)
+    // 未安裝時:安裝入口已移到首頁「⚙ 設定」選單(見 registerInstallSetting),首頁這條空白不顯示;
+    //   只有「已安裝」後才在這顯示離線資源預抓狀態(更新已交給 sw.js network-first,無需更新 UI)。
     var html = '';
-    if (!isStandalone()) {
-      // 還沒安裝：純文字連結（非大按鈕）
-      html = '<button type="button" class="afk-pwa-link" id="afk-pwa-install">📥 安裝成免網路遊玩</button>';
-    } else {
-      // 已安裝：只顯示離線資源預抓狀態(更新已交給 sw.js network-first,不再需要任何更新 UI)
+    if (isStandalone()) {
       if (precaching) {
         if (precachePhase === 'download' && precacheNeed > 0) {
           var dpct = Math.floor(precacheDone / precacheNeed * 100);
@@ -124,9 +121,7 @@
       }
     }
     b.innerHTML = html;
-
-    var inst = document.getElementById('afk-pwa-install');
-    if (inst) inst.addEventListener('click', onInstallClick);
+    b.style.display = html ? '' : 'none';   // 未安裝時整條收起,首頁清爽
     var dl = document.getElementById('afk-pwa-dl');
     if (dl) dl.addEventListener('click', startPrecacheDownload);
   }
@@ -151,7 +146,9 @@
       '<button type="button" id="afk-pwa-ni-ok" style="flex:1;padding:10px;border-radius:8px;border:1px solid #16a34a;background:#15803d;color:#fff;cursor:pointer;">知道了，開始安裝</button>' +
       '</div></div>';
     document.body.appendChild(m);
-    function close() { if (m.parentNode) m.parentNode.removeChild(m); }
+    function remove() { if (m.parentNode) m.parentNode.removeChild(m); }
+    var layer = window.AFK_UI ? AFK_UI.openLayer(remove) : null;   // 手機返回鍵 / ESC 可關
+    function close() { if (layer && window.AFK_UI) AFK_UI.closeLayer(layer); else remove(); }
     m.addEventListener('click', function (e) { if (e.target === m) close(); });
     m.querySelector('#afk-pwa-ni-cancel').addEventListener('click', close);
     m.querySelector('#afk-pwa-ni-ok').addEventListener('click', function () { close(); onOk(); });
@@ -282,9 +279,21 @@
     });
   }
 
+  // 把「安裝成免網路遊玩」註冊成首頁「⚙ 設定」選單的一項(由 afk-storage 渲染)。
+  //   visible 於開選單時才求值:未安裝且環境支援 PWA 才出現,裝好後自動消失。
+  function registerInstallSetting() {
+    window.AFK_SETTINGS = window.AFK_SETTINGS || { _items: [], add: function (it) { this._items.push(it); } };
+    AFK_SETTINGS.add({
+      label: '📥 安裝成免網路遊玩',
+      visible: function () { return pwaCapable() && !isStandalone(); },
+      onClick: onInstallClick
+    });
+  }
+
   function init() {
     injectHead();
     injectCSS();
+    registerInstallSetting();
     renderBar();
     bindInstallEvents();
     if (pwaCapable()) {

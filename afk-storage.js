@@ -84,12 +84,15 @@
     return html;
   }
 
+  var _layer = null;
   function openModal() {
     var m = document.getElementById('m-stg-modal'); if (!m) return;
     document.getElementById('m-stg-body').innerHTML = renderBody();
     m.classList.add('open');
+    _layer = window.AFK_UI ? AFK_UI.openLayer(hideModal) : null;   // 手機返回鍵 / ESC 可關
   }
-  function closeModal() { var m = document.getElementById('m-stg-modal'); if (m) m.classList.remove('open'); }
+  function hideModal() { var m = document.getElementById('m-stg-modal'); if (m) m.classList.remove('open'); _layer = null; }   // 實際收起,不自行動歷史
+  function closeModal() { if (_layer && window.AFK_UI) AFK_UI.closeLayer(_layer); else hideModal(); }   // 主動關(✕ / 點背景)
 
   // 將來要加別的設定項,往這裡加一筆 { label, onClick } 即可
   var MENU_ITEMS = [
@@ -111,7 +114,7 @@
     document.body.appendChild(modal);
     document.getElementById('m-stg-close').addEventListener('click', closeModal);
     modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+    // ESC / 手機返回鍵改由 AFK_UI 共用管理器處理(openModal 時已 openLayer)
   }
 
   function injectCSS() {
@@ -120,11 +123,12 @@
     s.id = 'm-stg-style';
     s.textContent = [
       /* 首頁的小設定鈕 + 展開選單 */
-      '#afk-stg-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:-6px;}',
+      '#afk-stg-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:-6px;}',
       '#afk-stg-gear{background:#1e293b;border:1px solid #334155;color:#cbd5e1;border-radius:8px;font-size:13px;font-weight:bold;padding:5px 14px;cursor:pointer;font-family:inherit;line-height:1.2;}',
       '#afk-stg-gear:hover{background:#273449;color:#e2e8f0;}',
       '#afk-stg-gear.on{background:#273449;color:#fcd34d;border-color:#475569;}',
-      '#afk-stg-menu{display:none;flex-direction:column;gap:4px;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.5);min-width:200px;}',
+      /* 選單往「上方」浮出(absolute,不佔版面流、不把下方內容撐開);bottom:100% 貼齊設定鈕上緣 */
+      '#afk-stg-menu{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:8px;z-index:1001;flex-direction:column;gap:4px;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:6px;box-shadow:0 -8px 30px rgba(0,0,0,.55);min-width:200px;}',
       '#afk-stg-menu.open{display:flex;}',
       '#afk-stg-menu button{background:transparent;border:1px solid transparent;color:#e2e8f0;border-radius:7px;padding:8px 12px;font-size:14px;text-align:left;cursor:pointer;font-family:inherit;}',
       '#afk-stg-menu button:hover{background:#1e293b;border-color:#334155;}',
@@ -172,18 +176,25 @@
     gear.textContent = '⚙ 設定';
     var list = document.createElement('div');
     list.id = 'afk-stg-menu';
-    MENU_ITEMS.forEach(function (it) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = it.label;
-      b.addEventListener('click', function () { closeMenu(); it.onClick(); });
-      list.appendChild(b);
-    });
     wrap.appendChild(gear);
     wrap.appendChild(list);
     menu.appendChild(wrap);
 
-    function openMenu() { list.classList.add('open'); gear.classList.add('on'); }
+    // 開選單時才重建項目:合併外掛註冊的(AFK_SETTINGS,如「安裝成免網路遊玩」)＋本檔內建項;
+    //   外掛項在前、內建項在後;帶 visible() 的條件項(安裝裝好後即隱藏)於此時求值。
+    function renderMenu() {
+      var ext = (window.AFK_SETTINGS && AFK_SETTINGS._items) || [];
+      list.innerHTML = '';
+      ext.concat(MENU_ITEMS).forEach(function (it) {
+        if (it.visible && !it.visible()) return;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = it.label;
+        b.addEventListener('click', function () { closeMenu(); it.onClick(); });
+        list.appendChild(b);
+      });
+    }
+    function openMenu() { renderMenu(); list.classList.add('open'); gear.classList.add('on'); }
     function closeMenu() { list.classList.remove('open'); gear.classList.remove('on'); }
     gear.addEventListener('click', function (e) {
       e.stopPropagation();
