@@ -71,9 +71,9 @@
         body.sherine-world .mob-target { background: #1a0508; border-color: #7f1d1d; }
         body.sherine-world .mob-target.active { background: #450a0a; border-color: #ef4444; }
         body.sherine-world .mob-target:hover:not(.active) { background: #2c0a10; }
-        body.sherine-world #battle-view.has-bg .mob-target { background: rgba(26,5,8,0.66); border-color: rgba(127,29,29,0.8); }
-        body.sherine-world #battle-view.has-bg .mob-target.active { background: rgba(69,10,10,0.72); border-color: #ef4444; }
-        body.sherine-world #battle-view.has-bg .mob-target:hover:not(.active) { background: rgba(44,10,16,0.72); }
+        body.sherine-world #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; }
+        body.sherine-world #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; filter: drop-shadow(0 0 5px #ef4444); }
+        body.sherine-world #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏅 傳說武器：琥珀金（比祝福金更深更橘、帶金屬光澤）名稱與圖示光芒 */
         .c-legend { color: #d98a04 !important; font-weight: bold; text-shadow: 0 0 4px rgba(217,138,4,0.65), 0 0 10px rgba(180,83,9,0.5); }
         .legend-glow { animation: legendGlow 2s ease-in-out infinite; }
@@ -107,10 +107,29 @@
             50%      { filter: drop-shadow(0 0 8px rgba(74,222,128,0.95)) drop-shadow(0 0 16px rgba(34,197,94,0.5)); }
         }
         /* 區域背景：背景圖由 JS 依地圖/分類設為 inline 樣式（特殊地圖逐張不同）；卡片較不透明，使背景不過於顯眼 */
-        #battle-view.has-bg { background-size: cover; background-position: center; border-radius: 0.5rem; }
-        #battle-view.has-bg .mob-target { background: rgba(15,23,42,0.66); border-color: rgba(148,163,184,0.5); }
-        #battle-view.has-bg .mob-target.active { background: rgba(69,10,10,0.72); border-color: #ef4444; }
-        #battle-view.has-bg .mob-target:hover:not(.active) { background: rgba(30,41,59,0.72); }
+        #battle-view.has-bg { background-size: cover; background-position: center; background-repeat: no-repeat; background-color: #0b1220; border-radius: 0.5rem; }   /* no-repeat：條狀背景(沙漠)用 contain 時留白處不平鋪；background-color：留白填深色(像電影黑邊)。16:9 圖維持 cover 滿版、看不到底色 */
+        #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85); }   /* 🔧 狩獵區去框：怪物原圖直接呈現於背景，只保留名稱/血量/狀態(加字陰影保可讀) */
+        #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; filter: drop-shadow(0 0 5px #ef4444); }   /* 選取中：紅色光暈標示(非邊框) */
+        #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
+        /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊「上緣」、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。怪物卡填滿框高、怪物圖改彈性填中段隨高度縮放(名稱/血量/異常徽章固定不裁) */
+        #battle-view.area-fit { aspect-ratio: 1920 / 580; background-position: top center; overflow: hidden; }
+        #battle-view.area-fit #mob-list { height: 100%; }
+        #battle-view.area-fit .mob-target { height: 100%; min-height: 0; }
+        #battle-view.area-fit .mob-img-wrap { flex: 1 1 auto; min-height: 0; align-items: flex-end; }   /* 🦶 怪物圖貼齊框底(腳齊底)，供腳下接觸陰影對齊 */
+        #battle-view.area-fit .mob-img-inner { position: relative; height: 100%; display: inline-flex; align-items: flex-end; justify-content: center; }   /* 內層 inline-flex 縮到圖寬→影子寬度跟著每隻怪縮放 */
+        #battle-view.area-fit .mob-img-wrap img { height: 100%; width: auto; max-width: 100%; max-height: 100%; position: relative; z-index: 1; }
+        #battle-view.area-fit .mob-img-inner::after { content: ''; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); width: 70%; height: 16px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0) 80%); filter: blur(2px); z-index: 0; pointer-events: none; }   /* 🌑 腳下橢圓接觸陰影：墊在圖後(z-index 0<1)、掛內層非img→固定在地上不隨受擊晃動。加高(16px)+上移(bottom4)+羽化(blur2)→往上擴散覆蓋腳離底5~10px的怪、更圓潤柔和 */
+        /* 👑 方案B：純BOSS房專屬版面——boss 圖放大佔滿整格高度(約1.8×·寬型受框寬限制亦較大)，名字/徽章/狀態/血條改絕對定位疊在圖上(字陰影保可讀)、圖完全不被切(無transform·靠回收上下列空間放大) */
+        #battle-view.area-fit:has(.boss-slot) { padding: 0; }   /* 🐉 龍窟：去除框內距(p-4)，怪卡填滿整個戰鬥框高度→約2× */
+        #battle-view.area-fit .mob-target.boss-slot { position: relative; overflow: visible; }
+        #battle-view.area-fit .boss-slot > .mob-img-wrap { position: absolute; top: 2px; bottom: 2px; left: 50%; transform: translateX(-50%); width: 300%; margin: 0; overflow: visible; z-index: 1; }   /* 圖填滿框高；寬型龍(法利昂/巴拉卡斯)橫向溢出至左右空格、不被單格寬度卡住 */
+        #battle-view.area-fit .boss-slot > :nth-child(1) { position: absolute; top: 1px; left: 0; right: 0; margin: 0; z-index: 5; text-shadow: 0 1px 4px #000, 0 0 6px #000; }
+        #battle-view.area-fit .boss-slot > :nth-child(2) { position: absolute; top: 23px; left: 0; right: 0; margin: 0; z-index: 5; }
+        #battle-view.area-fit .boss-slot > :nth-child(4) { position: absolute; bottom: 13px; left: 0; right: 0; margin: 0; z-index: 5; text-shadow: 0 1px 3px #000; }
+        #battle-view.area-fit .boss-slot > :nth-child(5) { position: absolute; bottom: 2px; left: 6px; right: 6px; margin: 0; z-index: 5; box-shadow: 0 0 5px #000; }
+        /* 👹 一般頭目輕度放大(非龍窟)：純 transform 視覺放大1.2×(不reflow·框架/卡片/其餘列完全不動)，腳錨定往上長；名字/徽章提到圖上層(relative+z-index·無offset故不影響版面)避免被放大的圖蓋住 */
+        #battle-view.area-fit .boss-zoom .mob-img-inner { transform: scale(1.2); transform-origin: bottom center; }
+        #battle-view.area-fit .boss-zoom > :nth-child(1), #battle-view.area-fit .boss-zoom > :nth-child(2) { position: relative; z-index: 5; }
         #town-view.has-bg { background-size: cover; background-position: center; border-radius: 0.5rem; }
         #town-view.has-bg #town-npc-container > div { background: rgba(30,41,59,0.72); }
         #town-view.has-bg #town-npc-container > div:hover { background: rgba(51,65,85,0.78); }
@@ -146,48 +165,48 @@
         /* 🔧 命中特效：恢復晃動，但只做左右(水平)位移、不做上下(垂直)，並保留依屬性的亮起＋光暈 */
         @keyframes hitNormal {
             0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-4px); filter: brightness(1.5) drop-shadow(0 0 9px rgba(239,68,68,0.8)); }
-            50% { transform: translateX(4px); filter: brightness(1.5) drop-shadow(0 0 9px rgba(239,68,68,0.8)); }
+            25%, 75% { transform: translateX(-4px); filter: brightness(1.5); }
+            50% { transform: translateX(4px); filter: brightness(1.5); }
         }
         .anim-hit-normal { animation: hitNormal 0.12s ease-out; }
 
         /* 2. 無屬性魔法 */
         @keyframes hitMagic {
             0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.7) drop-shadow(0 0 16px #c084fc); }
-            50% { transform: translateX(5px); filter: brightness(1.7) drop-shadow(0 0 16px #c084fc); }
+            25%, 75% { transform: translateX(-5px); filter: brightness(1.7); }
+            50% { transform: translateX(5px); filter: brightness(1.7); }
         }
         .anim-hit-magic { animation: hitMagic 0.15s ease-out; }
 
         /* 3. 火屬性 */
         @keyframes hitFire {
             0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.7) drop-shadow(0 0 16px #ef4444); }
-            50% { transform: translateX(5px); filter: brightness(1.7) drop-shadow(0 0 16px #ef4444); }
+            25%, 75% { transform: translateX(-5px); filter: brightness(1.7); }
+            50% { transform: translateX(5px); filter: brightness(1.7); }
         }
         .anim-hit-fire { animation: hitFire 0.15s ease-out; }
 
         /* 4. 水屬性 */
         @keyframes hitWater {
             0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.5) drop-shadow(0 0 16px #3b82f6); }
-            50% { transform: translateX(5px); filter: brightness(1.5) drop-shadow(0 0 16px #3b82f6); }
+            25%, 75% { transform: translateX(-5px); filter: brightness(1.5); }
+            50% { transform: translateX(5px); filter: brightness(1.5); }
         }
         .anim-hit-water { animation: hitWater 0.15s ease-out; }
 
         /* 5. 風屬性 */
         @keyframes hitWind {
             0%, 100% { transform: skewX(0deg) translateX(0); filter: brightness(1); }
-            25%, 75% { transform: skewX(-12deg) translateX(-5px); filter: brightness(1.7) drop-shadow(0 0 16px #10b981); }
-            50% { transform: skewX(12deg) translateX(5px); filter: brightness(1.7) drop-shadow(0 0 16px #10b981); }
+            25%, 75% { transform: skewX(-12deg) translateX(-5px); filter: brightness(1.7); }
+            50% { transform: skewX(12deg) translateX(5px); filter: brightness(1.7); }
         }
         .anim-hit-wind { animation: hitWind 0.15s ease-out; }
 
         /* 6. 地屬性 */
         @keyframes hitEarth {
             0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.4) drop-shadow(0 0 16px #ca8a04); }
-            50% { transform: translateX(5px); filter: brightness(1.4) drop-shadow(0 0 16px #ca8a04); }
+            25%, 75% { transform: translateX(-5px); filter: brightness(1.4); }
+            50% { transform: translateX(5px); filter: brightness(1.4); }
         }
         .anim-hit-earth { animation: hitEarth 0.15s ease-out; }
 		
@@ -276,7 +295,15 @@
             0%, 100% { text-shadow: 0 0 4px rgba(251,191,36,0.7), 0 0 8px rgba(245,158,11,0.5); letter-spacing: 0; }
             50%      { text-shadow: 0 0 12px rgba(251,191,36,1), 0 0 22px rgba(217,119,6,0.85); letter-spacing: 0.5px; }
         }
-        .mob-name-boss { animation: bossNameGlow 1.6s infinite ease-in-out; }
+        .mob-name-boss { animation: none; }   /* 🔧 頭目名稱金色脈動發光已移除（保留等差顏色＋繼承卡片可讀字陰影；如需復原改回 animation: bossNameGlow 1.6s infinite ease-in-out） */
+        /* 🎨 怪物名稱等差顏色（依 mob.lv − player.lv）：自訂 hex class，因本專案 Tailwind JIT 未生成 text-red-500/pink/blue 等→改用自訂 class 保證生效 */
+        .mc-red    { color: #ef4444 !important; }   /* 高11等以上：鮮紅 */
+        .mc-lred   { color: #fca5a5 !important; }   /* 高7~10：淺紅（淡） */
+        .mc-yellow { color: #facc15 !important; }   /* 高4~6：黃色 */
+        .mc-white  { color: #ffffff !important; }   /* 高3~低3：白色 */
+        .mc-lgreen { color: #86efac !important; }   /* 低4~6：淺綠 */
+        .mc-lblue  { color: #bae6fd !important; }   /* 低7~10：淺藍（更淺） */
+        .mc-dblue  { color: #2158e1 !important; }   /* 低11等以上：深藍（稍微淺一點點·仍深藍） */
 
         /* 三詞綴(屬性+遠古+祝福)：紅→藍→綠→琥珀 循環變換光（顏色不變，顯眼度最高，恆定強光+大光暈） */
         @keyframes triGlow {
@@ -768,7 +795,7 @@ const DB = {
         "wpn_dual_abyss":    { n: "暗黑雙刀", type: "wpn", w2h: true, dmgS: 18, dmgL: 14, hit: 4, dmgBonus: 3, spd: 0.8, req: "dark", safe: 6, p: 80000, eff: "combo", gachaWeight: 5 },
         // ===== 🏛️ 底比斯·歐西里斯武器（攻擊時 4% 發動「惡魔之吻」：3D20 地屬性魔法傷害，受魔法傷害公式影響；玩家＋傭兵皆觸發） =====
         "wpn_thebes_bow":     { n: "底比斯歐西里斯弓", type: "wpn", isBow: true, ranged: true, rapidfire: 80, dmgS: 3, dmgL: 3, hit: 0, dmgBonus: 1, int: 2, wis: 1, spd: 0.9, req: "elf,illusion", safe: 6, p: 235000, gachaWeight: 1, procSkill: "sk_demon_kiss", procRateBase: 4, procRatePerEn: 0, d: "底比斯亡靈守護者持用的長弓，弓弦低語著歐西里斯的審判。連射 80%。智力+2、精神+1。攻擊時 4% 機率發動惡魔之吻（3D20 地屬性魔法傷害，受魔法傷害公式影響）。" },
-        "wpn_thebes_dual":    { n: "底比斯歐西里斯雙刀", type: "wpn", w2h: true, dmgS: 16, dmgL: 11, hit: 0, dmgBonus: 1, dex: 2, wis: 1, spd: 0.7, req: "dark", safe: 6, p: 215000, eff: "combo", gachaWeight: 1, procSkill: "sk_demon_kiss", procRateBase: 4, procRatePerEn: 0, d: "自底比斯神殿出土的雙刃，刀身刻滿守墓的咒文。連擊。敏捷+2、精神+1。攻擊時 4% 機率發動惡魔之吻（3D20 地屬性魔法傷害，受魔法傷害公式影響）。" },
+        "wpn_thebes_dual":    { n: "底比斯歐西里斯雙刀", type: "wpn", w2h: true, dmgS: 16, dmgL: 11, hit: 0, dmgBonus: 1, dex: 2, wis: 1, spd: 0.7, req: "dark", safe: 6, p: 215000, eff: "combo", comboRate: 30, gachaWeight: 1, procSkill: "sk_demon_kiss", procRateBase: 4, procRatePerEn: 0, d: "自底比斯神殿出土的雙刃，刀身刻滿守墓的咒文。雙擊。敏捷+2、精神+1。攻擊時 4% 機率發動惡魔之吻（3D20 地屬性魔法傷害，受魔法傷害公式影響）。" },
         "wpn_thebes_2hsword": { n: "底比斯歐西里斯雙手劍", type: "wpn", w2h: true, dmgS: 21, dmgL: 26, hit: 5, dmgBonus: 0, str: 1, con: 2, spd: 0.8, req: "knight,dragon", safe: 6, p: 255000, eff: "cleave", gachaWeight: 1, procSkill: "sk_demon_kiss", procRateBase: 4, procRatePerEn: 0, d: "沉睡於歐西里斯祭壇的巨劍，承載著冥府之主的威壓。切割。力量+1、體質+2。攻擊時 4% 機率發動惡魔之吻（3D20 地屬性魔法傷害，受魔法傷害公式影響）。" },
         "wpn_thebes_wand":    { n: "底比斯歐西里斯魔杖", type: "wpn", w2h: true, dmgS: 20, dmgL: 18, hit: 2, dmgBonus: 3, str: 2, mdmg: 2, mpR: 7, spd: 0.9, req: "mage,illusion", safe: 6, p: 185000, eff: "magicstrike", gachaWeight: 1, procSkill: "sk_demon_kiss", procRateBase: 4, procRatePerEn: 0, d: "底比斯祭司執掌的魔杖，引動黃沙與亡魂之力。魔擊。力量+2、魔攻+2、MP自然恢復+7。攻擊時 4% 機率發動惡魔之吻（3D20 地屬性魔法傷害，受魔法傷害公式影響）。" },
         "blt_thebes_osiris":  { n: "底比斯歐西里斯腰帶", type: "acc", slot: "belt", ac: 0, mmp: 10, mpR: 2, weightCap: 250, req: "all", safe: 0, p: 326000, gachaWeight: 1, d: "以歐西里斯之名祝聖的腰帶，繫上者得享冥界的豐沃。MP+10、MP自然恢復+2、負重上限+250。" },
@@ -1246,10 +1273,12 @@ const DB = {
         "wpn_crimson_spear": { n: "深紅長矛", type: "wpn", w2h: true, dmgS: 21, dmgL: 21, hit: 1, dmgBonus: 0, spd: 1.0, req: "knight", safe: 6, p: 89000, gachaWeight: 1, eff: "pierce", pierceChance: 80, unBonus: true, mhp: 50, d: "矛身被無數鮮血浸透成暗紅，貫穿之勢如奔流不可阻擋。穿透 80%、對不死 / 狼人加成、HP+50。" },
         "wpn_demon_axe": { n: "惡魔斧頭", type: "wpn", w2h: true, dmgS: 30, dmgL: 30, hit: -2, dmgBonus: 0, spd: 1.0, req: "knight", safe: 0, p: 9000, gachaWeight: 30, eff: "crush", d: "惡魔揮舞過的猙獰巨斧，每一擊都帶著地獄的沉重。重擊。" },
         "wpn_vengeance": { n: "復仇之劍", type: "wpn", w2h: true, dmgS: 4, dmgL: 36, hit: 3, dmgBonus: 0, spd: 1.1, req: "knight", safe: 0, p: 10000, gachaWeight: 20, eff: "cleave", d: "凝結著不散怨念的雙手劍，劍鋒所向皆為宿仇而斬。切割。" },
-        "wpn_hate_claw": { n: "恨之鋼爪", type: "wpn", w2h: true, dmgS: 26, dmgL: 15, hit: 2, dmgBonus: 5, spd: 0.9, req: "dark", safe: 0, p: 10000, gachaWeight: 20, eff: "combo", d: "由純粹恨意鍛成的鋼爪，撕裂時彷彿能聽見亡者的嘶吼。連擊。" },
+        "wpn_hate_claw": { n: "恨之鋼爪", type: "wpn", w2h: true, dmgS: 26, dmgL: 15, hit: 2, dmgBonus: 5, spd: 0.9, req: "dark", safe: 0, p: 10000, gachaWeight: 20, eff: "combo", comboRate: 50, d: "由純粹恨意鍛成的鋼爪，撕裂時彷彿能聽見亡者的嘶吼。雙擊。" },
         "wpn_demon_sword": { n: "惡魔之劍", type: "wpn", dmgS: 17, dmgL: 9, hit: 4, dmgBonus: 0, spd: 1.1, req: "knight,elf", safe: 6, p: 50000, gachaWeight: 1, eff: "haste", d: "惡魔親手淬煉的單手劍，揮舞間迅疾如魔影掠過。反擊、加速（與自我加速藥水/加速術無法重疊）。" },
-        "wpn_demon_dual": { n: "惡魔雙刀", type: "wpn", w2h: true, dmgS: 18, dmgL: 13, hit: 4, dmgBonus: 3, spd: 0.8, req: "dark", safe: 6, p: 50000, gachaWeight: 1, eff: "combo", equipHaste: true, d: "自惡魔利爪幻化而成的一對雙刀，揮舞間殺意如影隨形。連擊、加速（與自我加速藥水/加速術無法重疊）。" },
-        "wpn_demon_claw": { n: "惡魔鋼爪", type: "wpn", w2h: true, dmgS: 20, dmgL: 18, hit: 0, dmgBonus: 3, spd: 0.9, req: "dark", safe: 6, p: 50000, gachaWeight: 1, eff: "combo", equipHaste: true, d: "惡魔指骨淬煉的鋼爪，撕裂血肉只在彈指之間。連擊、加速（與自我加速藥水/加速術無法重疊）。" },
+        "wpn_demon_dual": { n: "惡魔雙刀", type: "wpn", w2h: true, dmgS: 18, dmgL: 13, hit: 4, dmgBonus: 3, spd: 0.8, req: "dark", safe: 6, p: 50000, gachaWeight: 1, eff: "combo", equipHaste: true, d: "自惡魔利爪幻化而成的一對雙刀，揮舞間殺意如影隨形。雙擊、加速（與自我加速藥水/加速術無法重疊）。" },
+        "wpn_demon_claw": { n: "惡魔鋼爪", type: "wpn", w2h: true, dmgS: 20, dmgL: 18, hit: 0, dmgBonus: 3, spd: 0.9, req: "dark", safe: 6, p: 50000, gachaWeight: 1, eff: "combo", equipHaste: true, d: "惡魔指骨淬煉的鋼爪，撕裂血肉只在彈指之間。雙擊、加速（與自我加速藥水/加速術無法重疊）。" },
+        "wpn_dual_destroy": { n: "破壞雙刀", type: "wpn", w2h: true, dmgS: 16, dmgL: 10, hit: 6, dmgBonus: 1, str: 1, wis: 2, spd: 0.8, req: "dark", safe: 6, p: 150000, legend: true, gachaWeight: 1, eff: "combo", comboRate: 30, procBurstPoison: { rateBase: 1, ratePerEn: 1 }, d: "蘊含猛爆毒性的漆黑雙刃，揮舞間散逸出腐蝕一切的劇毒。黑暗妖精專屬・雙刀（雙手・近距離）。雙擊 30%；力量+1、精神+2；近距離傷害+1、近距離命中+6。攻擊時 1%（每強化+1%）機率發動猛爆劇毒（每秒 100 固定傷害，持續 5 秒，最多 1 層）。" },
+        "wpn_claw_destroy": { n: "破壞鋼爪", type: "wpn", w2h: true, dmgS: 19, dmgL: 18, hit: 6, dmgBonus: 1, str: 1, wis: 2, spd: 0.9, req: "dark", safe: 6, p: 150000, legend: true, gachaWeight: 1, eff: "combo", comboRate: 30, procBurstPoison: { rateBase: 1, ratePerEn: 1 }, d: "凝聚猛爆毒性的漆黑利爪，每一抓都將致命劇毒灌入血肉。黑暗妖精專屬・鋼爪（雙手・近距離）。雙擊 30%；力量+1、精神+2；近距離傷害+1、近距離命中+6。攻擊時 1%（每強化+1%）機率發動猛爆劇毒（每秒 100 固定傷害，持續 5 秒，最多 1 層）。" },
         "wpn_demon_xbow": { n: "惡魔十字弓", type: "wpn", isBow: true, ranged: true, rapidfire: 60, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 47300, gachaWeight: 1, equipHaste: true, d: "以惡魔之骨為弦的十字弓，箭雨傾瀉如墮入煉獄。連射 60%、加速（與自我加速藥水/加速術無法重疊）。" },
         "wpn_powerless_baphomet": { n: "失去魔力的巴風特魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, spd: 1.0, req: "all", safe: 6, p: 0, gachaWeight: 0, d: "曾屬於魔神巴風特的魔杖，如今魔力枯竭、沉默不語。對靈魂之球使用可恢復為巴風特魔杖。（可販售，售價 0）" },
         "wpn_baphomet_wand": { n: "巴風特魔杖", type: "wpn", dmgS: 7, dmgL: 6, hit: 8, dmgBonus: 5, spd: 1.0, req: "mage", safe: 0, p: 210000, legend: true, gachaWeight: 1, procSkill: "sk_earthquake", procRateBase: 8, procRatePerEn: 2, mdmgEnFrom7Max3: true, d: "魔神巴風特之力重新甦醒，杖身迴盪著大地撕裂的共鳴。攻擊時 8% 機率發動地裂術（每強化 +1 機率 +2%）；強化 +7 起魔法傷害 +1，最高 +3。" },
@@ -1318,7 +1347,7 @@ const DB = {
         "wpn_redflame_bow": { n: "赤焰之弓", type: "wpn", isBow: true, ranged: true, rapidfire: 70, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 10000, gachaWeight: 30, d: "灌注炎魔之力的長弓，拉滿弦時箭尖泛起赤紅的熱浪。連射 70%。" },
         "wpn_redflame_sword": { n: "赤焰之劍", type: "wpn", dmgS: 14, dmgL: 6, hit: 4, dmgBonus: 0, spd: 1.1, req: "elf", safe: 6, p: 10000, gachaWeight: 30, unBonus: true, d: "灌注炎魔之力的烈焰之劍，揮砍時帶起灼人的赤光。反擊、居合、對不死 / 狼人加成。" },
         "wpn_mana_orb": { n: "瑪那水晶球", type: "arm", slot: "shield", ac: 2, block: 10, mmp: 100, int: 1, req: "mage", safe: 4, p: 10000, gachaWeight: 30, d: "凝聚瑪那之力的水晶球盾，澄澈的核心中緩緩流轉著無盡魔力。格檔 10%、MP+100、智力+1。" },
-        "wpn_death_finger": { n: "死亡之指", type: "wpn", w2h: true, dmgS: 17, dmgL: 15, hit: 3, dmgBonus: 2, spd: 0.9, req: "dark", safe: 6, p: 10000, gachaWeight: 30, eff: "combo", procPoison: { rate: 2, dur: 15, tick: 3, dmg: [1, 8] }, d: "墮落之力凝成的枯瘦指爪，觸及之物無不沾染腐毒。連擊；攻擊時 2% 機率對目標觸發毒咒。" },
+        "wpn_death_finger": { n: "死亡之指", type: "wpn", w2h: true, dmgS: 17, dmgL: 15, hit: 3, dmgBonus: 2, spd: 0.9, req: "dark", safe: 6, p: 10000, gachaWeight: 30, eff: "combo", comboRate: 20, procPoison: { rate: 2, dur: 15, tick: 3, dmg: [1, 8] }, d: "墮落之力凝成的枯瘦指爪，觸及之物無不沾染腐毒。雙擊；攻擊時 2% 機率對目標觸發毒咒。" },
         // ===== 🌑 暗影神殿：材料 / 鑰匙 =====
         "mat_chaos_head": { n: "混沌首級", type: "etc", p: 1, c: "text-purple-300", noUse: true, gachaWeight: 0, d: "製作材料。" },
         "mat_death_head": { n: "死亡首級", type: "etc", p: 1, c: "text-purple-300", noUse: true, gachaWeight: 0, d: "製作材料。" },
@@ -1341,7 +1370,7 @@ const DB = {
         "item_olin_diary": { n: "歐林的日記本", type: "etc", p: 0, c: "text-amber-300", gachaWeight: 0, d: "歐林留下的日記本。可交給說話之島的尤麗婭，換取一件臂甲（三選一）。" },
         // ===== 👑 惡魔王武器（炎魔之影 客製製作；強化值/詞綴/席琳套裝由被消耗的惡魔武器繼承） =====
         "wpn_demonking_spear": { n: "惡魔王矛", type: "wpn", w2h: true, dmgS: 25, dmgL: 25, hit: 2, dmgBonus: 3, spd: 1.0, req: "knight", safe: 6, p: 380000, legend: true, gachaWeight: 1, eff: "pierce", pierceChance: 90, procStatusSkill: { skId: "sk_disease", rate: 10 }, d: "惡魔王執掌的雙手長矛，矛尖所向皆化作瘟疫橫行之地。穿透90%；攻擊時10%機率施放疾病術。" },
-        "wpn_demonking_dual": { n: "惡魔王雙刀", type: "wpn", w2h: true, dmgS: 18, dmgL: 16, hit: 5, dmgBonus: 3, spd: 0.8, req: "dark", safe: 6, p: 420000, legend: true, gachaWeight: 1, eff: "combo", procStatusSkill: { skId: "sk_disease", rate: 10 }, d: "惡魔王手中的雙刀，交錯的刃光帶來病厄與死亡。連擊；攻擊時10%機率施放疾病術。" },
+        "wpn_demonking_dual": { n: "惡魔王雙刀", type: "wpn", w2h: true, dmgS: 18, dmgL: 16, hit: 5, dmgBonus: 3, spd: 0.8, req: "dark", safe: 6, p: 420000, legend: true, gachaWeight: 1, eff: "combo", procStatusSkill: { skId: "sk_disease", rate: 10 }, d: "惡魔王手中的雙刀，交錯的刃光帶來病厄與死亡。雙擊；攻擊時10%機率施放疾病術。" },
         "wpn_demonking_2hsword": { n: "惡魔王雙手劍", type: "wpn", w2h: true, dmgS: 23, dmgL: 24, hit: 1, dmgBonus: 5, spd: 0.8, req: "knight", safe: 6, p: 354510, legend: true, gachaWeight: 1, eff: "cleave", procStatusSkill: { skId: "sk_disease", rate: 10 }, d: "惡魔王曾以此巨劍劈開無數生靈，劍鋒至今仍滲著腐敗的氣息。切割；攻擊時10%機率施放疾病術。" },
         "wpn_demonking_wand": { n: "惡魔王魔杖", type: "wpn", w2h: true, dmgS: 12, dmgL: 12, hit: 6, dmgBonus: 2, spd: 1.0, req: "mage", safe: 6, p: 494510, legend: true, gachaWeight: 1, eff: "magicburst", mdmg: 2, mpR: 10, mpOnHit: true, procStatusSkill: { skId: "sk_disease", rate: 10 }, d: "惡魔王施法用的魔杖，杖端凝著不散的瘴癘之力。魔爆；魔法傷害+2、MP自然恢復+10；一般攻擊命中恢復MP（+7起每強化額外+1）；攻擊時10%機率施放疾病術。" },
         "wpn_demonking_bow": { n: "惡魔王弓", type: "wpn", isBow: true, ranged: true, rapidfire: 90, w2h: true, dmgS: 5, dmgL: 5, hit: 4, dmgBonus: 6, spd: 1.0, req: "elf", safe: 6, p: 547300, legend: true, gachaWeight: 1, procStatusSkill: { skId: "sk_disease", rate: 10 }, d: "惡魔王的長弓，射出的每一箭都帶著瘟疫的詛咒。連射90%；攻擊時10%機率施放疾病術。" },
@@ -3047,7 +3076,7 @@ const DB = {
         '恐怖的鋼鐵高崙': [['mat_golem_heart',1],['scroll_acc',0.001],['arm_99',0.005], ['rng_earth',0.01], ['item_pride_scroll_51',2], ['bk_dark_fang',0.1], ['new_item_180',100], ['new_item_164',20], ['bk_elf_physboost',0.5]],
         '火焰之魔法師': [['amu_str',0.01], ['acc_119',0.01], ['acc_125',0.01], ['acc_117',0.01], ['acc_summon_ctrl',0.01], ['scroll_weapon',0.4], ['scroll_armor',1], ['item_pride_scroll_51',2], ['bk_dark_crit',0.5]],
         '骨龍': [['scroll_acc',0.001],['acc_summon_ctrl',0.01], ['new_item_151',5], ['new_item_157',5], ['new_item_160',5], ['new_item_154',5], ['new_item_152',0.8], ['new_item_158',1], ['new_item_161',0.5], ['new_item_155',0.5], ['new_item_153',0.5], ['new_item_159',0.6], ['new_item_162',0.8], ['new_item_156',0.8], ['item_pride_scroll_51',2.5], ['bk_resurrection',0.25], ['bk_dark_crit',0.5], ['scroll_weapon',0.5], ['scroll_armor',1]],
-        '地獄的黑豹': [['acc_124',1],['wpn_claw_abyss',0.05], ['amu_str',3], ['acc_128',5], ['blt_body',1], ['scroll_weapon',30], ['scroll_armor',30], ['item_pride_scroll_51',30], ['item_pride_sealed_51',1]],
+        '地獄的黑豹': [['acc_124',1],['wpn_claw_abyss',0.05], ['amu_str',3], ['acc_128',5], ['blt_body',1], ['scroll_weapon',30], ['scroll_armor',30], ['item_pride_scroll_51',30], ['item_pride_sealed_51',1], ['wpn_dual_destroy',0.5], ['wpn_claw_destroy',0.5]],
         // ===== 🗼 傲慢之塔 51~60 樓 =====
         '受詛咒的妖魔殭屍': [['bk_berserk',0.2], ['item_pride_scroll_61',2]],
         '受詛咒的艾爾摩士兵': [['acc_demonbane',0.03], ['bk_berserk',0.3], ['item_pride_scroll_61',2]],
@@ -3198,7 +3227,7 @@ const SHERINE_SET_TEXT = {
     '月光': ['2件：額外傷害+2、額外命中+2', '3件：ER+5、MR+10', '5件：ER 也能迴避魔法攻擊（必中技能改為先判定 ER）'],
     '學徒': ['2件：MP自然恢復+5、額外魔法點數+6', '3件：魔法爆擊率+2%', '5件：MP 低於最大值30%時，所有技能 MP 消耗減半'],
     '魔女': ['2件：魔法傷害+2', '3件：水屬性抗性+10、額外魔法點數+5', '5件：每觸發 5 次共鳴，免費施放一次冰矛圍籬（無需學會）'],
-    '暗影': ['2件：額外傷害+7', '3件：觸發迴避時恢復 20 HP', '5件：連擊額外施展的一般攻擊，傷害變成原本的100%']
+    '暗影': ['2件：額外傷害+7', '3件：觸發迴避時恢復 20 HP', '5件：雙擊觸發的額外攻擊傷害提升 50%']
 };
 // 🔮 席琳套裝效果「可附加部位」判定（唯一真相；gainItem 掉落/製作 與 試煉席琳兌換 共用）
 //   合法部位：武器（非箭矢）/頭盔/盔甲/手套/長靴/斗篷/腰帶；盾牌(slot:shield)等不符 → 不可附帶套裝效果。
@@ -3921,7 +3950,7 @@ function logSys(msg) {
 // 不需要刷畫面的場合（如 buildAlly 換身重算）請呼叫 recomputeStats()。
 // ===== 🔧 負重系統：計入負重的裝備欄位 + 物品重量表（依名稱）=====
 const WEIGHT_COUNT_SLOTS = ['wpn','offwpn','shield','helm','armor','tshirt','cloak','gloves','boots','amulet','ring1','ring2','ring3','ring4','belt','pet'];   // ⚔️ offwpn=迅猛雙斧副手武器，計入負重
-const ITEM_WEIGHTS = {"混沌之刺":10,"混沌頭盔":5,"混沌斗篷":5,"混沌法袍":15,"混沌手套":5,"死亡斗篷":10,"死亡盔甲":100,"死亡手套":5,"死亡之盾":20,"惡魔王矛":20,"惡魔王雙刀":20,"惡魔王雙手劍":40,"惡魔王魔杖":20,"惡魔王弓":10,"亞連":10,"武士刀":40,"長劍":40,"斧":60,"雙手劍":150,"屠龍劍":180,"騎士范德之劍":100,"釘錘":30,"弓":30,"矛":80,"戰斧":120,"巴迪須":120,"柴刀":120,"精靈弓":30,"歐西斯弓":30,"闊劍":70,"木棒":30,"精靈匕首":10,"歐西斯匕首":10,"匕首":10,"貝卡合金":100,"法丘":60,"弗萊爾":15,"闊矛":75,"吉薩":80,"戟":150,"槍":180,"露西錘":150,"戰錘":50,"流星錘":120,"帕提森":80,"彎刀":40,"侏儒戰斧":280,"精靈之矛":30,"歐西斯之矛":30,"小侏儒短劍":40,"精靈短劍":20,"歐西斯短劍":30,"短劍":30,"三叉戟":25,"瑟魯基之劍":120,"尤米弓":40,"短弓":20,"十字弓":50,"獵人之弓":30,"熾炎天使弓":25,"紅騎士之劍":40,"侵略者之劍":40,"骰子匕首":10,"大馬士革刀":45,"短劍的劍身":20,"長劍的劍身":30,"奧里哈魯根的劍身":35,"細劍":60,"鎖子甲破壞者":40,"銀長劍":50,"銀劍":40,"橡木魔法杖":15,"美基魔法杖":20,"巫術魔法杖":15,"力量魔法杖":15,"瑪那魔杖":15,"水晶魔杖":15,"失去魔力的巴列斯魔杖":15,"巴列斯魔杖":15,"潘的角":9,"覆上米索莉的角":24,"覆上奧里哈魯根的角":55,"巨斧":250,"狂戰士斧":200,"銀斧":270,"青銅鋼爪":20,"鋼鐵鋼爪":30,"暗影鋼爪":30,"銀光鋼爪":20,"黑暗鋼爪":20,"幽暗鋼爪":30,"大馬士革鋼爪":40,"青銅雙刀":20,"鋼鐵雙刀":30,"銀光雙刀":20,"幽暗雙刀":30,"黑暗雙刀":20,"暗影雙刀":30,"大馬士革雙刀":40,"黑暗十字弓":30,"幽暗十字弓":40,"魔力短劍":30,"拉斯塔巴德十字弓":70,"拉斯塔巴德弓":50,"小武士刀":30,"拉斯塔巴德長劍":30,"拉斯塔巴德短劍":20,"拉斯塔巴德魔杖":15,"拉斯塔巴德雙刀":40,"拉斯塔巴德重十字弓":100,"拉斯塔巴德矛":80,"拉斯塔巴德圓盾":50,"武官雙手劍":150,"武官手套":45,"武官長靴":54,"黑暗腰帶":40,"精靈皮盔":3,"歐西斯頭盔":30,"侏儒鐵盔":40,"頭盔":30,"騎士面甲":40,"抗魔法頭盔":35,"艾爾穆的祝福":13,"治癒魔法頭盔":50,"敏捷魔法頭盔":50,"力量魔法頭盔":50,"皮帽子":10,"銀釘皮帽":20,"皮頭盔":30,"骷髏頭盔":30,"鋼鐵頭盔":50,"法師之帽":20,"死亡騎士頭盔":50,"木乃伊王的王冠":20,"精靈敏捷頭盔":13,"精靈體質頭盔":13,"騎士頭巾":0,"紅騎士頭巾":20,"巴土瑟之帽":20,"卡士柏之帽":20,"馬庫爾之帽":20,"西瑪之帽":20,"克特頭盔":50,"淨化頭飾":0,"金屬盔甲":450,"水晶盔甲":350,"青銅盔甲":450,"藤甲":400,"皮甲":350,"鏈甲":300,"歐西斯鏈甲":300,"鱗甲":250,"銀釘皮甲":150,"環甲":250,"歐西斯環甲":250,"小藤甲":70,"皮夾克":30,"抗魔法鏈甲":300,"綿質長袍":10,"木甲":80,"精靈護胸金屬板":100,"精靈金屬盔甲":250,"精靈鏈甲":150,"木製的夾克":40,"皮背心":30,"皮盔甲":50,"銀釘皮背心":130,"硬皮背心":150,"骷髏盔甲":150,"鋼鐵金屬盔甲":470,"法師長袍":60,"水龍鱗盔甲":300,"地龍鱗盔甲":300,"火龍鱗盔甲":300,"風龍鱗盔甲":300,"死亡騎士盔甲":250,"黑長者長袍":30,"克特盔甲":250,"T恤":5,"精靈T恤":5,"精靈斗篷":10,"歐西斯斗篷":10,"侏儒斗篷":10,"保護者斗篷":10,"隱身斗篷":10,"抗魔法斗篷":10,"瑪那斗篷":10,"短統靴":10,"長靴":15,"巴列斯長靴":10,"皮涼鞋":8,"銀釘皮涼鞋":10,"皮長靴":10,"鋼鐵長靴":50,"深水長靴":15,"死亡騎士長靴":15,"黑長者涼鞋":10,"克特長靴":15,"手套":10,"水晶手套":20,"腕甲":10,"力量手套":18,"鋼鐵手套":40,"死亡騎士手套":15,"影子手套":10,"影子面具":10,"影子長靴":10,"拉斯塔巴德皮盔甲":70,"拉斯塔巴德長靴":10,"黑暗斗篷":20,"拉斯塔巴德長袍":30,"克特手套":15,"保護者手套":10,"小盾牌":30,"精靈盾牌":50,"阿克海盾牌":50,"大盾牌":100,"侏儒圓盾":100,"反射之盾":50,"伊娃之盾":50,"塔盾":120,"木盾":25,"銀騎士之盾":100,"皮盾牌":25,"銀釘皮盾":35,"骷髏盾牌":30,"紅騎士盾牌":50,"鋼鐵盾牌":140,"受詛咒的魔法書":0,"魔法能量之書":20,"傳送控制戒指":3,"變形控制戒指":3,"召喚控制戒指":3,"地靈戒指":3,"水靈戒指":3,"風靈戒指":3,"火靈戒指":3,"抗魔戒指":3,"滅魔戒指":3,"多羅戒指":3,"守護戒指":3,"長者戒指":3,"力量項鍊":5,"敏捷項鍊":5,"體質項鍊":5,"智力項鍊":5,"精神項鍊":5,"妖魔戰士項鍊":5,"守護項鍊":3,"長老項鍊":3,"抗魔項鍊":3,"老舊的身體腰帶":50,"老舊的精神腰帶":50,"老舊的靈魂腰帶":50,"身體腰帶":50,"精神腰帶":50,"靈魂腰帶":50,"多羅皮帶":50,"歐吉皮帶":50,"勇敢皮帶":50,"光明身體腰帶":50,"光明精神腰帶":50,"光明靈魂腰帶":50,"守護皮帶":50,"抗魔皮帶":50,"魔獸軍王之爪":100,"巴蘭卡鋼爪":40,"武官頭盔":45,"巴蘭卡頭盔":50,"武官護鎧":180,"巴蘭卡盔甲":450,"巴蘭卡手套":5,"魔獸軍王長靴":30,"巴蘭卡長靴":10,"冥法軍王斗篷":10,"法令軍王長袍":20,"暗殺軍王手套":25,"血色巨劍":160,"黑暗之劍":100,"紅水晶魔杖":60,"神官頭飾":18,"神官法袍":45,"黑暗披肩":20,"神官長靴":18,"神官斗篷":9,"神官手套":18,"死亡騎士的烈炎之劍":40,"克特之劍":40,"巨蟻女皇的金翅膀":1,"巨蟻女皇的銀翅膀":1,"暗殺軍王之痕":20,"神官魔杖":70,"蕾雅魔杖":15,"神官魔法書":27,"冥法軍王之戒":5,"蕾雅長袍":30,"蕾雅項鍊":5,"法令軍王之鍊":5,"蕾雅戒指":1,"冰之女王魔杖":20,"惡魔鐮刀":10,"魅力項鍊":5,"艾莉絲項鍊":5,"梅杜莎盾牌":80,"水晶短劍":45,"潔尼斯戒指":1,"地屬性斗篷":20,"水屬性斗篷":20,"火屬性斗篷":20,"風屬性斗篷":20,"黑暗長靴":15,"黑暗頭飾":5,"幻象眼魔的心眼":50,"馬昆斯斗篷":15,"銀光斗篷":30,"巫妖斗篷":30,"惡魔盔甲":250,"惡魔頭盔":50,"惡魔手套":15,"惡魔長靴":15,"暗黑雙刀":40,"暗黑鋼爪":40,"暗黑十字弓":50,"死神之手":30,"地靈手套":18,"風靈手套":18,"水靈手套":18,"火靈手套":18,"曼波帽子":10,"曼波外套":10,"金屬蜈蚣皮盔甲":250,"黑暗棲林者盔甲":30,"黑暗棲林者長靴":10,"黑虎皮斗篷":5,"狼皮斗篷":5,"熊戒指":3,"深淵戒指":3,"米索莉短劍":50,"奧里哈魯根短劍":50,"深紅長矛":100,"惡魔斧頭":180,"復仇之劍":40,"恨之鋼爪":30,"惡魔之劍":40,"惡魔雙刀":40,"惡魔鋼爪":30,"惡魔十字弓":30,"失去魔力的巴風特魔杖":15,"巴風特魔杖":15,"巴風特盔甲":30,"炎魔的血光斗篷":10,"墮落斗篷":10,"墮落長袍":25,"墮落手套":18,"墮落長靴":10,"黑焰之劍":50,"赤焰之弓":30,"赤焰之劍":40,"瑪那水晶球":50,"死亡之指":20,"獵犬之牙":60,"鋼鐵之牙":50,"破滅之牙":150,"勝利之牙":100,"守護者臂甲":30,"法師臂甲":30,"體力臂甲":30,"巨劍":150,"牛人斧頭":250,"沙哈之弓":30,"風之頭盔":50,"黑暗妖精頭箍":30,"黑暗妖精鱗甲":60,"黑暗妖精涼鞋":30,"哈維戒指":3,"古代神射臂甲":30,"古代鬥士臂甲":30,"古老的劍":30,"古老的巨劍":70,"古老的弩槍":30,"古老的金屬盔甲":280,"古老的鱗甲":200,"古老的皮盔甲":180,"古老的長袍":30,"古代神之槍":40,"古代神之斧":40,"泰坦皮帶":50,"古代巨人戒指":50,"黑曜石奇古獸":10,"冥想奇古獸":35,"共鳴奇古獸":35,"寒冰奇古獸":35,"藍寶石奇古獸":10,"幻術士魔杖":15,"幻術士法書":30,"幻術士斗篷":10,"龍騎士雙手劍":80,"消滅者鎖鏈劍":50,"破滅者鎖鏈劍":50,"嗜血者鎖鏈劍":50,"共鳴鎖鏈劍":80,"寒冰鎖鏈劍":80,"龍鱗臂甲":30,"龍騎士斗篷":18,"底比斯歐西里斯弓":5,"底比斯歐西里斯雙刀":30,"底比斯歐西里斯雙手劍":100,"底比斯歐西里斯魔杖":100,"底比斯歐西里斯腰帶":50,"底比斯賀洛斯戒指":5,"底比斯阿努比斯戒指":5,"試煉斧頭":100,"大匠的斧頭":50,"戰士團頭盔":30,"戰士團的斗篷":15,"神聖執行團的頭盔":30,"神聖執行團的斗篷":15,"魔物的斧頭":100,"鐵斧頭":100,"巨人的斧頭":100,"歐林的項鍊":1,"西瑪戒指":1,"黃金權杖":50,"紅色斗篷":10,"君主的威嚴":10,"守護者的戒指":3,"冰之女王魅力頭飾":10,"冰之女王魅力禮服":30,"冰之女王魅力涼鞋":30,"寒冰頭盔":45,"寒冰盔甲":100,"寒冰長靴":45};
+const ITEM_WEIGHTS = {"混沌之刺":10,"混沌頭盔":5,"混沌斗篷":5,"混沌法袍":15,"混沌手套":5,"死亡斗篷":10,"死亡盔甲":100,"死亡手套":5,"死亡之盾":20,"惡魔王矛":20,"惡魔王雙刀":20,"惡魔王雙手劍":40,"惡魔王魔杖":20,"惡魔王弓":10,"亞連":10,"武士刀":40,"長劍":40,"斧":60,"雙手劍":150,"屠龍劍":180,"騎士范德之劍":100,"釘錘":30,"弓":30,"矛":80,"戰斧":120,"巴迪須":120,"柴刀":120,"精靈弓":30,"歐西斯弓":30,"闊劍":70,"木棒":30,"精靈匕首":10,"歐西斯匕首":10,"匕首":10,"貝卡合金":100,"法丘":60,"弗萊爾":15,"闊矛":75,"吉薩":80,"戟":150,"槍":180,"露西錘":150,"戰錘":50,"流星錘":120,"帕提森":80,"彎刀":40,"侏儒戰斧":280,"精靈之矛":30,"歐西斯之矛":30,"小侏儒短劍":40,"精靈短劍":20,"歐西斯短劍":30,"短劍":30,"三叉戟":25,"瑟魯基之劍":120,"尤米弓":40,"短弓":20,"十字弓":50,"獵人之弓":30,"熾炎天使弓":25,"紅騎士之劍":40,"侵略者之劍":40,"骰子匕首":10,"大馬士革刀":45,"短劍的劍身":20,"長劍的劍身":30,"奧里哈魯根的劍身":35,"細劍":60,"鎖子甲破壞者":40,"銀長劍":50,"銀劍":40,"橡木魔法杖":15,"美基魔法杖":20,"巫術魔法杖":15,"力量魔法杖":15,"瑪那魔杖":15,"水晶魔杖":15,"失去魔力的巴列斯魔杖":15,"巴列斯魔杖":15,"潘的角":9,"覆上米索莉的角":24,"覆上奧里哈魯根的角":55,"巨斧":250,"狂戰士斧":200,"銀斧":270,"青銅鋼爪":20,"鋼鐵鋼爪":30,"暗影鋼爪":30,"銀光鋼爪":20,"黑暗鋼爪":20,"幽暗鋼爪":30,"大馬士革鋼爪":40,"青銅雙刀":20,"鋼鐵雙刀":30,"銀光雙刀":20,"幽暗雙刀":30,"黑暗雙刀":20,"暗影雙刀":30,"大馬士革雙刀":40,"黑暗十字弓":30,"幽暗十字弓":40,"魔力短劍":30,"拉斯塔巴德十字弓":70,"拉斯塔巴德弓":50,"小武士刀":30,"拉斯塔巴德長劍":30,"拉斯塔巴德短劍":20,"拉斯塔巴德魔杖":15,"拉斯塔巴德雙刀":40,"拉斯塔巴德重十字弓":100,"拉斯塔巴德矛":80,"拉斯塔巴德圓盾":50,"武官雙手劍":150,"武官手套":45,"武官長靴":54,"黑暗腰帶":40,"精靈皮盔":3,"歐西斯頭盔":30,"侏儒鐵盔":40,"頭盔":30,"騎士面甲":40,"抗魔法頭盔":35,"艾爾穆的祝福":13,"治癒魔法頭盔":50,"敏捷魔法頭盔":50,"力量魔法頭盔":50,"皮帽子":10,"銀釘皮帽":20,"皮頭盔":30,"骷髏頭盔":30,"鋼鐵頭盔":50,"法師之帽":20,"死亡騎士頭盔":50,"木乃伊王的王冠":20,"精靈敏捷頭盔":13,"精靈體質頭盔":13,"騎士頭巾":0,"紅騎士頭巾":20,"巴土瑟之帽":20,"卡士柏之帽":20,"馬庫爾之帽":20,"西瑪之帽":20,"克特頭盔":50,"淨化頭飾":0,"金屬盔甲":450,"水晶盔甲":350,"青銅盔甲":450,"藤甲":400,"皮甲":350,"鏈甲":300,"歐西斯鏈甲":300,"鱗甲":250,"銀釘皮甲":150,"環甲":250,"歐西斯環甲":250,"小藤甲":70,"皮夾克":30,"抗魔法鏈甲":300,"綿質長袍":10,"木甲":80,"精靈護胸金屬板":100,"精靈金屬盔甲":250,"精靈鏈甲":150,"木製的夾克":40,"皮背心":30,"皮盔甲":50,"銀釘皮背心":130,"硬皮背心":150,"骷髏盔甲":150,"鋼鐵金屬盔甲":470,"法師長袍":60,"水龍鱗盔甲":300,"地龍鱗盔甲":300,"火龍鱗盔甲":300,"風龍鱗盔甲":300,"死亡騎士盔甲":250,"黑長者長袍":30,"克特盔甲":250,"T恤":5,"精靈T恤":5,"精靈斗篷":10,"歐西斯斗篷":10,"侏儒斗篷":10,"保護者斗篷":10,"隱身斗篷":10,"抗魔法斗篷":10,"瑪那斗篷":10,"短統靴":10,"長靴":15,"巴列斯長靴":10,"皮涼鞋":8,"銀釘皮涼鞋":10,"皮長靴":10,"鋼鐵長靴":50,"深水長靴":15,"死亡騎士長靴":15,"黑長者涼鞋":10,"克特長靴":15,"手套":10,"水晶手套":20,"腕甲":10,"力量手套":18,"鋼鐵手套":40,"死亡騎士手套":15,"影子手套":10,"影子面具":10,"影子長靴":10,"拉斯塔巴德皮盔甲":70,"拉斯塔巴德長靴":10,"黑暗斗篷":20,"拉斯塔巴德長袍":30,"克特手套":15,"保護者手套":10,"小盾牌":30,"精靈盾牌":50,"阿克海盾牌":50,"大盾牌":100,"侏儒圓盾":100,"反射之盾":50,"伊娃之盾":50,"塔盾":120,"木盾":25,"銀騎士之盾":100,"皮盾牌":25,"銀釘皮盾":35,"骷髏盾牌":30,"紅騎士盾牌":50,"鋼鐵盾牌":140,"受詛咒的魔法書":0,"魔法能量之書":20,"傳送控制戒指":3,"變形控制戒指":3,"召喚控制戒指":3,"地靈戒指":3,"水靈戒指":3,"風靈戒指":3,"火靈戒指":3,"抗魔戒指":3,"滅魔戒指":3,"多羅戒指":3,"守護戒指":3,"長者戒指":3,"力量項鍊":5,"敏捷項鍊":5,"體質項鍊":5,"智力項鍊":5,"精神項鍊":5,"妖魔戰士項鍊":5,"守護項鍊":3,"長老項鍊":3,"抗魔項鍊":3,"老舊的身體腰帶":50,"老舊的精神腰帶":50,"老舊的靈魂腰帶":50,"身體腰帶":50,"精神腰帶":50,"靈魂腰帶":50,"多羅皮帶":50,"歐吉皮帶":50,"勇敢皮帶":50,"光明身體腰帶":50,"光明精神腰帶":50,"光明靈魂腰帶":50,"守護皮帶":50,"抗魔皮帶":50,"魔獸軍王之爪":100,"巴蘭卡鋼爪":40,"武官頭盔":45,"巴蘭卡頭盔":50,"武官護鎧":180,"巴蘭卡盔甲":450,"巴蘭卡手套":5,"魔獸軍王長靴":30,"巴蘭卡長靴":10,"冥法軍王斗篷":10,"法令軍王長袍":20,"暗殺軍王手套":25,"血色巨劍":160,"黑暗之劍":100,"紅水晶魔杖":60,"神官頭飾":18,"神官法袍":45,"黑暗披肩":20,"神官長靴":18,"神官斗篷":9,"神官手套":18,"死亡騎士的烈炎之劍":40,"克特之劍":40,"巨蟻女皇的金翅膀":1,"巨蟻女皇的銀翅膀":1,"暗殺軍王之痕":20,"神官魔杖":70,"蕾雅魔杖":15,"神官魔法書":27,"冥法軍王之戒":5,"蕾雅長袍":30,"蕾雅項鍊":5,"法令軍王之鍊":5,"蕾雅戒指":1,"冰之女王魔杖":20,"惡魔鐮刀":10,"魅力項鍊":5,"艾莉絲項鍊":5,"梅杜莎盾牌":80,"水晶短劍":45,"潔尼斯戒指":1,"地屬性斗篷":20,"水屬性斗篷":20,"火屬性斗篷":20,"風屬性斗篷":20,"黑暗長靴":15,"黑暗頭飾":5,"幻象眼魔的心眼":50,"馬昆斯斗篷":15,"銀光斗篷":30,"巫妖斗篷":30,"惡魔盔甲":250,"惡魔頭盔":50,"惡魔手套":15,"惡魔長靴":15,"暗黑雙刀":40,"暗黑鋼爪":40,"暗黑十字弓":50,"死神之手":30,"地靈手套":18,"風靈手套":18,"水靈手套":18,"火靈手套":18,"曼波帽子":10,"曼波外套":10,"金屬蜈蚣皮盔甲":250,"黑暗棲林者盔甲":30,"黑暗棲林者長靴":10,"黑虎皮斗篷":5,"狼皮斗篷":5,"熊戒指":3,"深淵戒指":3,"米索莉短劍":50,"奧里哈魯根短劍":50,"深紅長矛":100,"惡魔斧頭":180,"復仇之劍":40,"恨之鋼爪":30,"惡魔之劍":40,"惡魔雙刀":40,"惡魔鋼爪":30,"惡魔十字弓":30,"失去魔力的巴風特魔杖":15,"巴風特魔杖":15,"巴風特盔甲":30,"炎魔的血光斗篷":10,"墮落斗篷":10,"墮落長袍":25,"墮落手套":18,"墮落長靴":10,"黑焰之劍":50,"赤焰之弓":30,"赤焰之劍":40,"瑪那水晶球":50,"死亡之指":20,"獵犬之牙":60,"鋼鐵之牙":50,"破滅之牙":150,"勝利之牙":100,"守護者臂甲":30,"法師臂甲":30,"體力臂甲":30,"巨劍":150,"牛人斧頭":250,"沙哈之弓":30,"風之頭盔":50,"黑暗妖精頭箍":30,"黑暗妖精鱗甲":60,"黑暗妖精涼鞋":30,"哈維戒指":3,"古代神射臂甲":30,"古代鬥士臂甲":30,"古老的劍":30,"古老的巨劍":70,"古老的弩槍":30,"古老的金屬盔甲":280,"古老的鱗甲":200,"古老的皮盔甲":180,"古老的長袍":30,"古代神之槍":40,"古代神之斧":40,"泰坦皮帶":50,"古代巨人戒指":50,"黑曜石奇古獸":10,"冥想奇古獸":35,"共鳴奇古獸":35,"寒冰奇古獸":35,"藍寶石奇古獸":10,"幻術士魔杖":15,"幻術士法書":30,"幻術士斗篷":10,"龍騎士雙手劍":80,"消滅者鎖鏈劍":50,"破滅者鎖鏈劍":50,"嗜血者鎖鏈劍":50,"共鳴鎖鏈劍":80,"寒冰鎖鏈劍":80,"龍鱗臂甲":30,"龍騎士斗篷":18,"底比斯歐西里斯弓":5,"底比斯歐西里斯雙刀":30,"底比斯歐西里斯雙手劍":100,"底比斯歐西里斯魔杖":100,"底比斯歐西里斯腰帶":50,"底比斯賀洛斯戒指":5,"底比斯阿努比斯戒指":5,"試煉斧頭":100,"大匠的斧頭":50,"戰士團頭盔":30,"戰士團的斗篷":15,"神聖執行團的頭盔":30,"神聖執行團的斗篷":15,"魔物的斧頭":100,"鐵斧頭":100,"巨人的斧頭":100,"歐林的項鍊":1,"西瑪戒指":1,"黃金權杖":50,"紅色斗篷":10,"君主的威嚴":10,"守護者的戒指":3,"冰之女王魅力頭飾":10,"冰之女王魅力禮服":30,"冰之女王魅力涼鞋":30,"寒冰頭盔":45,"寒冰盔甲":100,"寒冰長靴":45,"破壞雙刀":40,"破壞鋼爪":35};
 function getLoadColor(tier){ return ['text-white','text-yellow-400','text-orange-400','text-red-500'][tier||0]; }
 
 // ===== 🔧 強化系統：上限與分段加成（武器+20 / 防具+15 / 飾品+10）=====
@@ -4001,6 +4030,10 @@ function recomputeStats() {
         if (ed.wis) d.wis += ed.wis;
         if (ed.cha) d.cha += ed.cha;   // 🔧 裝備魅力(cha)：可突破 60 上限
     }
+    // 👑 同名 buff 去重（頭盔版「力盔/敏盔」優先，蓋掉法師魔法版／王族魔法精通版，避免同效果疊加）：頭盔版生效時把對應法師版 buff 歸零
+    if (p.buffs.sk_helm_str1 > 0) p.buffs.sk_ench_wpn = 0;   // 擬似魔法武器（extraDmg）
+    if (p.buffs.sk_helm_dex1 > 0) p.buffs.sk_dex_up = 0;     // 通暢氣脈術（dex）
+    if (p.buffs.sk_helm_str2 > 0) p.buffs.sk_reveal = 0;     // 無所遁形術
     for (let k in p.buffs) {
         if (p.buffs[k] > 0 && DB.skills[k] && DB.skills[k].d) {
             let bd = DB.skills[k].d;
@@ -4312,7 +4345,7 @@ d.mr += (baseMr + bonusMr);
     if (!p._setWitch5) p._witchResCnt = 0;       // 卸下套裝即重置共鳴計數
     if (_shN('暗影') >= 2) { d.extraDmg += 7; }   // 🔧 暗影 2/5：額外傷害+7
     p._setShadow3 = _shN('暗影') >= 3;            // 🔧 暗影 3/5：觸發迴避時恢復 20 HP（迴避處套用）
-    p._setShadow5 = _shN('暗影') >= 5;            // 🔧 暗影 5/5：連擊額外攻擊傷害變 100%（procCombo 套用）
+    p._setShadow5 = _shN('暗影') >= 5;            // 🔧 暗影 5/5：雙擊額外攻擊傷害再 +50%（×1.5·procCombo/allyComboAttack 套用）
 
     // 🏅 生存精通：MR+15（藥水恢復 +25% 於 useItem 套用）
     if (p.mastery === 'k_survive') d.mr += 15;
@@ -5183,6 +5216,7 @@ const KING_ROOMS = {
     thebes_temple:      { dual: true, bosses: ['thebes_horus', 'thebes_anubis'], key: 'item_thebes_altar_key', name: '底比斯歐西里斯祭壇' }
 };
 const PURE_BOSS_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair', 'king_baranka_room', 'law_king_room', 'necro_king_room', 'assassin_king_room', 'thebes_temple'];
+const BOSS_BIG_MAPS = ['antaras_lair', 'fafurion_lair', 'valakas_lair'];   // 👑 方案B放大版面只套用這3個龍窟(不含底比斯祭壇等其餘純BOSS房)
 
 // 血盟敵人：等級與能力隨玩家等級縮放，於生成當下依各自的 scale 參數計算
 function applySiegeEnemyScaling(mob) {
@@ -5360,12 +5394,13 @@ function spawnMob(idx) {
 
 function getMobColor(mobLv) {
     let diff = mobLv - player.lv;
-    if (diff >= 10) return "text-red-500";
-    if (diff >= 6) return "text-orange-500";
-    if (diff >= 3) return "text-yellow-400";
-    if (diff >= -4) return "text-white";
-    if (diff >= -9) return "text-green-400";   // 低5~9級：綠色
-    return "text-green-200"; // 低10級以上(含10)：淺綠
+    if (diff >= 11) return "mc-red";      // 比自己高11等以上：鮮紅
+    if (diff >= 7)  return "mc-lred";     // 高7~10：淺紅（淡）
+    if (diff >= 4)  return "mc-yellow";   // 高4~6：黃色
+    if (diff >= -3) return "mc-white";    // 高3~低3：白色
+    if (diff >= -6) return "mc-lgreen";   // 低4~6：淺綠
+    if (diff >= -10) return "mc-lblue";   // 低7~10：淺藍
+    return "mc-dblue";                    // 低11等以上：深藍
 }
 
 // 怪物名稱顯示用 class：血盟＝固定鮮紅+紅色醒目特效（不受等差影響）；頭目＝保留等差顏色+金色專屬特效
@@ -5739,7 +5774,7 @@ function procIai(t) {
     else renderMobs();
     ironGuardSweep('居合');   // 🔮 鐵衛 5/5
 }
-// 連擊（鋼爪/雙刀）：一般攻擊後追加一次「額外一般攻擊」，獨立判定命中、傷害50%（🔮 暗影5/5→100%）；本身不再觸發連擊/穿透等（不遞迴）
+// 雙擊（鋼爪/雙刀）：依武器 comboRate% 機率發動，追加一次「額外一般攻擊」，獨立判定命中、傷害＝完整一般攻擊（🔮 暗影5/5→額外攻擊再×1.5）；本身不再觸發雙擊/穿透等（不遞迴）。fullDmg=false（爆擊精通沿用）保留舊倍率×0.5（暗影5/5×1.0）
 // ===== 🐉 弱點曝光（weakExpose）：鎖鏈劍一般攻擊命中時依機率對目標附加堆疊（最多3層，鎖刃精通5層）；屠宰者命中時消耗並轉為額外傷害（見 castSkill 屠宰者）=====
 function weakExposeMaxLayers() { return hasMastery('k_chainblade') ? 5 : 3; }   // 🏅 鎖刃精通：上限 5 層
 function playerCanWeakExpose() {
@@ -5782,12 +5817,12 @@ function dragonExtraAttackProc(target) {
         else renderMobs();
     }
 }
-function procCombo(t) {
+function procCombo(t, fullDmg) {
     if (!t || t.curHp <= 0 || t._dead) return;
     let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
     let dice = wpn ? (t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
     let res = getPhysicalDmg(dice, t, wpn, null, false, false, false);   // 獨立命中判定（可未命中）
-    if (!res.hit) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
+    if (!res.hit) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
     // 🔧 黑暗妖精：連擊亦獨立觸發燃燒鬥志(30%×1.5)、雙重破壞(雙刀/鋼爪 45級起10%×2，每5級+1%)，兩者可疊加；先套用於本擊傷害，再依連擊倍率（暗影5/5→100%，否則50%）結算
     let _cdmg = res.dmg;
     if (player.buffs && player.buffs.sk_dark_burn > 0 && Math.random() < 0.30) _cdmg = Math.floor(_cdmg * 1.5);
@@ -5798,13 +5833,13 @@ function procCombo(t) {
             if (Math.random() * 100 < _cch) _cdmg *= 2;
         }
     }
-    let dmg = Math.max(1, Math.floor(_cdmg * (player._setShadow5 ? 1.0 : 0.5)));
+    let dmg = Math.max(1, Math.floor(_cdmg * (fullDmg ? (player._setShadow5 ? 1.5 : 1.0) : (player._setShadow5 ? 1.0 : 0.5))));   // 🔧 雙擊(fullDmg)：完整一般攻擊·暗影5/5再×1.5；爆擊精通額外攻擊(legacy)：×0.5·暗影5/5×1.0
     t.curHp -= dmg;
     t.justHit = getWpnEle(player.eq.wpn, wpn);
     mobWake(t);
     if (t.curHp > 0) wearHardSkin(t, player.eq.wpn ? player.eq.wpn.id : null, res.heavy, false, true, player.classicMode);   // 連擊亦為一般攻擊：依武器消磨硬皮
     let mark = (res.heavy && res.crit) ? '會心一擊' : (res.crit ? '爆擊' : (res.heavy ? '重擊' : ''));
-    logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
+    logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害${mark?'（'+mark+'!）':''}。`, 'player');
     let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
     if (t.curHp <= 0) { if (idx !== -1) killMob(idx); }
     else renderMobs();
@@ -6206,8 +6241,8 @@ function playerAttack() {
     // 連射（弓）：發動攻擊即判定（不論主攻擊命中與否）；每箭各自接受命中判定
     rapidfireProc(arrowData);
 
-    // 連擊（鋼爪/雙刀）：發動攻擊即追加一次額外一般攻擊（不論主攻擊命中與否）
-    if (wpn && wpn.eff === 'combo') procCombo(target);
+    // 雙擊（鋼爪/雙刀）：發動攻擊即依武器 comboRate% 機率追加一次完整一般攻擊（不論主攻擊命中與否）
+    if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) procCombo(target, true);
     if (player.eq.offwpn) dualWieldOffhandAttack(target);   // ⚔️ 迅猛雙斧：副手第二攻擊來源（發動即判定）
     if (result.hit && hasMastery('k_royal_magic') && Math.random() < 0.1) royalMagicFreeCast();   // 👑 魔法精通：一般攻擊命中 10% 免MP額外施放選定攻擊技
     // 🔧 爆擊精通：一般攻擊爆擊時，額外觸發一次攻擊
@@ -6320,6 +6355,17 @@ function applyWeaponProcPoison(target, pp) {
     mobWake(t);
     // 🔧 死亡之指毒咒：不再輸出「敵人中毒」套用訊息（只保留每秒中毒傷害日誌）
 }
+// 💥 猛爆劇毒（破壞雙刀/破壞鋼爪）：依 (rateBase + ratePerEn×強化)% 機率對目標附加；每秒固定 100 真傷、持續 5 秒、最多 1 層（覆蓋刷新）。獨立 m._burstPoison 欄位（不與一般中毒 s.poison 衝突）。玩家與傭兵共用
+function applyWeaponBurstPoison(target, cfg, en) {
+    if (!cfg) return;
+    let rate = (cfg.rateBase != null ? cfg.rateBase : 1) + (cfg.ratePerEn != null ? cfg.ratePerEn : 1) * (en || 0);
+    if (Math.random() * 100 >= rate) return;
+    let t = (target && target.curHp > 0) ? target : null;
+    if (!t) { let alive = mapState.mobs.filter(m => m && m.curHp > 0); if (!alive.length) return; t = alive[Math.floor(Math.random() * alive.length)]; }
+    t._burstPoison = { dmg: 100, left: 50 };   // 100/秒 × 5 秒(50 ticks)，最多 1 層→覆蓋刷新
+    mobWake(t);
+    logCombat(`<span class="font-bold" style="color:#a3e635;text-shadow:0 0 6px #65a30d;">【猛爆劇毒】</span><span class="${getMobColor(t.lv)}">${t.n}</span> 陷入猛爆劇毒（每秒 100 真傷，5 秒）。`, 'player');
+}
 // 🌑 武器附帶狀態技能 proc（惡魔王武器・疾病術）：攻擊時 rate% 對目標施放指定技能的異常狀態（走 applyMobStatus，含魔法命中抵抗）；玩家與傭兵共用
 function applyWeaponProcStatusSkill(target, cfg) {
     if (!cfg) return;
@@ -6335,6 +6381,7 @@ function weaponSpellProc(target) {
     let wpn = inst ? DB.items[inst.id] : null;
     if (!wpn) return;
     if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison);   // 🔧 死亡之指：攻擊時毒咒
+    if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(inst.en));   // 💥 破壞雙刀/鋼爪：攻擊時猛爆劇毒
     if (wpn.procStatusSkill) applyWeaponProcStatusSkill(target, wpn.procStatusSkill);   // 🌑 惡魔王武器：攻擊時 10% 施放疾病術
     if (!wpn.spellProc && !wpn.procSkill) return;
     let en = capWpnEn(inst.en);
@@ -6568,7 +6615,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
 
         // 常駐被動：看破（敵人版）— 命中時依機率造成兩倍傷害（5 + 等級/10 %）
         let mobInsightPrefix = '';
-        if(mob.seeInsight || mob.siegeInsight) {
+        if((mob.seeInsight || mob.siegeInsight) && !player.classicMode) {   // 🎮 經典模式：移除敵人看破（阿頓/鋼鐵阿頓/依詩蒂等血盟敵人·與經典停用玩家/傭兵看破/殺戮一致）
             let insightRate = Math.min(15, 5 + Math.floor((mob.lv || 1) / 10));
             if(Math.random() * 100 < insightRate) {
                 totalDmg *= 2;
@@ -8185,6 +8232,17 @@ function processMobStatusTick(m, i) {
         }
         if(m.bleeds.length === 0) { m._bleedMastery = false; m._bleedCap = 0; }   // 出血結束：清除精通旗標與層數上限
     }
+    // 💥 猛爆劇毒 DoT：每秒(10 ticks)固定 100 真傷（無視硬皮/魔抗），持續 5 秒(50 ticks)、最多 1 層；獨立於一般中毒/出血
+    if(m._burstPoison && m._burstPoison.left > 0) {
+        m._burstPoison.left--;
+        if(m._burstPoison.left % 10 === 0) {
+            m.curHp -= m._burstPoison.dmg; m.justHit = 'magic'; mobWake(m);
+            logCombat(`<span class="${getMobColor(m.lv)}">${m.n}</span> 受到猛爆劇毒傷害 ${m._burstPoison.dmg} 點。`, 'player');
+            if(m.curHp <= 0) { m._burstPoison = null; killMob(i); return true; }
+            if(!state.ff) renderMobs();
+        }
+        if(m._burstPoison.left <= 0) m._burstPoison = null;
+    }
     return m.curHp <= 0;
 }
 
@@ -8341,7 +8399,7 @@ function allyAttackOnce(ally) {
         if (_sureBeauty) ally._beautyNextSure = false;
         let hv = Math.max(0, Math.min(20, (ally.lv||1) + hitB - t.lv + mobEffAC(t)));
         let r = roll(1,20);
-        if (!_sureBeauty && !((r === 20) || (r !== 1 && hv >= r))) { logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>的攻擊未命中。`, 'miss'); allyWeaponProcs(ally, t, { hit: false, dmg: 0 }); if (wpn && wpn.eff === 'combo') allyComboAttack(ally, t); if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t); return; }   // 🔧 未命中也判定共鳴/魔擊/月光爆裂/連擊/迅猛雙斧（與玩家一致）
+        if (!_sureBeauty && !((r === 20) || (r !== 1 && hv >= r))) { logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>的攻擊未命中。`, 'miss'); allyWeaponProcs(ally, t, { hit: false, dmg: 0 }); if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) allyComboAttack(ally, t, true); if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t); return; }   // 🔧 未命中也判定共鳴/魔擊/月光爆裂/連擊/迅猛雙斧（與玩家一致）
         let heavy = (r === 20);
         if (heavy && ally._setBeauty5) ally._beautyNextSure = true;   // 🔮 麗人5/5（傭兵）：觸發重擊 → 下次一般攻擊必中
         let isCrit = Math.random()*100 < critR;
@@ -8392,21 +8450,21 @@ function allyAttackOnce(ally) {
             if (_always || Math.random() < 0.12) { let _max = allyHasMastery(ally, 'k_chainblade') ? 5 : 3; t.weakExpose = Math.min(_max, (t.weakExpose || 0) + 1); }
         }
         allyWeaponProcs(ally, t, { hit: true, dmg: dmg });            // 🔧 普攻判定特效：瑪那回魔/共鳴/魔擊/月光爆裂
-        if (wpn && wpn.eff === 'combo') allyComboAttack(ally, t);     // 連擊：命中後追加一次額外攻擊
+        if (wpn && wpn.eff === 'combo' && Math.random() * 100 < (wpn.comboRate || 0)) allyComboAttack(ally, t, true);     // 雙擊：命中後依 comboRate% 追加一次完整一般攻擊
         if (isCrit && allyHasMastery(ally, 'd_crit')) allyComboAttack(ally, t);   // 🔧 黑暗妖精爆擊精通：傭兵爆擊時追加一次連擊
         if (ally.eq && ally.eq.offwpn) allyDualWieldOffhandAttack(ally, t);   // ⚔️ 迅猛雙斧（傭兵）：副手第二攻擊來源
     }
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
     if (t.curHp <= 0) { if (ri !== -1) killMob(ri); } else renderMobs();
 }
-// 傭兵連擊（鋼爪/雙刀）：追加一次額外一般攻擊，獨立判定命中、傷害50%（🔮 暗影5/5→100%）；不遞迴
-function allyComboAttack(ally, t) {
+// 傭兵雙擊（鋼爪/雙刀）：依武器 comboRate% 追加一次完整一般攻擊，獨立判定命中（🔮 暗影5/5→額外攻擊×1.5）；fullDmg=false（爆擊精通沿用）保留舊倍率×0.5；不遞迴
+function allyComboAttack(ally, t, fullDmg) {
     if (!t || t.curHp <= 0 || t._dead) return;
     let r = allyStrikeRoll(ally, t, {});   // 獨立命中判定
-    if (!r.hit) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【協力·${ally._allyName}·連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
-    let dmg = Math.max(1, Math.floor(r.dmg * (ally._setShadow5 ? 1.0 : 0.5)));
+    if (!r.hit) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【協力·${ally._allyName}·雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
+    let dmg = Math.max(1, Math.floor(r.dmg * (fullDmg ? (ally._setShadow5 ? 1.5 : 1.0) : (ally._setShadow5 ? 1.0 : 0.5))));   // 🔧 雙擊(fullDmg)：完整一般攻擊·暗影5/5再×1.5；爆擊精通(legacy)×0.5
     if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, r.heavy, false, true, ally.classicMode);
-    logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【協力·${ally._allyName}·連擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害。`, 'player');
+    logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【協力·${ally._allyName}·雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害。`, 'player');
     _allyDamageMob(ally, t, dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
 }
 // ⚔️ 迅猛雙斧（傭兵）：主手是否可雙持（單手鈍器／巨斧精通的雙手鈍器）
@@ -8836,6 +8894,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
     let wpn = DB.items[wpnInst.id];
     if (!wpn) return;
     if (wpn.procPoison) applyWeaponProcPoison(target, wpn.procPoison);   // 🔧 死亡之指：傭兵攻擊時毒咒（與玩家一致）
+    if (wpn.procBurstPoison) applyWeaponBurstPoison(target, wpn.procBurstPoison, capWpnEn(wpnInst.en));   // 💥 破壞雙刀/鋼爪：傭兵攻擊時猛爆劇毒（與玩家一致）
     if (wpn.procStatusSkill) { let _sv = player; player = ally; try { applyWeaponProcStatusSkill(target, wpn.procStatusSkill); } finally { player = _sv; } }   // 🌑 惡魔王武器：傭兵攻擊時施放疾病術（以傭兵自身魔法命中判定）
     let d = ally.d || {};
     if (hitInfo && hitInfo.hit && (wpn.eff === 'mp_drain' || wpn.mpOnHit)) {   // 瑪那魔杖/惡魔王魔杖(mpOnHit)：命中恢復MP → 傭兵自身（恢復量同玩家：1 + max(0, 強化-6)）
@@ -10757,6 +10816,7 @@ function warriorEquipOk(d, id) {
     if (WARRIOR_WHITELIST.has(d.n || '')) return true;                                 // 具名開放清單（職業限定防具／臂甲／勇敢皮帶[req:knight]）
     if (d.type === 'acc' && reqAllowsClass(d, 'warrior')) return true;                 // ⚔️ 標註全職業(req:all)的飾品（戒指／項鍊／腰帶）皆可裝（2026-06 使用者要求）
     if (d.type === 'arm' && d.slot !== 'shield' && reqAllowsClass(d, 'warrior')) return true;   // 標註全職業的非盾牌防具
+    if (d.type === 'arm' && d.armguard && reqAllowsClass(d, 'warrior')) return true;   // 🛡️ 全職業臂甲（req:all·副手非真盾）：戰士可用（古代鬥士/神射臂甲等；職業限定臂甲仍由 req 擋）
     return false;
 }
 // 👑 王族裝備規則：全職業(req:all/無req)武器/飾品/防具＋req 含 royal（黃金權杖等）＋下列具名開放清單（特定職業限定→開放給王族）
@@ -11351,26 +11411,23 @@ function _renderMobsImpl() {
             // 徽章列固定常駐（單行、固定高度），避免有/無狀態時背景框忽大忽小
             let badges = `<div class="flex justify-center gap-0.5 mb-1 overflow-hidden" style="height:18px;">${_badgeTags}</div>`;
 
-            html += `<div class="mob-target ${act}" onclick="setTarget(${i})">
-                        <div class="flex justify-center text-lg mb-2">
+            html += `<div class="mob-target ${act}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" onclick="setTarget(${i})">
+                        <div class="flex justify-center text-sm mb-1">
                             <span class="${getMobNameClass(m)}">${m.n}</span>
                         </div>
                         ${badges}
-                        <div class="flex justify-center mb-3">
-                            <img src="${imgUrl}" alt="${m.n}" onerror="this.onerror=null; this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}">
+                        <div class="flex justify-center mb-1 mob-img-wrap">
+                            <span class="mob-img-inner"><img src="${imgUrl}" alt="${m.n}" onerror="this.onerror=null; this.src='https://placehold.co/100x100/1e293b/ffffff?text=?';" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}"></span>
                         </div>
-                        <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;" title="出血層數">🩸×${m.bleeds.length}</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" style="display:inline-flex;align-items:center;line-height:1;" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" style="display:inline-flex;align-items:center;line-height:1;" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}</div>
+                        <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;" title="出血層數">🩸×${m.bleeds.length}</span>` : ''}${(m._burstPoison && m._burstPoison.left > 0) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;color:#a3e635;" title="猛爆劇毒：每秒100固定傷害（5秒）">💥毒</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" style="display:inline-flex;align-items:center;line-height:1;" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" style="display:inline-flex;align-items:center;line-height:1;" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}</div>
                         <div class="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
                             <div class="bg-red-500 h-full transition-all" style="width:${pct}%"></div>
                         </div>
                      </div>`;
         } else {
             // 👇 修改這裡：純 BOSS 房除了中央（i === 1）以外，其餘兩格渲染為透明隱形區塊
-            if (isPureBossMap && i !== 1) {
-                html += `<div class="mob-target !border-transparent !bg-transparent cursor-default pointer-events-none"></div>`;
-            } else {
-                html += `<div class="mob-target !border-dashed !border-slate-700 opacity-50"><span class="text-slate-500 text-sm">搜尋中...</span></div>`;
-            }
+            // 🔧 怪物尚未出現的空格：不顯示「搜尋中...」與虛線框，渲染為透明隱形區塊（保留版位、不擾亂背景）
+            html += `<div class="mob-target !border-transparent !bg-transparent cursor-default pointer-events-none"></div>`;
         }
     }
     document.getElementById('mob-list').innerHTML = html;
@@ -11727,7 +11784,7 @@ function renderSkillSelects() {
         if(prevConvert && _convEl.querySelector(`option[value="${prevConvert}"]`)) _convEl.value = prevConvert;
     }
     let _convRow = document.getElementById('ui-convert-row');
-    if(_convRow) _convRow.classList.toggle('hidden', player.cls !== 'elf' && player.cls !== 'mage');   // 🔧 轉換技能設置開放給法師（魔力奪取）
+    if(_convRow) _convRow.classList.toggle('hidden', player.cls !== 'elf' && player.cls !== 'mage' && !(player.cls === 'royal' && hasMastery('k_royal_magic')));   // 🔧 轉換技能設置開放給法師/妖精；👑 王族（魔法精通）也開放以使用魔力奪取
     document.getElementById('auto-buff-skills').innerHTML = buffHtml;
     updateSummonLock();
 }
@@ -11765,9 +11822,12 @@ const WEAPON_TAGS = {
     wpn_mithril_dagger:['匕首'], wpn_ori_dagger:['匕首'], wpn_crimson_spear:['矛'], wpn_demon_axe:['雙手鈍器'],
     wpn_vengeance:['雙手劍'], wpn_blackflame_sword:['單手劍','武士刀'], wpn_hate_claw:['鋼爪'], wpn_demon_claw:['鋼爪'], wpn_death_finger:['鋼爪'],
     wpn_demon_sword:['單手劍'], wpn_redflame_sword:['單手劍','武士刀'], wpn_demon_dual:['雙刀'],
+    wpn_dual_destroy:['雙刀'], wpn_claw_destroy:['鋼爪'],   // 💥 破壞雙刀／破壞鋼爪（猛爆劇毒）
     wpn_old_sword:['單手劍','武士刀']   // 🏛️ 古老的劍：反擊(單手劍)＋居合(武士刀)
 };
 function getWeaponTags(id){ return WEAPON_TAGS[id] || []; }
+// ⚔️ 雙擊機率 comboRate：未明定者依武器標籤套預設（鋼爪 33% / 雙刀 25%）；個別武器可在 def 寫 comboRate 覆寫（底比斯歐西里斯雙刀30 / 死亡之指20 / 恨之鋼爪50 / 破壞雙刀·破壞鋼爪30）。日後新增 combo 武器自動取得預設機率。
+Object.keys(DB.items).forEach(function(id){ let d = DB.items[id]; if (d && d.eff === 'combo' && d.comboRate == null) { let tg = getWeaponTags(id); d.comboRate = tg.includes('鋼爪') ? 33 : (tg.includes('雙刀') ? 25 : 0); } });
 // 🎮 經典模式：tooltip 不顯示已被停用的武器/盾牌特效字樣（共鳴/魔爆/連射/反擊/出血/穿透/切割/居合/魔擊/鈍擊/重擊/格檔）；連擊/月光爆裂/即死等未停用者照常顯示
 const CLASSIC_HIDDEN_EFF_LABELS = ['共鳴','魔爆','連射','反擊','出血','穿透','切割','居合','魔擊','鈍擊','重擊','格檔'];
 function filterClassicEffLabels(effArr){ return (player && player.classicMode) ? effArr.filter(e => !CLASSIC_HIDDEN_EFF_LABELS.some(h => e.startsWith(h))) : effArr; }
@@ -11866,7 +11926,7 @@ function buildItemDescHTML(item) {
         if (d.eff === 'haste')      _eff.push('自我加速');
         if (d.eff === 'crush')      _eff.push('重擊');
         if (d.eff === 'cleave')     _eff.push('切割');
-        if (d.eff === 'combo')      _eff.push('連擊');   // 🔧 鋼爪/雙刀：連擊特效
+        if (d.eff === 'combo')      _eff.push('雙擊 ' + (d.comboRate||0) + '%');   // 🔧 鋼爪/雙刀：雙擊特效（comboRate%機率發動，額外攻擊＝完整一般攻擊）
         if (d.weakExpose)           _eff.push('弱點曝光');   // 🐉 鎖鏈劍：一般攻擊命中12%附加（最多3層）
         if (d.vampPct)              _eff.push('吸取HP ' + Math.round(d.vampPct * 100) + '%');   // 🐉 嗜血者鎖鏈劍
         if (d.ignHardSkin)          _eff.push('貫穿');   // 🗡️ 暗黑十字弓：攻擊無視硬皮額外減傷
@@ -15155,23 +15215,42 @@ const ELF_ELE = {
 const ELF_SWITCH_COST = 500000;
 
 const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
-    training: 'train.png',
-    dream_island: 'Dream Island.png',
-    oblivion_travel: 'ForgottenIsland.png',   // 🏝️ 遺忘之島途中
-    oblivion_island: 'ForgottenIsland.png',   // 🏝️ 遺忘之島
-    antaras_lair: "Antharas's Lair.png",
-    fafurion_lair: "Fafurion's Lair.png",
-    valakas_lair: "Valakas' Lair.png",
-    silent_outer: 'silentcave.png',   // 🔧 沉默洞穴周邊（黑暗妖精野外）
-    king_baranka_room: 'Baranka.png',  // 🔧 魔獸軍王之室（純BOSS房）
-    law_king_room: 'Baranka.png',      // 🔧 法令軍王之室
-    necro_king_room: 'Baranka.png',    // 🔧 冥法軍王之室
-    assassin_king_room: 'Baranka.png', // 🔧 暗殺軍王之室
-    thebes_desert: 'Thebes.png',       // 🏛️ 底比斯 沙漠
-    thebes_pyramid: 'Thebes.png',      // 🏛️ 底比斯 金字塔內部
-    thebes_temple: 'Thebes.png'        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
+    desert: 'assets/area/沙漠.jpg',   // 🏜️ 沙漠（野外·專屬背景·完整路徑直接用）
+    // 🆕 新狩獵區背景（皆 area-fit 沙漠格式·需 1920×580 條狀圖·放 assets/area/）：
+    crystal_cave1: 'assets/area/水晶洞穴.jpg', crystal_cave2: 'assets/area/水晶洞穴.jpg', crystal_cave3: 'assets/area/水晶洞穴.jpg',   // 💎 水晶洞穴（地監·3樓共用）
+    fire_dragon: 'assets/area/火龍窟.jpg',   // 🔥 火龍窟（野外）
+    elf_forest: 'assets/area/森林.jpg', zone_01: 'assets/area/森林.jpg', mirror_forest: 'assets/area/森林.jpg',   // 🌲 妖魔森林/妖精森林周邊/鏡子森林（野外·共用森林背景）
+    zone_15: 'assets/area/洞窟.jpg', zone_16: 'assets/area/洞窟.jpg', zone_17: 'assets/area/洞窟.jpg',   // 🕳️ 眠龍洞穴1~3樓
+    zone_22: 'assets/area/洞窟.jpg', zone_23: 'assets/area/洞窟.jpg', zone_24: 'assets/area/洞窟.jpg', zone_25: 'assets/area/洞窟.jpg',   // 🕳️ 沙漠地監1~4樓
+    zone_26: 'assets/area/洞窟.jpg', zone_27: 'assets/area/洞窟.jpg', zone_28: 'assets/area/洞窟.jpg', zone_29: 'assets/area/洞窟.jpg', zone_30: 'assets/area/洞窟.jpg', zone_31: 'assets/area/洞窟.jpg',   // 🕳️ 龍之谷地監1~6樓
+    zone_37: 'assets/area/象牙塔.jpg', zone_38: 'assets/area/象牙塔.jpg', zone_39: 'assets/area/象牙塔.jpg', zone_40: 'assets/area/象牙塔.jpg', zone_41: 'assets/area/象牙塔.jpg',   // 🏛️ 象牙塔4~8樓
+    heine: 'assets/area/森林.jpg',   // 🌲 海音（野外狩獵·共用森林背景·安全區 town_heine 不變）
+    eva_kingdom: 'assets/area/伊娃王國.jpg',   // 🏰 伊娃王國（地監·專屬背景·area-fit）
+    windwood: 'assets/area/沙漠.jpg',   // 🏜️ 風木（野外·共用沙漠背景）
+    gludio: 'assets/area/城鎮周邊.jpg', kent: 'assets/area/城鎮周邊.jpg', giran: 'assets/area/城鎮周邊.jpg',   // 🏙️ 古魯丁/肯特/奇岩（野外·城鎮周邊·≠村莊周邊）
+    training: 'assets/area/村莊周邊.jpg',   // 🆕 新兵修鍊場（套 area-fit·與其餘野外共用村莊周邊背景）
+    dream_island: 'assets/area/夢幻之島.jpg',   // 🆕 夢幻之島（套 area-fit·專屬背景）
+    zone_02: 'assets/area/歐瑞.jpg', zone_03: 'assets/area/歐瑞.jpg', zone_05: 'assets/area/歐瑞.jpg',   // 🗺️ 歐瑞/歐瑞雪原/國境要塞（野外·共用歐瑞背景）
+    zone_04: 'assets/area/艾爾摩.jpg',   // ⚔️ 艾爾摩激戰地（野外·專屬背景）
+    dragon_valley: 'assets/area/龍之谷.jpg', twilight_mt: 'assets/area/龍之谷.jpg',   // 🐉 龍之谷/黃昏山脈（野外·共用龍之谷背景；地監龍之谷 zone_26~31 仍為洞窟.jpg）
+    elf_grave: 'assets/area/拉斯塔巴德.jpg', hidden_cave: 'assets/area/拉斯塔巴德.jpg', giant_tomb: 'assets/area/拉斯塔巴德.jpg',   // 🏚️ 精靈墓穴/大洞穴隱遁者村莊地區/古代巨人之墓（野外·拉斯塔巴德背景）
+    rastabad_cave1: 'assets/area/拉斯塔巴德.jpg', rastabad_cave2: 'assets/area/拉斯塔巴德.jpg', rastabad_cave3: 'assets/area/拉斯塔巴德.jpg', rastabad_gate: 'assets/area/拉斯塔巴德.jpg', rastabad_beast: 'assets/area/拉斯塔巴德.jpg', dark_magic_lab: 'assets/area/拉斯塔巴德.jpg', necro_training: 'assets/area/拉斯塔巴德.jpg',   // 🏚️ 拉斯塔巴德地下洞穴1~3樓/正門/魔獸訓練場/黑魔法研究室/冥法軍訓練場（地監·拉斯塔巴德背景）
+    talking_island_port: 'assets/area/說話之島港口.jpg', oblivion_travel: 'assets/area/說話之島港口.jpg',   // 🏝️ 說話之島港口/遺忘之島途中（共用說話之島港口背景·area-fit）
+    oblivion_island: 'assets/area/遺忘之島.jpg',   // 🏝️ 遺忘之島（專屬背景·area-fit）
+    antaras_lair: 'assets/area/安塔瑞斯.jpg',   // 🐉 安塔瑞斯棲息地
+    fafurion_lair: 'assets/area/法利昂.jpg',   // 🐉 法利昂洞穴
+    valakas_lair: 'assets/area/巴拉卡斯.jpg',   // 🐉 巴拉卡斯巢穴（專屬背景）
+    silent_outer: 'assets/area/拉斯塔巴德.jpg',   // 🏚️ 沉默洞穴周邊（狩獵·改拉斯塔巴德·area-fit）；安全區 town_silent 仍 silentcave.png 不變
+    king_baranka_room: 'assets/area/軍王之室.jpg',  // 👑 魔獸軍王之室（純BOSS房·4室共用軍王之室背景）
+    law_king_room: 'assets/area/軍王之室.jpg',      // 👑 法令軍王之室
+    necro_king_room: 'assets/area/軍王之室.jpg',    // 👑 冥法軍王之室
+    assassin_king_room: 'assets/area/軍王之室.jpg', // 👑 暗殺軍王之室
+    thebes_desert: 'assets/area/底比斯沙漠.jpg',   // 🏛️ 底比斯 沙漠（專屬背景）
+    thebes_pyramid: 'assets/area/底比斯.jpg',      // 🏛️ 底比斯 金字塔內部（與祭壇共用底比斯背景）
+    thebes_temple: 'assets/area/底比斯.jpg'        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
 };
-const CATEGORY_AREA_BG = { wild: 'forest.png', dungeon: 'dungeon.png', siege: 'castle.png', tower: 'TowerofInsolence.png', rift: 'Rift.png' };   // 戰鬥區依分類（🗼 傲慢之塔；🌀 時空裂痕戰場 Rift.png；🏛️ 底比斯3圖另由 SPECIAL_AREA_BG 覆寫為 Thebes.png）
+const CATEGORY_AREA_BG = { wild: 'assets/area/村莊周邊.jpg', dungeon: 'assets/area/地監.jpg', siege: 'castle.png', tower: 'assets/area/傲慢之塔.jpg', rift: 'Rift.png' };   // 🆕 野外/地監/傲慢之塔狩獵改 area-fit 沙漠格式新背景；siege/rift 暫維持 16:9 cover。🗼 塔狩獵=傲慢之塔.jpg，入口安全區另由 TOWN_AREA_BG.tower 保留 TowerofInsolence.png 不變；🏛️ 底比斯3圖另由 SPECIAL_AREA_BG 覆寫（底比斯沙漠.jpg／底比斯.jpg）
+const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
 const SPECIAL_TOWN_BG = { town_silent: 'silentcave.png' };                                        // 🔧 安全區逐張對應背景（沉默洞穴）
 const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'TowerofInsolence.png', rift: 'Rift.png' };   // 村莊畫面依分類（🗼 傲慢之塔入口；🌀 時空裂痕入口 Rift.png）
 function applyAreaBackground() {
@@ -15180,8 +15259,8 @@ function applyAreaBackground() {
     let bv = document.getElementById('battle-view');
     if (bv) {
         let img = SPECIAL_AREA_BG[cur] || CATEGORY_AREA_BG[cat] || null;   // 特殊地圖逐張優先，否則依分類(野外/地監/攻城)
-        if (img) { bv.style.backgroundImage = `${ov(0.68)}, url("assets/background/${img}")`; bv.classList.add('has-bg'); }
-        else { bv.style.backgroundImage = ''; bv.classList.remove('has-bg'); }
+        if (img) { let _src = img.indexOf('/') >= 0 ? img : `assets/background/${img}`; let _fit = AREA_BG_FIT.has(img); bv.style.backgroundImage = `url("${_src}")`; bv.style.backgroundSize = _fit ? 'contain' : ''; bv.classList.toggle('area-fit', _fit); bv.classList.add('has-bg'); }   // 🔧 狩獵區不再加半透明遮罩(去除 ov)；完整路徑(assets/area/沙漠.jpg)直接用、否則預設 background 資料夾；條狀比例背景(沙漠)用 contain＋area-fit(框高鎖定圖比例、無上下黑邊、省空間給日誌)、其餘清空 inline 回退 CSS 的 cover
+        else { bv.style.backgroundImage = ''; bv.style.backgroundSize = ''; bv.classList.remove('area-fit'); bv.classList.remove('has-bg'); }
     }
     let tv = document.getElementById('town-view');
     if (tv) {
@@ -15271,9 +15350,10 @@ function getShopItemsForNpc(npcId) {
     return list.filter(id => {
         let d = DB.items[id];
         if (!d) return false;
-        // 🔧 裝備類（武器/防具/飾品）：以「實際可裝備」判定，涵蓋黑暗妖精/幻術士/龍騎士白名單與妖精劍術精通；
-        //    否則新職業靠白名單才能用的武器（如龍騎士的雙手劍/巨斧、幻術士的魔法杖）會被商店漏顯示。
-        if (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') return checkCanEquip({ id });
+        // 🔧 武器/防具：不限職業，全部販售（買得到；能否裝備仍由 equipItem/checkCanEquip 白名單把關）。
+        if (d.type === 'wpn' || d.type === 'arm') return true;
+        // 飾品（acc）：仍以「實際可裝備」判定（涵蓋各職業白名單）。
+        if (d.type === 'acc') return checkCanEquip({ id });
         // 其餘（消耗品/技能書/材料等）：沿用職業白名單
         return reqAllowsClass(d, player.cls) || loadUpAllows(id);
     });
@@ -15558,7 +15638,7 @@ function selectClass(c) {
     } else if (curCreate.cls === 'elf') {
         document.getElementById('class-desc').innerText = "妖精：在妖精森林建立據點的自然化身。這個種族既愛護人類,同時表現出冷靜與果斷。以均衡能力操控各種武器,是多才多藝的職業。";
     } else if (curCreate.cls === 'dark') {
-        document.getElementById('class-desc').innerText = "黑暗妖精：墮入暗影、棲身於沉默洞穴的妖精分支。敏捷最高、體質脆弱，精通匕首、雙刀、鋼爪與十字弓，並施展獨有的黑暗妖精魔法與劇毒之術。擅長迴避與連擊，是高風險高機動的暗影獵手。";
+        document.getElementById('class-desc').innerText = "黑暗妖精：墮入暗影、棲身於沉默洞穴的妖精分支。敏捷最高、體質脆弱，精通匕首、雙刀、鋼爪與十字弓，並施展獨有的黑暗妖精魔法與劇毒之術。擅長迴避與雙擊，是高風險高機動的暗影獵手。";
     } else if (curCreate.cls === 'illusion') {
         document.getElementById('class-desc').innerText = "幻術士：以記憶水晶操弄心靈與幻象的施術者。基本魔防較高，能以「奇古獸」武器將攻擊化為必中的魔法傷害，並施展混亂、恐慌等異常幻術與召喚幻覺協同作戰。出生於希培利亞村莊。";
     } else if (curCreate.cls === 'dragon') {
@@ -17654,7 +17734,7 @@ window.onload = () => {
             if(d.eff === 'haste')      _eff.push('自我加速');
             if(d.eff === 'crush')      _eff.push('重擊');
             if(d.eff === 'cleave')     _eff.push('切割');
-            if(d.eff === 'combo')      _eff.push('連擊');   // 🔧 鋼爪/雙刀：連擊特效
+            if(d.eff === 'combo')      _eff.push('雙擊 ' + (d.comboRate||0) + '%');   // 🔧 鋼爪/雙刀：雙擊特效（comboRate%機率發動，額外攻擊＝完整一般攻擊）
             if(d.weakExpose)           _eff.push('弱點曝光');   // 🐉 鎖鏈劍
             if(d.vampPct)              _eff.push('吸取HP ' + Math.round(d.vampPct * 100) + '%');   // 🐉 嗜血者鎖鏈劍
             if(d.ignHardSkin)          _eff.push('貫穿');   // 🗡️ 暗黑十字弓：攻擊無視硬皮額外減傷
