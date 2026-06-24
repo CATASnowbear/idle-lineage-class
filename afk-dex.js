@@ -128,15 +128,16 @@
       var mob = DB.mobs[id];
       // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
       var maps = (mobToMaps[id] || []).map(mapNameOf).filter(function (n, i, a) { return a.indexOf(n) === i; });
-      // 合併「全部掉落表」:除了 MOB_DROPS,還有黑暗武器(DARK_WEAPON_DROPS)、三階黑暗精靈水晶(DARK_CRYSTAL_DROPS)、
-      // 龍騎士掉落表(DRAGON_DROPS)也是獨立掉落表、不在 MOB_DROPS,漏了就查不到(間諜書/書板/鎖鏈劍)。各表都用「怪物名」當 key、格式 [[id,%]]。
-      // 龍騎士表的「任務道具」是職業限定(TRIAL_ITEM_CLASS),掉落格附註「🐉僅X」;書板/鎖鏈劍則全職可掉、不附註。
+      // 合併「全部掉落表」——必須與原作 _auditMobDrops 讀的「同一組」表,否則他統計查得到、我們查不到(戰士印記那批踩過)。
+      // 目前 5 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)、龍騎士(DRAGON_DROPS)、戰士印記(WARRIOR_DROPS)。
+      // 都用「怪物名」當 key、格式 [[id,%]]。職業限定的任務道具(TRIAL_ITEM_CLASS)附註「🐉僅X」;書板/鎖鏈劍/戰士印記全職可掉、不附註。
       function _tagged(list, noteFn) { return (list || []).map(function (e) { return [e[0], e[1], noteFn ? noteFn(e[0]) : null]; }); }
       var raw = [].concat(
         _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[mob.n] : null),
         _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[mob.n] : null),
         _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null),
-        _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null, dragonDropNote)
+        _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null, dragonDropNote),
+        _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null, dragonDropNote)
       );
       var drops = raw
         .map(function (e) { return [e[0], itemNameOf(e[0]), e[1], e[2]]; })   // [id, 名稱, 機率%, 附註]
