@@ -229,17 +229,23 @@
    *   切到瀏覽器選單的「桌面版網站」走桌機行為才正常(使用者回報的就是這條:手機版匯出 0 byte、
    *   勾桌面版就好)。手機沒有 File System Access API(showSaveFilePicker),exportSave 必走
    *   downloadSaveFile 這條退路 → 一定中。data: URL 下載在行動瀏覽器穩定、且檔案是純 JSON 文字、
-   *   體積小,不會踩到 data URL 的長度上限,桌機也照常運作。
-   * 解法:在最外層包住 window.downloadSaveFile,改用 data:application/json;charset=utf-8 +
-   *   encodeURIComponent 產生連結下載。exportSave 以全域名稱呼叫 downloadSaveFile,改寫同一個全域
-   *   即生效;成功訊息 logSys 沿用原文案,行為一致。
+   *   體積小,不會踩到 data URL 的長度上限。
+   * 解法:在最外層包住 window.downloadSaveFile。**只在 Android 行動瀏覽器**改用
+   *   data:application/json;charset=utf-8 + encodeURIComponent 下載;其餘(iPhone / 桌機)一律
+   *   原封不動呼叫原作者的 blob: 版本,維持「原本好的就別動」——iOS 對 data: 下載行為不同、且目前
+   *   無人回報 iPhone 有問題,故不波及。判定剛好對齊 bug 條件:使用者切「桌面版網站」時 Android Chrome
+   *   的 UA 會變桌機(不含 Android)→ 自動走原路(那情況本就正常);只有手機站台模式(UA 含 Android、
+   *   會 0 byte 那種)才套 data: URL。exportSave 以全域名稱呼叫 downloadSaveFile,改寫同一個全域即生效。
    * 何時可移除:原作者把 downloadSaveFile 改成 data: URL(或自行做了手機可用的下載)時,本段即多餘,
    *   可整段刪掉。在那之前留著無害(抓不到 downloadSaveFile 自動 no-op)。
    * ------------------------------------------------------------------------ */
   (function () {
+    var isAndroid = /Android/i.test(navigator.userAgent || '');
     function install() {
       if (typeof window.downloadSaveFile !== 'function' || window.downloadSaveFile.__dataUrlDl) return false;
+      var orig = window.downloadSaveFile;
       var patched = function (data, fname) {
+        if (!isAndroid) return orig.apply(this, arguments);   // iPhone / 桌機:原作者 blob: 版本,完全不動
         var a = document.createElement('a');
         a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
         a.download = fname;
@@ -251,7 +257,7 @@
       };
       patched.__dataUrlDl = true;
       window.downloadSaveFile = patched;
-      console.log('[AFK-fixes] 匯出下載改用 data: URL(修手機 0 byte) 已掛上');
+      console.log('[AFK-fixes] 匯出下載 Android 改用 data: URL(修手機 0 byte) 已掛上;非 Android 走原版 blob:');
       return true;
     }
     try {
