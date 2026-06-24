@@ -444,8 +444,7 @@
     if (ts) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts) + '</div></div>');
     var body = parts.filter(Boolean).join('');
     if (body) return body;
-    return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">' +
-      ((d.gachaWeight > 0) ? '目前沒有固定取得途徑' : '取得方式：—') + '</div></div>';
+    return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
   window.AFK_DEX_API = { acquireHTML: acquireHTML };
 
@@ -477,7 +476,7 @@
     if (tiers && tiers.length) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎁 寶箱開出</div><div class="m-dex-craft-mats">開「上鎖的歐西里斯寶箱（' + tiers.join('／') + '）」隨機獲得（每開消耗 1 顆 龜裂之核）</div></div>';
     var ts2 = (exAcq && exAcq.short) ? null : trialSourceOf(id);
     if (ts2) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts2) + '</div></div>';
-    if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && d.gachaWeight > 0 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
+    if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
     return head + typeLine + body + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
   }
