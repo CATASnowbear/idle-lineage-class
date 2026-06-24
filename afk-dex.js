@@ -14,6 +14,7 @@
 
   var MAX_RESULTS = 60;
   var INDEX = [];   // [{ id, mob, maps:[名稱], drops:[[id,名稱,pct]], hay:可搜尋字串(小寫) }]
+  var DROPPED_SET = {};   // itemId -> true:被任一隻怪掉落過(由 buildIndexes 統一收集;用於判斷物品「有沒有怪掉的固定來源」)
 
   function ready(fn) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
@@ -122,6 +123,7 @@
 
   // ----- 預先建索引(只跑一次) ---------------------------------------------
   function buildIndexes() {
+    DROPPED_SET = {};
     var mobToMaps = {};
     for (var mid in DB.maps) (DB.maps[mid] || []).forEach(function (mob) { (mobToMaps[mob] = mobToMaps[mob] || []).push(mid); });
     for (var id in DB.mobs) {
@@ -142,6 +144,7 @@
       var drops = raw
         .map(function (e) { return [e[0], itemNameOf(e[0]), e[1], e[2]]; })   // [id, 名稱, 機率%, 附註]
         .filter(function (d) { return DB.items[d[0]]; });
+      drops.forEach(function (d) { DROPPED_SET[d[0]] = true; });   // 記錄「這個物品有怪會掉」
       drops.sort(function (a, b) { return b[2] - a[2]; });   // 機率高→低
       var hay = (mob.n + ' ' + maps.join(' ') + ' ' + drops.map(function (d) { return d[1]; }).join(' ')).toLowerCase();
       INDEX.push({ id: id, mob: mob, maps: maps, drops: drops, hay: hay });
@@ -167,7 +170,10 @@
       var isEquip = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc');
       // ③ 有手動「取得方式」(itemAcquire)的:如龍騎士書板(skillbk、非商店、無怪掉)→ 兌換取得,收進來才搜得到
       var hasAcq = !!(window.AFK_EXTRA && AFK_EXTRA.itemAcquire && AFK_EXTRA.itemAcquire[id]);
-      if (!isEquip && !shopSet[id] && !hasAcq) continue;
+      // ④ 在潘朵拉抽獎池(gachaWeight>0)的:雖無固定來源,但確實抽得到 → 也收進來,搜得到名字、詳情卡自動標「目前沒有固定取得途徑」
+      //    (避免「明明拿得到卻完全查無」的死角;真正純內部用、gachaWeight=0 又無任何來源的維持排除、不灌爆搜尋)
+      var inGacha = (d.gachaWeight > 0);
+      if (!isEquip && !shopSet[id] && !hasAcq && !inGacha) continue;
       ITEM_INDEX.push({ id: id, n: d.n, hay: String(d.n).toLowerCase() });
     }
     ITEM_INDEX.sort(function (a, b) { return a.n.length - b.n.length || a.n.localeCompare(b.n); });   // 名稱短的(較接近完整匹配)排前面
@@ -365,6 +371,18 @@
     return '<div class="m-dex-craft"><div class="m-dex-craft-h">🏪 商店販售</div>' + priceLine + lines.join('') + '</div>';
   }
 
+  // 物品「有沒有固定取得來源」:怪掉 / 商店 / 製作 / 手動取得方式(itemAcquire,含兌換·試煉·靈魂之球喚回)。
+  //   不含潘朵拉抽獎(隨機池,依規則不算取得方式)。用於詳情卡:有來源就由各區塊各自呈現;查無才補中性句。
+  function hasFixedSource(id) {
+    if (DROPPED_SET[id]) return true;                                         // 有怪會掉
+    if (_craftIndex === null) buildCraftIndex();
+    if (_craftIndex[id]) return true;                                         // 可製作
+    if (_shopIndex === null) buildShopIndex();
+    if (_shopIndex[id]) return true;                                          // 商店販售
+    var acq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
+    return !!(acq && acq.short);                                             // 手動補的取得方式(兌換/試煉/喚回…)
+  }
+
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
   var IT_REQ = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', all: '全職業' };
@@ -437,6 +455,8 @@
     // 取得方式:讀共用清單 afk-extradata.js 的手動補充(短版,小百科讀同一份);只標可控取得,潘朵拉黑市抽獎(隨機池)不列。製作/掉落另由 craftInfoHTML 與搜尋鈕呈現
     var exAcq = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
     if (exAcq && exAcq.short) add('取得方式', exAcq.short);
+    // 在潘朵拉抽獎池、卻查無任何固定來源(怪掉/商店/製作/兌換)→ 自動補中性句(依規則不提潘朵拉);算出來的、不必逐物品手動維護
+    else if (d.gachaWeight > 0 && !hasFixedSource(id)) add('取得方式', '目前沒有固定取得途徑');
     if (d.safe != null) add('安定值', d.safe);
     if (d.p) add('賣店價', Math.floor(d.p * 0.3).toLocaleString() + ' 金幣');   // 賣給商店約得定價(p)的 3 成;祝福/屬性/遠古詞綴各再 ×10
     var icon = '';
