@@ -115,6 +115,7 @@
         #battle-view.area-fit { aspect-ratio: 1920 / 580; background-position: top center; overflow: hidden; }
         #battle-view.area-fit #mob-list { height: 100%; }
         #battle-view.area-fit .mob-target { height: 100%; min-height: 0; }
+        #battle-view.area-fit .mob-target > div:not(.mob-img-wrap) { flex-shrink: 0; }   /* 🔧 固定列(名稱/徽章/狀態/血條)不可壓縮：大型怪圖的 intrinsic 高度會撐大 band 的 flex-basis→整欄溢出→所有列等比縮小致徽章/狀態字被切半；改由 mob-img-wrap 獨自吸收伸縮 */
         #battle-view.area-fit .mob-img-wrap { flex: 1 1 auto; min-height: 0; align-items: flex-end; }   /* 🦶 怪物圖貼齊框底(腳齊底)，供腳下接觸陰影對齊 */
         #battle-view.area-fit .mob-img-inner { position: relative; height: 100%; display: inline-flex; align-items: flex-end; justify-content: center; }   /* 內層 inline-flex 縮到圖寬→影子寬度跟著每隻怪縮放 */
         #battle-view.area-fit .mob-img-wrap img { height: 100%; width: auto; max-width: 100%; max-height: 100%; position: relative; z-index: 1; }
@@ -15296,6 +15297,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     zone_15: 'assets/area/洞窟.jpg', zone_16: 'assets/area/洞窟.jpg', zone_17: 'assets/area/洞窟.jpg',   // 🕳️ 眠龍洞穴1~3樓
     zone_22: 'assets/area/洞窟.jpg', zone_23: 'assets/area/洞窟.jpg', zone_24: 'assets/area/洞窟.jpg', zone_25: 'assets/area/洞窟.jpg',   // 🕳️ 沙漠地監1~4樓
     zone_26: 'assets/area/洞窟.jpg', zone_27: 'assets/area/洞窟.jpg', zone_28: 'assets/area/洞窟.jpg', zone_29: 'assets/area/洞窟.jpg', zone_30: 'assets/area/洞窟.jpg', zone_31: 'assets/area/洞窟.jpg',   // 🕳️ 龍之谷地監1~6樓
+    zone_32: 'assets/area/洞窟.jpg', zone_33: 'assets/area/洞窟.jpg',   // 🐜 螞蟻洞窟1~2樓（共用洞窟背景·已在 AREA_BG_FIT）
     zone_37: 'assets/area/象牙塔.jpg', zone_38: 'assets/area/象牙塔.jpg', zone_39: 'assets/area/象牙塔.jpg', zone_40: 'assets/area/象牙塔.jpg', zone_41: 'assets/area/象牙塔.jpg',   // 🏛️ 象牙塔4~8樓
     heine: 'assets/area/森林.jpg',   // 🌲 海音（野外狩獵·共用森林背景·安全區 town_heine 不變）
     eva_kingdom: 'assets/area/伊娃王國.jpg',   // 🏰 伊娃王國（地監·專屬背景·area-fit）
