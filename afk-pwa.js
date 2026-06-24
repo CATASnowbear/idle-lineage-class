@@ -24,6 +24,7 @@
 
   var PREF_AUTOUPDATE = 'afk_pwa_autoupdate';   // '0'=關閉自動更新；其餘（含未設）=開啟（預設打勾）
   var PRECACHE_DONE = 'afk_pwa_precached';       // '1'=離線資源已抓滿，跳過自動預抓
+  var MANIFEST_SIG = 'afk_pwa_manifest_sig';     // 上次抓滿時的圖清單簽章；程式更新帶新圖→簽章變→重抓(否則新圖離線 404)
   var ICON = 'pwa-icon-192.png';
 
   var reg = null;            // ServiceWorkerRegistration
@@ -273,7 +274,7 @@
     navigator.serviceWorker.addEventListener('message', function (e) {
       var d = e.data || {};
       if (d.type === 'precache-progress') { precacheDone = d.done; precacheTotal = d.total; renderBar(); }
-      else if (d.type === 'precache-done') { precaching = false; precacheFinished = true; localStorage.setItem(PRECACHE_DONE, '1'); renderBar(); }
+      else if (d.type === 'precache-done') { precaching = false; precacheFinished = true; localStorage.setItem(PRECACHE_DONE, '1'); if (_pendingSig) { localStorage.setItem(MANIFEST_SIG, _pendingSig); _pendingSig = null; } renderBar(); }
       else if (d.type === 'version') { if (d.build && d.build !== '0000-0000') { buildId = d.build; renderBar(); } }
     });
 
@@ -310,15 +311,27 @@
       return;
     }
     var precacheDoneFlag = localStorage.getItem(PRECACHE_DONE) === '1';
-    var doPrecache = forcePrecache || (isStandalone() && !precacheDoneFlag);
-    if (!doPrecache && isStandalone() && precacheDoneFlag) { precacheFinished = true; renderBar(); }
     withManifest(function (manifest) {
       ctrl.postMessage({ type: 'reconcile-images', manifest: manifest });
+      // 🔧 程式更新後資產集若變了(新增/換圖)→簽章變→重跑預抓把新圖抓進圖桶(SW 預抓會跳過已快取同 sha 的,只抓新/變動的,不重載整包)。
+      //    沒這個的話:抓滿一次後 PRECACHE_DONE='1' 永遠跳過預抓,而 reconcile 只清舊圖不抓全新圖 → 新圖離線找不到。
+      var sig = _manifestSig(manifest);
+      var manifestChanged = localStorage.getItem(MANIFEST_SIG) !== sig;
+      var doPrecache = forcePrecache || (isStandalone() && (!precacheDoneFlag || manifestChanged));
+      if (!doPrecache && isStandalone() && precacheDoneFlag) { precacheFinished = true; renderBar(); }
       if (doPrecache) {
-        precaching = true; precacheTotal = manifest.length; precacheDone = 0; renderBar();
+        _pendingSig = sig;
+        precaching = true; precacheTotal = manifest.length; precacheDone = 0; precacheFinished = false; renderBar();
         ctrl.postMessage({ type: 'precache-images', manifest: manifest });
       }
     });
+  }
+  var _pendingSig = null;
+  // 圖清單便宜簽章:筆數 + 所有 git-blob-sha 的滾動雜湊;新增一張或換一張都會變
+  function _manifestSig(manifest) {
+    var h = 5381, n = manifest.length;
+    for (var i = 0; i < n; i++) { var s = String((manifest[i] && manifest[i][1]) || ''); for (var j = 0; j < s.length; j++) h = ((h << 5) + h + s.charCodeAt(j)) | 0; }
+    return n + ':' + (h >>> 0);
   }
 
   // ----- 安裝事件 ---------------------------------------------------------

@@ -119,7 +119,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 >   `CODE_VERSION` 由 `scripts/stamp-sw-version.mjs` 依「index.html＋全部外掛 js 內容 hash」自動覆寫 → **程式一改 hash 就變 → 瀏覽器偵測到新 sw.js → 觸發 PWA 更新流程**。
 >   **改任何外掛 / index.html 後,push 前要跑 `node scripts/stamp-sw-version.mjs` 重算**(自動同步流程已自動跑;手動改外掛時別忘)。
 > - **圖桶 `IMG_VERSION`**(`img-v3`,**固定桶名、不再 bump、不整桶倒掉**):`assets/` 全部圖,on-demand 快取 + 可由 afk-pwa 背景全預抓。
->   失效改走**逐張對帳**:`assets-manifest.json` 每張圖帶一個 git blob sha,SW(`reconcileImages`)記下自己快取的是哪個 sha;afk-pwa 每次載入(線上逛/已安裝都跑)把最新 manifest 送進 SW 比對,**只清掉 sha 對不上的那幾張**(作者換一張只重抓一張,不重載整包 30MB;作者新增圖完全不影響既有快取)。沒記過 sha 的舊快取(本機制上線前的)→ SW 用實際 bytes 算 sha 補對帳,相符補記、不符才清。**所以 sync-upstream 不再動 sw.js 的 IMG_VERSION,只負責產出帶 sha 的 manifest。**
+>   失效改走**逐張對帳**:`assets-manifest.json` 每張圖帶一個 git blob sha,SW(`reconcileImages`)記下自己快取的是哪個 sha;afk-pwa 每次載入(線上逛/已安裝都跑)把最新 manifest 送進 SW:① **reconcile**——只清掉 sha 對不上的舊圖(作者換一張只重抓一張,不重載整包 30MB);② **新增圖的處理**——reconcile 只清不抓,所以「程式更新帶新圖」靠 afk-pwa 比對 **manifest 簽章**(`afk_pwa_manifest_sig`):簽章變了(新增/換圖)→ 已安裝(standalone)就**重跑預抓**把新圖抓進圖桶(SW 預抓會跳過已快取同 sha 的、只抓新/變動的)。**沒這個的話新圖離線會 404(踩過:程式更新但圖沒跟著進離線快取)**。沒記過 sha 的舊快取(本機制上線前的)→ SW 用實際 bytes 算 sha 補對帳,相符補記、不符才清。**所以 sync-upstream 不再動 sw.js 的 IMG_VERSION,只負責產出帶 sha 的 manifest。**
 > - 更新接管由頁面(afk-pwa)決定:install 不自動 skipWaiting,首次安裝自動啟用、之後更新停 waiting,等頁面送 `skip-waiting` 訊息(自動更新偏好開→自動送;關→使用者按更新鈕才送)。
 > - 背景預抓清單 `assets-manifest.json`(自動同步重產,格式 `[[path, git-blob-sha], ...]`,**workflow 的 `git add` 要含它**);afk-pwa 安裝後才抓那 30MB,純線上逛的人不抓。
 > - afk-sw 無 DOM 掛點不列入 smoke;**afk-pwa 有 UI 掛點,已列入 smoke 的 `[AFK-pwa]` 檢查**。
