@@ -15,14 +15,15 @@
  *       不碰其餘的圖 → 作者換一張圖只重抓那一張,不會害人重載整包 30MB。
  *       沒記過 sha 的舊快取(本機制上線前就存在的)→ 用實際 bytes 算 sha 補對帳,相符就補記、不符才清。
  *
- * 更新控制(配合 afk-pwa.js 的自動更新 checkbox)：
- *   - install 不自動 skipWaiting。首次安裝(沒有舊 SW 控制)會自動啟用；之後的更新會停在 waiting,
- *     由頁面送 'skip-waiting' 訊息才接管 → 達成「自動更新 / 手動更新」由使用者偏好決定。
+ * 更新控制：
+ *   - 導覽走 network-first → 線上開頁本來就是最新程式碼,SW 何時換版不影響使用者看到的畫面。
+ *   - install 不自動 skipWaiting;首次安裝(沒有舊 SW 控制)會自動啟用,之後的新版停在 waiting,
+ *     等瀏覽器標準流程(所有分頁關閉)自然接管。頁面端不再主導 skip-waiting / 強制 reload(免遊戲中途被打斷)。
  *
  * 背景預抓：頁面送 {type:'precache-images', manifest:[[path,sha],...]} → 此處分批抓進圖桶並回報進度,讓安裝後可完全離線。
  * ========================================================================== */
-const CODE_VERSION = 'code-c845b9998c39';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0624-1645'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-0706d7b1e1fe';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0624-1700'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
@@ -52,7 +53,6 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('message', (e) => {
   const d = e.data || {};
   if (d === 'skip-waiting' || d.type === 'skip-waiting') { self.skipWaiting(); return; }
-  if (d.type === 'get-version') { if (e.source) e.source.postMessage({ type: 'version', code: CODE_VERSION, build: BUILD_ID }); return; }
   if (d.type === 'reconcile-images' && Array.isArray(d.manifest)) {
     e.waitUntil(reconcileImages(d.manifest, e.source, d.deferReplaced));
     return;
