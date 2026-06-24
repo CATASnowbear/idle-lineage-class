@@ -859,6 +859,7 @@
     { k: 'pledge', n: '血盟' },
     { k: 'tower', n: '傲慢之塔' },
     { k: 'oblivion', n: '遺忘之島' },
+    { k: 'rift', n: '時空裂痕' },
     { k: 'kingroom', n: '軍王之室' }
   ];
   var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', equipCls: 'all', equipSlot: 'wpn' };
@@ -998,6 +999,7 @@
     if (key === 'sherine') return renderSherine();
     if (key === 'tower') return renderTower();
     if (key === 'oblivion') return renderOblivion();
+    if (key === 'rift') return renderRift();
     if (key === 'kingroom') return renderKingroom();
     if (key === 'load') return renderLoad();
     if (key === 'pledge') return renderPledge();
@@ -1042,6 +1044,7 @@
     { key: 'pledge', cls: false, label: '血盟' },
     { key: 'tower', cls: false, label: '傲慢之塔' },
     { key: 'oblivion', cls: false, label: '遺忘之島' },
+    { key: 'rift', cls: false, label: '時空裂痕' },
     { key: 'kingroom', cls: false, label: '軍王之室' }
   ];
   // 統一搜尋:跨「所有分頁 + 所有職業」收集符合的小區塊,依來源分組列出。
@@ -1617,6 +1620,43 @@
   function renderOblivion() {
     var note = '<div class="m-wiki-note">「遺忘之島」是搭船前往的特殊離島：先到「途中」打掉傳送門才能登島，<b>島上不能用任何傳送（瞬移）</b>，離開就得回海音重新搭船。</div>';
     var secs = OBLIVION_SECTIONS.map(function (s) {
+      var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
+    }).join('');
+    return note + secs;
+  }
+
+  // 時空裂痕(本檔維護;內容以 index.html rift 區塊為準:enterRift/spawnRiftMob/riftDamageMult/drawRiftReward/riftEndRun)
+  var RIFT_SECTIONS = [
+    { t: '怎麼進、要準備什麼', lines: [
+      '入口在<b>「時空裂痕入口」</b>安全區(地圖選單→時空裂痕),裡面沒有 NPC,只有「進入」「領取獎勵」按鈕和你的時間排名。',
+      '<b>進入要消耗 1 顆「龜裂之核」</b>。龜裂之核＝到<b>希培利亞村莊的巴特爾</b>用「時空裂痕碎片 ×100」製作;時空裂痕碎片由<b>底比斯系列怪</b>掉落。',
+      '石化／麻痺／冰凍／暈眩／睡眠狀態下無法進入;裡面<b>禁止任何傳送</b>(單一戰場)。',
+      '<b>挑戰狀態不存檔</b>:重新整理／離線回來都會回村、該次作廢——是一次性計時挑戰,別中途關掉。'
+    ]},
+    { t: '核心玩法:撐越久、敵人越強', lines: [
+      '單一戰場、<b>計時制</b>:停留越久,抽出的怪等級範圍越高、頭目越多。',
+      '<b>怪等級範圍隨時間升</b>:每 30 秒 +1。起初約 <b>Lv1~40</b>,下限慢慢往上(封頂 40)、上限往上(封頂 100),最終約 <b>Lv40~100</b>。',
+      '<b>頭目頻率</b>:前 20 分鐘以一般怪為主、每 5 分鐘強制冒 1 隻頭目(首隻在第 5 分);<b>滿 20 分後每次刷怪有 50% 直接是頭目</b>。',
+      '<b>滿 30 分鐘起升壓</b>:每多 1 整分鐘,怪物「攻擊力與技能傷害」<b>+10%</b>(線性;30分=原本、60分=4 倍攻擊)。是<b>敵人變兇、不是變肉</b>——後面是被打死,不是打不動。',
+      '<b>滿 30 分鐘後四大龍(安塔瑞斯／法利昂／巴拉卡斯／林德拜爾)才入池</b>,場上同時最多 1 隻。',
+      '怪沿用一般怪定義,所以<b>經驗與掉落照常</b>(也會掉時空裂痕碎片);開著「席琳」的世界時,裡面的怪一樣吃席琳強化與報酬翻倍。'
+    ]},
+    { t: '死亡與撤離(不損失經驗)', lines: [
+      '<b>在裂痕中死亡＝結束挑戰,不損失經驗</b>(連經典模式也不扣)、不用手動復活,直接回入口。',
+      '想見好就收按「<b>撤離</b>」:跟戰死一樣會記停留時間、產生待領獎勵,只是不死、直接回入口(行動受限狀態下不能撤離)。',
+      '<b>離開後要先在入口「領取獎勵」,才能再次進入。</b>'
+    ]},
+    { t: '排名與獎勵(看停留時間)', lines: [
+      '離開時用<b>停留時間</b>記排名(保留<b>最佳</b>與<b>上次</b>;「席琳」世界內的紀錄分開算)。',
+      '每跑一趟凝聚 <b>1 件待領獎勵</b>,回入口按「領取獎勵」拿。',
+      '獎勵是依潘朵拉<b>權重隨機抽 1 件</b>,並<b>用停留時間決定能不能抽到稀有物</b>:停留<b>未滿 30 分</b>只抽得到常見物(排除最稀有的「權重 1」物品);<b>滿 30 分起</b>才納入稀有物,其權重＝停留分鐘數−30(30分→1、60分→30)。',
+      '結論:<b>想要好東西就撐久</b>——尤其撐過 30 分鐘、越久越可能抽到稀有裝備;但敵人同時越來越兇,自己拿捏。'
+    ]}
+  ];
+  function renderRift() {
+    var note = '<div class="m-wiki-note">「時空裂痕」是一次性的<b>計時生存挑戰</b>:撐越久,敵人越強、獎勵越好。狀態不存檔,中途關掉就作廢。</div>';
+    var secs = RIFT_SECTIONS.map(function (s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
       return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + '</div>';
     }).join('');
