@@ -1685,7 +1685,7 @@
     var extra = '<div class="m-wiki-card"><div class="m-wiki-name">提高上限的額外來源</div><div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead><tr><th>來源</th><th>負重上限</th></tr></thead><tbody>'
       + '<tr><td>練<b>力量／體質</b>（配點或裝備加屬性）</td><td>↑（依上面公式）</td></tr>'
       + '<tr><td>腰帶<b>強化</b>（每 +1）</td><td>+20（最多 +5＝+100）</td></tr>'
-      + '<tr><td><b>負重強化</b>（增益 sk_load_up）</td><td>+50（持續 1800 秒）</td></tr>'
+      + '<tr><td><b>負重強化</b>（技能增益，法師／妖精／黑暗妖精可學）</td><td>+50（持續 1800 秒）</td></tr>'
       + belts.map(function (b) { return '<tr><td>腰帶「' + esc(b.n) + '」</td><td>+' + b.w + '</td></tr>'; }).join('')
       + '</tbody></table></div></div>';
     var capTbl = '';   // 已併入 formula card
