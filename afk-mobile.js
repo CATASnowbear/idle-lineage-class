@@ -709,15 +709,21 @@
       'body.m-mobile #mob-list .mob-target > div[style*="height:18px"]{height:auto !important;min-height:18px !important;flex-wrap:wrap !important;overflow:visible !important;row-gap:2px !important;}',
       'body.m-mobile #mob-list .mob-target > div[style*="height:18px"] > span{flex:0 0 auto !important;}',
       /* 怪物卡原作固定 height:224px + overflow:hidden + 內容置中:手機窄欄怪名常折成兩行,內容超過 224
-         被裁掉 → 最底的血條看不見。手機改成「固定 252px(容得下兩行名稱)+ 名稱最多兩行截斷」:
-         高度永遠一致 → 不會隨怪物換人/名稱長短抖動,血條也一定看得到。原作改掉固定高即自動失效。 */
+         被裁掉 → 底部內容看不見。手機改成「固定 252px(容得下兩行名稱)+ 名稱最多兩行截斷」:
+         高度永遠一致 → 不會隨怪物換人/名稱長短抖動。此段給「非 area-fit」版面(如三格純BOSS房);
+         有 area-fit 條狀背景的一般狩獵圖走下方緊湊版。原作改掉固定高即自動失效。 */
       'body.m-mobile #mob-list .mob-target{height:252px !important;overflow:hidden !important;}',
       'body.m-mobile #mob-list .mob-target > div:first-child > span{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.15;}',
-      /* 🏜️ 原作新增「狩獵區條狀背景」#battle-view.area-fit：把戰鬥框鎖成 aspect-ratio:1920/580 + overflow:hidden、
-         怪物卡 height:100%。手機窄寬下這條只剩 ~120px,我們原本固定 252px 的怪物卡被裁掉下半。
-         手機改成 B「文字疊圖」緊湊版型(使用者選定):戰鬥框高度隨怪物卡(背景仍 cover 鋪滿、不留黑塊);
-         怪物卡縮成 158px,怪物圖「絕對定位鋪滿卡(z0)」、上留 48px(容兩行名+一行狀態)下留 24px→怪物落中間;
-         名字/徽章疊上方留白、圖下狀態列+血條用 margin-top:auto 推到底,皆疊在圖上(z2)→不再中間空一塊、背景也較清楚。
+      /* 原作把怪名改成預設 opacity:0、靠滑鼠 hover(或被點到的那隻 .name-show)才顯示(index.html .mob-name)。
+         手機無 hover→所有怪名全程隱形。手機一律強制常顯(只標選取目標資訊太少;5 隻名字靠下方縮字+單行省略塞得下)。
+         原作哪天改回怪名常顯,本行即多餘、無害。 */
+      'body.m-mobile #battle-view .mob-name{opacity:1 !important;}',
+      /* 🏜️ 原作「狩獵區條狀背景」#battle-view.area-fit：把戰鬥框鎖成 aspect-ratio:1920/580 + overflow:hidden、
+         怪物卡 height:100%。手機窄寬下這條只剩 ~120px、怪被壓成一條矮帶且超小(實測移掉本段就是這樣)。
+         手機改成「文字疊圖」緊湊版型:解除短比例、框高隨卡(背景仍 cover 鋪滿、不留黑塊);怪物卡 158px,
+         怪物圖絕對定位鋪滿卡(z0)、上留 48px(容名字+徽章)下留 24px→怪落中間;名字/徽章/狀態列疊在圖上(z2)。
+         🆕 原作改版(五格前後排景深、移除每隻怪的血條、怪名改 hover 才顯示):本段只負責「撐高矮帶+疊字」,
+         景深(mob-img-inner 的 translate/scale)交給原作自己跑、血條已不存在故不再處理、怪名常顯見上方規則。
          原作哪天不再用 area-fit 時整段自動失效、無害。 */
       'body.m-mobile #battle-view.area-fit{aspect-ratio:auto !important;overflow:hidden !important;background-size:cover !important;background-position:center !important;}',   /* 框高隨怪物卡;背景 cover 鋪滿(原作 JS inline 設 contain→下方露黑塊,!important 蓋過) */
       'body.m-mobile #battle-view.area-fit #mob-list{height:auto !important;}',
@@ -725,10 +731,10 @@
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap{position:absolute !important;inset:0 !important;z-index:0 !important;margin:0 !important;padding:48px 2px 24px !important;box-sizing:border-box !important;align-items:center !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap .mob-img-inner{height:100% !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap img{height:100% !important;width:auto !important;max-width:100% !important;padding:0 !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > div:first-child{position:relative !important;z-index:2 !important;margin:0 !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name{position:relative !important;z-index:2 !important;margin:0 !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name span{font-size:11px !important;line-height:1.1 !important;display:block !important;max-width:100% !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}',   /* 五格時卡僅 ~55px 寬,名字單行縮字+省略,不換行不撐高 */
       'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:18px"]{position:relative !important;z-index:2 !important;margin:0 !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:16px"]{position:relative !important;z-index:2 !important;margin-top:auto !important;margin-bottom:7px !important;}',   /* 圖下狀態列與血條拉開 7px,血條沉到最底、不再遮到 🩸💥🛡 */
-      'body.m-mobile #battle-view.area-fit .mob-target > div:last-child{position:relative !important;z-index:2 !important;margin:0 !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:16px"]{position:relative !important;z-index:2 !important;margin-top:auto !important;margin-bottom:7px !important;}',   /* 圖下狀態列(🩸💥🛡)用 margin-top:auto 沉到卡底 */
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
