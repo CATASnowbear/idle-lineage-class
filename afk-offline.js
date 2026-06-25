@@ -157,6 +157,38 @@
     try { return (player.inv || []).reduce(function (s, i) { return s + ((i && i.id === 'item_king_key') ? (i.cnt || 1) : 0); }, 0); }
     catch (e) { return 0; }
   }
+
+  // ----- 📜 離線掛機歷史紀錄(只寫自己的 afk_hist_<slot>,絕不呼叫 saveGame、不碰原作者存檔) ----
+  var HIST_PREFIX = 'afk_hist_';
+  var HIST_MAX    = 5;                          // 每個角色最多保留最近幾筆(同一個 key 一個陣列)
+  function histKey() { return HIST_PREFIX + currentSlot; }
+  // 背包前後差 → [{n,cnt,c}](c=品階顏色 class,取 DB.items[id].c 基底色);依數量多→少排序(顯示用)
+  function invDeltaList(before, after) {
+    var ids = {}, out = [];
+    for (var k in before.inv) ids[k] = 1;
+    for (var k2 in after.inv) ids[k2] = 1;
+    for (var id in ids) {
+      var d = (after.inv[id] || 0) - (before.inv[id] || 0);
+      if (d > 0) {
+        var dd = (typeof DB !== 'undefined' && DB.items && DB.items[id]) ? DB.items[id] : null;
+        out.push({ n: dd ? dd.n : id, cnt: d, c: dd ? (dd.c || '') : '' });
+      }
+    }
+    out.sort(function (a, b) { return b.cnt - a.cnt; });
+    return out;
+  }
+  // ⚠ 唯一寫入點:把一筆紀錄塞進 afk_hist_<slot> 陣列頭、截到上限。純 localStorage.setItem,不動原作者存檔、不 saveGame。
+  function recordHistory(rec) {
+    try {
+      if (!validSlot()) return;
+      var arr = [];
+      try { var raw = localStorage.getItem(histKey()); if (raw) arr = JSON.parse(raw) || []; } catch (e) { arr = []; }
+      if (!Array.isArray(arr)) arr = [];
+      arr.unshift(rec);
+      if (arr.length > HIST_MAX) arr = arr.slice(0, HIST_MAX);
+      localStorage.setItem(histKey(), JSON.stringify(arr));
+    } catch (e) { console.warn('[AFK] recordHistory error:', e); }
+  }
   // 地圖 id → 顯示名稱(查原作者的 MAP_CATEGORIES);查不到就回 id 本身
   function mapName(id) {
     try {
@@ -286,9 +318,11 @@
 
   // ----- 離線補跑(時間切片) ----------------------------------------------
   var catchingUp = false;
-  async function runCatchup(totalTicks, withOverlay, huntMap, prePride, preObl) {
+  var killTally = null;   // 📜 非 null 時(只在補跑中)累計各怪擊殺數 {怪名:次數};線上遊玩為 null → killMob 包裝零開銷
+  async function runCatchup(totalTicks, withOverlay, huntMap, prePride, preObl, timing) {
     if (catchingUp) return;
     catchingUp = true;
+    killTally = {};   // 📜 本次補跑的擊殺計數歸零
 
     var sliceMs = sliceFor(totalTicks);   // 依補跑長短決定畫面更新間隔:短→順、長→快
     var isClimb = !!(prePride && prePride.climb && !prePride.ranked && typeof enterPrideFloor === 'function');   // 排名挑戰不自動續
@@ -419,6 +453,48 @@
     }
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
     else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
+
+    // 📜 寫一筆離線掛機歷史紀錄(僅在「有 timing(真實離線)且真的結算了 done>0 tick」時記;debug forceCatchup 無 timing → 不記)
+    try {
+      if (timing && timing.closeTs && done > 0) {
+        var hKills = [];
+        for (var kn in killTally) hKills.push({ n: kn, cnt: killTally[kn] });
+        hKills.sort(function (a, b) { return a.cnt - b.cnt; });   // 數量「少 → 多」(稀有/BOSS 殺得少自然排前面)
+        var hKind, hMap;
+        if (climbSegs && climbSegs.length) {
+          hKind = 'climb';
+          hMap = '傲慢之塔（' + climbSegs[0].floor + ' → ' + climbSegs[climbSegs.length - 1].floor + ' 樓）';
+        } else if (isObl) { hKind = 'oblivion'; hMap = mapName(oblEndMap || huntMap); }
+        else if (isKing)  { hKind = 'king';     hMap = mapName(huntMap); }
+        else              { hKind = 'normal';   hMap = mapName(huntMap); }
+        var hExp, hGold, hLv;
+        if (climbSegs && climbSegs.length) {
+          hExp = 0; hGold = 0; hLv = 0;
+          climbSegs.forEach(function (s) { hExp += s.exp || 0; hGold += s.gold || 0; hLv += s.lv || 0; });
+        } else {
+          hExp = expTotal(after.lv, after.exp) - expTotal(before.lv, before.exp); if (hExp < 0) hExp = 0;
+          hGold = (after.gold || 0) - (before.gold || 0);
+          hLv = (after.lv || 0) - (before.lv || 0);
+        }
+        var loginTs = timing.loginTs || Date.now();
+        recordHistory({
+          v: 1,
+          closeTs: timing.closeTs,            // 關閉(離線開始)時間
+          loginTs: loginTs,                   // 登入(離線結束)時間
+          realMs: Math.max(0, loginTs - timing.closeTs),   // 真實離線時間(未封頂)→ 顯示「共 X 時 Y 分」
+          settledMs: done * TICK_MS,          // 實際結算時間 → 算平均效率用
+          capped: (loginTs - timing.closeTs) > CAP_MS,     // 真實時間是否超過 24h 上限(超過時實際只結算到上限)
+          kind: hKind,                        // normal / climb / oblivion / king
+          map: hMap,
+          exp: hExp, gold: hGold, lv: hLv,
+          items: invDeltaList(before, after),
+          kills: hKills,
+          died: !!died,
+          keysUsed: (kingInfo && kingInfo.keysUsed) || 0
+        });
+      }
+    } catch (e) { console.warn('[AFK] 寫離線紀錄失敗:', e); }
+    killTally = null;   // 📜 補跑結束,回到「線上 killMob 不計數」狀態
     try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
     try { if (typeof renderTabs === 'function') renderTabs(true); } catch (e) {}
     removeOverlay();
@@ -484,7 +560,7 @@
     var ms = Math.min(gap, CAP_MS);
     var ticks = Math.floor(ms / TICK_MS);
     if (ticks <= 0 && !isClimb && !isObl) return;   // 一般圖 gap≈0 直接 no-op;攀登/遺忘之島 gap≈0 仍要回到原地(ticks=0 補跑空轉,落點會 enterPrideFloor/enterOblivionMap)
-    runCatchup(Math.max(0, ticks), ticks > OVERLAY_MIN_TICK, savedMap, prePride, preObl);
+    runCatchup(Math.max(0, ticks), ticks > OVERLAY_MIN_TICK, savedMap, prePride, preObl, { closeTs: last, loginTs: now });   // timing → 供寫離線歷史紀錄(done>0 才會真的記)
   }
 
   // ----- 包裹 saveGame / loadGame -----------------------------------------
@@ -515,6 +591,18 @@
       var r = _changeMap.apply(this, arguments);
       stamp();
       return r;
+    };
+  }
+
+  // 📜 包住 killMob:只在離線補跑期間(killTally 非 null)依怪名累計擊殺數,供離線歷史紀錄的「擊殺」欄。
+  //   線上遊玩 killTally=null → 只多一次 if 判斷、零累計開銷。比照原作 killMob 的冪等(已死的怪不重複計)。
+  if (typeof window.killMob === 'function') {
+    var _killMob = window.killMob;
+    window.killMob = function (idx) {
+      if (killTally) {
+        try { var m = mapState.mobs[idx]; if (m && !m._dead && m.n) killTally[m.n] = (killTally[m.n] || 0) + 1; } catch (e) {}
+      }
+      return _killMob.apply(this, arguments);
     };
   }
 
@@ -555,11 +643,12 @@
 
   // ----- 除錯介面 ----------------------------------------------------------
   window.__afk = {
-    version: '1.0.0',
+    version: '1.1.0',
     capHours: CAP_HOURS,
     stamp: stamp,
     readTs: readTs,
     mapName: mapName,   // 對外:地圖 id→中文名(供 afk-mobile 在匯入頁顯示「掛在哪張地圖」)
+    histKey: histKey,   // 對外:目前角色的離線紀錄 key(供 afk-history)
     forceCatchup: function (mins) { runCatchup(Math.floor((mins || 60) * 60000 / TICK_MS), true); }
   };
 
