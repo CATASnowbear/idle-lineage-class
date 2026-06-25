@@ -1017,7 +1017,7 @@ const DB = {
         "bot_demon": { n: "惡魔長靴", legend: true, type: "arm", slot: "boots",  ac: 3, req: "all", safe: 4, p: 18000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
         "rng_mr": { n: "抗魔戒指", type: "acc", slot: "ring", ac: 0, mr: 5, req: "all", safe: 0, p: 10000, gachaWeight: 1 },
         "acc_demonbane": { n: "滅魔戒指", type: "acc", slot: "ring", ac: 0, mr: 10, req: "all", safe: 0, p: 100000, gachaWeight: 1, d: "蘊含滅魔之力的戒指。" },
-        "acc_doro": { n: "多羅戒指", type: "acc", slot: "ring", ac: 0, mhp: 5, weightCap: 5, req: "all", safe: 0, p: 20000, gachaWeight: 20, d: "多羅的戒指。負重上限 +5。" },
+        "acc_doro": { n: "多羅戒指", type: "acc", slot: "ring", ac: 0, mhp: 5, weightCap: 5, req: "all", safe: 0, p: 20000, gachaWeight: 20, d: "多羅的戒指。HP+5、負重上限 +5。" },
         "hlm_mummy_crown": { n: "木乃伊王的王冠", type: "arm", slot: "helm", ac: 2, hpR: 3, dex: 2, req: "elf,dark", safe: 6, p: 163000, legend: true, gachaWeight: 1, d: "自木乃伊王枯朽的頭顱上取下的黃金王冠，千年塵封下金光依舊。" },
         "acc_118": { n: "守護戒指", type: "acc", slot: "ring", ac: 1, req: "all", safe: 0, p: 10000, gachaWeight: 1 },
         "acc_119": { n: "長者戒指", type: "acc", slot: "ring", ac: 0, req: "all", safe: 0, p: 10000, mmp: 10, mpR: 1, gachaWeight: 1 },
@@ -11960,6 +11960,7 @@ Object.keys(DB.items).forEach(function(id){ let d = DB.items[id]; if (d && d.eff
      'wpn_18','wpn_16','wpn_halberd','wpn_12','wpn_crimson_spear'
     ].forEach(function(id){ if (DB.items[id]) DB.items[id].ignHardSkin = true; });   // 指定雙刀/具名劍/特定武器
     if (DB.items['wpn_death_finger']) delete DB.items['wpn_death_finger'].ignHardSkin;   // 鋼爪例外：死亡之指不加貫穿
+    // 🔮 神官魔杖／惡魔王魔杖：兩版本都保留貫穿(ignHardSkin·無經典閘)＋魔爆(eff:magicburst·經典自動停用)。一般版＝貫穿+魔爆、經典版＝只剩貫穿(魔爆停用)
 })();
 // 🎮 經典模式：tooltip 不顯示已被停用的武器/盾牌特效字樣（共鳴/魔爆/連射/反擊/出血/穿透/切割/居合/魔擊/鈍擊/重擊/格檔）；連擊/月光爆裂/即死等未停用者照常顯示
 const CLASSIC_HIDDEN_EFF_LABELS = ['共鳴','魔爆','連射','反擊','出血','穿透','切割','居合','魔擊','鈍擊','重擊','格檔'];
@@ -15441,6 +15442,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     heine: 'assets/area/森林.jpg',   // 🌲 海音（野外狩獵·共用森林背景·安全區 town_heine 不變）
     eva_kingdom: 'assets/area/伊娃王國.jpg',   // 🏰 伊娃王國（地監·專屬背景·area-fit）
     windwood: 'assets/area/沙漠.jpg',   // 🏜️ 風木（野外·共用沙漠背景）
+    windwood_dungeon: 'assets/area/風木地監.jpg',   // 🏰 風木地監（攻城獲勝後開放的城堡狩獵區·專屬背景·area-fit·dynamic 城堡區故不走同名探測、需在此明列）
     gludio: 'assets/area/城鎮周邊.jpg', kent: 'assets/area/城鎮周邊.jpg', giran: 'assets/area/城鎮周邊.jpg',   // 🏙️ 古魯丁/肯特/奇岩（野外·城鎮周邊·≠村莊周邊）
     training: 'assets/area/村莊周邊.jpg',   // 🆕 新兵修鍊場（套 area-fit·與其餘野外共用村莊周邊背景）
     dream_island: 'assets/area/夢幻之島.jpg',   // 🆕 夢幻之島（套 area-fit·專屬背景）
@@ -15465,7 +15467,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     thebes_temple: 'assets/area/底比斯.jpg'        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
 };
 const CATEGORY_AREA_BG = { wild: 'assets/area/村莊周邊.jpg', dungeon: 'assets/area/地監.jpg', siege: 'castle.png', tower: 'assets/area/傲慢之塔.jpg', rift: 'Rift.png' };   // 🆕 野外/地監/傲慢之塔狩獵改 area-fit 沙漠格式新背景；siege/rift 暫維持 16:9 cover。🗼 塔狩獵=傲慢之塔.jpg，入口安全區另由 TOWN_AREA_BG.tower 保留 TowerofInsolence.png 不變；🏛️ 底比斯3圖另由 SPECIAL_AREA_BG 覆寫（底比斯沙漠.jpg／底比斯.jpg）
-const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg', 'assets/area/地監深層.jpg', 'assets/area/象牙塔深層.jpg', 'assets/area/龍之谷地監深層.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
+const AREA_BG_FIT = new Set(['assets/area/沙漠.jpg', 'assets/area/水晶洞穴.jpg', 'assets/area/地監.jpg', 'assets/area/火龍窟.jpg', 'assets/area/森林.jpg', 'assets/area/村莊周邊.jpg', 'assets/area/傲慢之塔.jpg', 'assets/area/洞窟.jpg', 'assets/area/象牙塔.jpg', 'assets/area/伊娃王國.jpg', 'assets/area/城鎮周邊.jpg', 'assets/area/歐瑞.jpg', 'assets/area/拉斯塔巴德.jpg', 'assets/area/軍王之室.jpg', 'assets/area/安塔瑞斯.jpg', 'assets/area/法利昂.jpg', 'assets/area/巴拉卡斯.jpg', 'assets/area/底比斯沙漠.jpg', 'assets/area/底比斯.jpg', 'assets/area/龍之谷.jpg', 'assets/area/說話之島港口.jpg', 'assets/area/遺忘之島.jpg', 'assets/area/夢幻之島.jpg', 'assets/area/艾爾摩.jpg', 'assets/area/地監深層.jpg', 'assets/area/象牙塔深層.jpg', 'assets/area/龍之谷地監深層.jpg', 'assets/area/風木地監.jpg']);   // 🏜️ 條狀比例(非16:9·1920×580)背景：用 contain+area-fit(框高鎖圖比例·無上下黑邊·省空間給戰鬥日誌)。所有新狩獵區背景都列於此→自動套沙漠格式。⚠️這些 jpg 需放 assets/area/（同沙漠.jpg）；未放檔時背景空白但版面/格式仍正確。日後新增條狀背景就把路徑加進來
 const SPECIAL_TOWN_BG = { town_silent: 'silentcave.png' };                                        // 🔧 安全區逐張對應背景（沉默洞穴）
 const TOWN_AREA_BG = { village: 'village.png', castle: 'castle.png', tower: 'TowerofInsolence.png', rift: 'Rift.png' };   // 村莊畫面依分類（🗼 傲慢之塔入口；🌀 時空裂痕入口 Rift.png）
 // 🆕 同名背景圖：地圖顯示名稱(MAP_CATEGORIES 的 t) → 嘗試 assets/area/[名稱].jpg；探測結果快取(undefined=未探測、null=探測中、{found,fit}=結果)
