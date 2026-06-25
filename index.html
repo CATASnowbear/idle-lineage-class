@@ -1306,7 +1306,7 @@ const DB = {
         "wpn_qigu_obsidian": { n: "黑曜石奇古獸", type: "wpn", qigu: true, dmgS: 24, dmgL: 24, hit: 0, spd: 0.8, mdmg: 1, wis: 1, req: "illusion", safe: 6, p: 100000, gachaWeight: 10, d: "幻術士豢養的奇古獸，化作以心念支配的兵器。幻術士專屬·奇古獸。一般攻擊化為必中的魔法傷害（受魔抗減免）。魔法傷害+1、精神+1。" },
         "wpn_qigu_meditate": { n: "冥想奇古獸", type: "wpn", qigu: true, dmgS: 25, dmgL: 25, hit: 0, spd: 0.8, wis: 1, mpR: 5, mpRPerEn: 1, req: "illusion", safe: 6, p: 100000, gachaWeight: 10, d: "沉入冥想的奇古獸，靜默中源源汲取魔力。幻術士專屬·奇古獸。精神+1、MP自然恢復量+5（每強化+1再+1）。" },
         "wpn_qigu_resonance": { n: "共鳴奇古獸", type: "wpn", qigu: true, dmgS: 25, dmgL: 25, hit: 0, spd: 0.8, mdmg: 1, wis: 3, qiguProc: "phantom", req: "illusion", safe: 6, p: 300000, gachaWeight: 1, d: "與持有者心神共鳴的奇古獸，偶爾爆發出虛幻的衝擊。幻術士專屬·奇古獸。魔法傷害+1、精神+3。攻擊時 1% 機率施展幻影衝擊（每強化+1機率+1%），造成 80~160 無屬性固定傷害。" },
-        "wpn_qigu_frost": { n: "寒冰奇古獸", type: "wpn", qigu: true, dmgS: 25, dmgL: 25, hit: 0, spd: 0.8, mdmg: 1, int: 1, qiguProc: "mindbreak", req: "illusion", safe: 6, p: 300000, gachaWeight: 1, d: "凝著寒霜的奇古獸，能撬開敵人最脆弱的心防。幻術士專屬·奇古獸。魔法傷害+1、智力+1。攻擊時 1% 機率施展心靈破壞（每強化+1機率+1%），不消耗MP、造成玩家最大MP 5% 的傷害。" },
+        "wpn_qigu_frost": { n: "寒冰奇古獸", type: "wpn", qigu: true, dmgS: 25, dmgL: 25, hit: 0, spd: 0.8, mdmg: 1, int: 1, qiguProc: "mindbreak", req: "illusion", safe: 6, p: 300000, gachaWeight: 1, d: "凝著寒霜的奇古獸，能撬開敵人最脆弱的心防。幻術士專屬·奇古獸。魔法傷害+1、智力+1。攻擊時 1% 機率施展心靈破壞（每強化+1機率+1%），不消耗MP、造成玩家最大MP 5% 的傷害，再依魔法傷害加成（1＋魔法傷害/16）放大、受目標魔抗減免。" },
         "wpn_qigu_sapphire": { n: "藍寶石奇古獸", type: "wpn", qigu: true, dmgS: 26, dmgL: 26, hit: 0, spd: 0.8, mpR: 10, req: "illusion", safe: 6, p: 50000, gachaWeight: 30, d: "通體湛藍如海的奇古獸，魔力在其中緩緩流轉不息。幻術士專屬·奇古獸。MP自然恢復量+10。" },
         "wpn_illu_wand": { n: "幻術士魔杖", type: "wpn", dmgS: 10, dmgL: 10, hit: 3, dmgBonus: 0, spd: 1.0, mpR: 5, req: "illusion", safe: 6, p: 6000, gachaWeight: 30, d: "幻術士入門的法杖，杖頭水晶迴盪著淡淡共鳴之音。幻術士專屬魔杖。蘊含共鳴之力、MP自然恢復量+5、近距離命中+3。" },
         "shd_illu_book": { n: "幻術士法書", type: "arm", slot: "shield", ac: 2, block: 10, mhp: 20, mmp: 20, wis: 1, mpR: 1, req: "illusion", safe: 6, p: 6000, gachaWeight: 10, d: "記載幻術奧義的副手法書，翻動間護住持書者周身。幻術士專屬副手法書。格檔10%、HP+20、MP+20、精神+1、MP自然恢復量+1。" },
@@ -6113,7 +6113,7 @@ function qiguWeaponProc(target, wpn) {
         label = '幻影衝擊'; cls = 'player-special';
     } else if (wpn.qiguProc === 'mindbreak') {
         let effMr = (target.st && target.st.mrhalf > 0) ? (target.mr / 2) : target.mr;
-        dmg = Math.max(1, Math.floor((player.mmp || 0) * 0.05 * (ignoreMr ? 1 : mrMult(effMr))));   // 玩家最大MP 5%（不消耗MP）
+        dmg = Math.max(1, Math.floor((player.mmp || 0) * 0.05 * (1 + (player.d.magicDmg || 0) / 16) * (ignoreMr ? 1 : mrMult(effMr))));   // 玩家最大MP 5% ×(1+魔法傷害/16)（比照技能心靈破壞·不消耗MP）
         label = '心靈破壞';
     } else return;
     dmg = Math.max(1, Math.floor(dmg * fragileMult(target) * illuLvMult(player)));   // 🔮 幻術士等級加成 ×(1+等級/50)
@@ -8455,7 +8455,7 @@ function allyQiguAttack(ally, t, wpn) {
         if (t.curHp > 0 && Math.random() < (1 + en) / 100) {
             let pd = 0, lb = '';
             if (wpn.qiguProc === 'phantom') { pd = 79 + roll(1, 81); lb = '幻影衝擊'; }
-            else if (wpn.qiguProc === 'mindbreak') { let _m = (t.st && t.st.mrhalf > 0) ? t.mr/2 : t.mr; pd = Math.max(1, Math.floor((ally.mmp||0) * 0.05 * ((ally.mastery==='i_qigu' && wpn.qigu)?1:mrMult(_m)))); lb = '心靈破壞'; }
+            else if (wpn.qiguProc === 'mindbreak') { let _m = (t.st && t.st.mrhalf > 0) ? t.mr/2 : t.mr; pd = Math.max(1, Math.floor((ally.mmp||0) * 0.05 * (1 + ((ally.d && ally.d.magicDmg) || 0) / 16) * ((ally.mastery==='i_qigu' && wpn.qigu)?1:mrMult(_m)))); lb = '心靈破壞'; }   // 🔮 比照技能：×(1+魔法傷害/16)
             if (pd > 0) { pd = Math.max(1, Math.floor(pd * fragileMult(t) * illuLvMult(ally))); t.curHp -= pd; t.justHit = 'magic'; mobWake(t); logCombat(`<span class="font-bold" style="color:#a78bfa;">【協力·${lb}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${pd} 點傷害！`, 'magic'); }
         }
     }
