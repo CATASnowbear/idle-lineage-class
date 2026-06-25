@@ -574,18 +574,7 @@
   //   包住 openSlotSelect:原函式渲染後,在手機用 slotSummary(n) 的原始資料把每個存檔鈕重排成
   //   兩行(第一行 編號+職業、第二行 等級+暱稱)。用 textContent 寫入,暱稱不會被當 HTML(防 XSS)。
   //   桌機(mql 不命中)維持原樣不動;原作改掉 openSlotSelect / slotSummary 即自動失效(優雅降級,不弄壞畫面)。
-  // 把離線毫秒數格式化成「X 天 Y 小時 / X 小時 Y 分 / X 分鐘 / 剛剛」
-  function _fmtIdle(ms) {
-    if (ms < 0) ms = 0;
-    var s = Math.floor(ms / 1000);
-    if (s < 60) return '剛剛';
-    var m = Math.floor(s / 60);
-    if (m < 60) return m + ' 分鐘';
-    var h = Math.floor(m / 60), rm = m % 60;
-    if (h < 24) return rm ? (h + ' 小時 ' + rm + ' 分') : (h + ' 小時');
-    var d = Math.floor(h / 24), rh = h % 24;
-    return rh ? (d + ' 天 ' + rh + ' 小時') : (d + ' 天');
-  }
+  //   📍 掛機地點 / ⏱ 已掛機多久 的讀取邏輯抽到 afk-slotinfo.js(桌機/手機共用);本檔只負責手機版面排版。
   function wrapSlotSelect(mql) {
     if (typeof window.openSlotSelect !== 'function' || window.openSlotSelect.__afkmWrapped) return;
     var orig = window.openSlotSelect;
@@ -609,24 +598,14 @@
         var l1 = document.createElement('span'); l1.className = 'm-slot-l1'; l1.textContent = '存檔 ' + (i + 1) + '　' + sum.cls;
         var l2 = document.createElement('span'); l2.className = 'm-slot-l2'; l2.textContent = 'Lv.' + sum.lv + '　' + sum.name;
         btn.appendChild(l1); btn.appendChild(l2);
-        // 📍 目前掛在哪張地圖:讀 afk-offline 的即時地圖記錄 afk_map_<slot>(較準);沒有就退回存檔 blob 的 ms.current
-        var _mapId = '';
-        try { _mapId = localStorage.getItem('afk_map_' + (i + 1)) || ''; } catch (e) {}
-        if (!_mapId) { try { var _rs = JSON.parse(localStorage.getItem('lineage_idle_save_' + (i + 1))); _mapId = (_rs && _rs.ms && _rs.ms.current) || ''; } catch (e) {} }
-        if (_mapId) {
-          var _mn = (window.__afk && typeof window.__afk.mapName === 'function') ? window.__afk.mapName(_mapId) : _mapId;
-          var l3m = document.createElement('span'); l3m.className = 'm-slot-l3'; l3m.textContent = '📍 ' + _mn;
+        // 📍 掛機地點 + ⏱ 已掛機多久:資料由 afk-slotinfo.js 提供(桌機/手機共用);沒載到就跳過(優雅降級)
+        var _info = (window.AFK_SLOTINFO && window.AFK_SLOTINFO.read) ? window.AFK_SLOTINFO.read(i + 1) : null;
+        if (_info && _info.mapName) {
+          var l3m = document.createElement('span'); l3m.className = 'm-slot-l3'; l3m.textContent = '📍 ' + _info.mapName;
           btn.appendChild(l3m);
         }
-        // ⏱ 進匯入頁時讀一次「已掛機多久」(離線時間)＝now − afk-offline 的最後活躍心跳(afk_ts_<slot>);讀一次不更新
-        var _ts = 0; try { _ts = +localStorage.getItem('afk_ts_' + (i + 1)) || 0; } catch (e) {}
-        if (_ts > 0) {
-          var l3 = document.createElement('span'); l3.className = 'm-slot-l3';
-          var _idleMs = Date.now() - _ts;
-          var _capH = (window.__afk && window.__afk.capHours) || 24;   // 離線收益上限(小時),讀 afk-offline
-          var _txt = '⏱ 已掛機 ' + _fmtIdle(_idleMs);
-          if (_idleMs >= _capH * 3600000) _txt += '（收益上限 ' + _capH + ' 小時）';   // 顯示真實時間,但超過上限時提醒收益封頂
-          l3.textContent = _txt;
+        if (_info && _info.idleText) {
+          var l3 = document.createElement('span'); l3.className = 'm-slot-l3'; l3.textContent = _info.idleText;
           btn.appendChild(l3);
         }
       }
