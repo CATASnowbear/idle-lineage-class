@@ -29,5 +29,5 @@
 
 遊戲本體由 **巴哈姆特 秋玥** 製作，本專案只是在原作上加掛額外功能、沒有改動原本的遊戲內容：
 
-- 原版遊戲：https://shines871.github.io/idle-lineage-class/
+- 正版遊戲：https://shines871.github.io/idle-lineage-class/
 - 巴哈討論串：https://forum.gamer.com.tw/C.php?page=1&bsn=84452&snA=8362&tnum=273

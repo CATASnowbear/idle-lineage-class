@@ -56,7 +56,7 @@
       '<div class="afk-si-row">' +
         '<span class="afk-si-author">原作者：<span class="afk-si-name">秋玥</span> <a class="afk-si-link" href="https://shines871.github.io/idle-lineage-class/" target="_blank" rel="noopener">(正版連結)</a></span>' +
         '<span class="afk-si-sep">·</span>' +
-        '<span class="afk-si-time">原版最後同步：載入中…</span>' +
+        '<span class="afk-si-time">正版最後同步：載入中…</span>' +
       '</div>' +
       '<div class="afk-si-row"><a class="afk-si-link" href="https://forum.gamer.com.tw/C.php?bsn=84452&amp;snA=8362" target="_blank" rel="noopener">巴哈討論串</a>（本加掛版發布在 <a class="afk-si-link" href="https://forum.gamer.com.tw/Co.php?bsn=84452&amp;sn=37297" target="_blank" rel="noopener">301</a> 樓）</div>';
     menu.appendChild(foot);
@@ -69,7 +69,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         var t = j && j.syncedAt ? fmtTpe(j.syncedAt) : '';
-        if (t) { timeEl.textContent = '原版最後同步：' + t; }
+        if (t) { timeEl.textContent = '正版最後同步：' + t; }
         else { timeEl.style.display = 'none'; sepEl.style.display = 'none'; }   // 讀不到時間只藏時間段,作者照顯示
       })
       .catch(function () { timeEl.style.display = 'none'; sepEl.style.display = 'none'; });
