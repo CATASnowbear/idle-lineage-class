@@ -222,58 +222,6 @@
   })();
 
   /* --------------------------------------------------------------------------
-   * 修正#6:存檔匯出在 Android 下載 0 byte — 包住 downloadSaveFile,Android 改用穩健 blob 下載
-   *
-   * 問題:原作 downloadSaveFile 用 URL.createObjectURL 產生 blob: 連結再 <a download> 點擊,
-   *   Android Chrome(行動站台模式)常吐 0 byte 空檔。手機沒有 File System Access API
-   *   (showSaveFilePicker),exportSave 必走 downloadSaveFile 退路 → 一定中。
-   * 歷史:本修正原本改用 data:application/json + encodeURIComponent。後來原作者把「共用倉庫(_obj.wh)」
-   *   也一併寫進匯出(見 index.html exportSave),匯出體積變大 → data: URL 超過 Android 的下載長度上限
-   *   又變 0 byte(現象:電腦/iOS 正常、只有 Android 壞,且「之前好、現在壞」)。data: URL 不再可靠。
-   * 解法:**只在 Android** 改用 blob: 但補上兩個關鍵、修掉原作 0-byte 的兩個成因:
-   *   ① MIME 用 application/octet-stream(application/json 會被部分 Android 瀏覽器當文字內嵌開啟→存 0 byte)
-   *   ② revoke 延後到 60 秒(原作 1 秒;Android 下載管理員非同步讀 blob,太早 revoke 讀到空檔→0 byte)
-   *   blob 無 data: URL 的長度限制,可承載含倉庫的大存檔。其餘(iPhone/桌機)原封不動走原版,維持「好的別動」。
-   *   判定對齊 bug 條件:切「桌面版網站」時 UA 不含 Android → 自動走原路(本就正常);只有行動站台(UA 含
-   *   Android、會 0 byte 那種)才套本修正。exportSave 以全域名稱呼叫 downloadSaveFile,改寫同一個全域即生效。
-   * 何時可移除:原作者自行做了 Android 可用的下載時,本段即多餘,可整段刪掉(抓不到 downloadSaveFile 自動 no-op)。
-   * ------------------------------------------------------------------------ */
-  (function () {
-    var isAndroid = /Android/i.test(navigator.userAgent || '');
-    function install() {
-      if (typeof window.downloadSaveFile !== 'function' || window.downloadSaveFile.__androidDl) return false;
-      var orig = window.downloadSaveFile;
-      var patched = function (data, fname) {
-        if (!isAndroid) return orig.apply(this, arguments);   // iPhone / 桌機:原作者版本,完全不動
-        try {
-          // octet-stream:強制當檔案下載(application/json 會被部分 Android 瀏覽器當文字內嵌開啟→存成 0 byte)
-          var blob = new Blob([data], { type: 'application/octet-stream' });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url; a.download = fname; a.rel = 'noopener'; a.style.display = 'none';
-          document.body.appendChild(a); a.click();
-          // 延後很久再 revoke:Android 下載管理員是非同步讀 blob,太早 revoke(原作 1 秒)會讀到空檔→0 byte
-          setTimeout(function () { try { a.remove(); URL.revokeObjectURL(url); } catch (e) {} }, 60000);
-          if (typeof window.logSys === 'function')
-            window.logSys('<span class="text-indigo-300 font-bold">✔ 存檔已匯出至下載資料夾：' + fname + '</span>');
-        } catch (e) {
-          try { return orig.apply(this, arguments); } catch (e2) {}   // 真失敗才退回原版,至少不會更糟
-        }
-      };
-      patched.__androidDl = true;
-      window.downloadSaveFile = patched;
-      console.log('[AFK-fixes] 匯出下載 Android 改用 blob+octet-stream+延後revoke(修手機 0 byte) 已掛上;非 Android 走原版');
-      return true;
-    }
-    try {
-      if (!install()) {
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
-        else setTimeout(install, 0);
-      }
-    } catch (e) { console.warn('[AFK-fixes] 匯出下載修正 安裝失敗,已略過:', e); }
-  })();
-
-  /* --------------------------------------------------------------------------
    * 修正#7:適用職業 logo 點擊浮現職業名 tip(桌機 / 手機皆然)
    *
    * 問題:物品顯示的「適用職業」是一排職業 logo 圖示(原作者 buildItemDescHTML 產生,帶 title/alt
