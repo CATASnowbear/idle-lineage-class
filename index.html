@@ -1046,7 +1046,7 @@ const DB = {
         "potion_blue": { n: "藍色藥水", type: "pot", req: "all", p: 1046, c: "text-blue-300", d: "精神10以下MP恢復+1，11以上大幅增加，持續600秒", eff: "blue", dur: 600, gachaWeight: 0 },
         "potion_brave": { n: "勇敢藥水", type: "pot", req: "knight,dragon,warrior,royal", p: 880, c: "text-purple-300", d: "騎士／龍騎士／戰士／王族限定，玩家攻擊速度加快33%（可與加速／覺醒／變身相乘疊加），持續300秒", eff: "brave", dur: 300, gachaWeight: 0 },
         "new_item_139": { n: "精靈餅乾", type: "pot", req: "elf", p: 1980, c: "text-yellow-200", d: "妖精限定，攻擊速度加快15%，持續300秒", eff: "elfcookie", dur: 300, gachaWeight: 0 },
-        "new_item_140": { n: "慎重藥水", type: "pot", req: "mage", p: 600, c: "text-purple-300", d: "法師限定，魔法傷害+2、MP恢復+2，持續300秒", eff: "cautious", dur: 300, gachaWeight: 0 },
+        "new_item_140": { n: "慎重藥水", type: "pot", req: "mage,illusion", p: 600, c: "text-purple-300", d: "法師／幻術士限定，魔法傷害+2、MP恢復+2，持續300秒", eff: "cautious", dur: 300, gachaWeight: 0 },
         "new_item_141": { n: "安特的水果", type: "pot", req: "all", p: 360, c: "text-green-300", d: "恢復 44~107 HP（僅能手動使用）", gachaWeight: 0 },
         "scroll_poly": { n: "變形卷軸", type: "scroll", req: "all", p: 1300, c: "text-gray-300", d: "根據玩家等級改變外觀與能力，持續1800秒", eff: "poly", dur: 1800, gachaWeight: 0 },
         "scroll_magicbarrier": { n: "魔法卷軸(魔法屏障)", type: "scroll", req: "all", p: 1500, c: "text-cyan-300", d: "使用後獲得「魔法屏障」狀態，持續16秒；成功抵擋一次技能傷害後3秒內無法再次施放（自然到期或取消則無冷卻）", eff: "magicbarrier", gachaWeight: 0 },
@@ -8531,7 +8531,7 @@ function allyCastMagic(ally, sk) {
         t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic';
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         mobWake(t);
-        if (ally._setWhiteBird5 && t.curHp > 0 && !t._dead) { if (!t.st) t.st = newMobStatus(); t.st.fragile = 30; }   // 🔮 白鳥 5/5（傭兵）：傷害魔法命中亦附加脆弱（傭兵以魔法為主要攻擊，補回脆弱效果）
+        // 🔮 白鳥 5/5：傭兵「施放傷害魔法技能」不觸發脆弱（2026-06 用戶要求：只有一般攻擊/基礎普攻才觸發）；基礎普攻(法師光箭/幻術士奇古獸/物理 on-hit)仍於各自路徑套用脆弱
         texts.push(`<span class="${getMobColor(t.lv)}">${t.n}</span> ${totalDmg}${isCrit?'(爆)':''}`);
     });
     if (sk.status) { let _svS = player; player = ally; try { targets.forEach(t => { if (t && t.curHp > 0) applyMobStatus(t, sk.status, sk.n); }); } finally { player = _svS; } }   // 🔧 傷害魔法附帶異常狀態（🐉 奪命之雷暈 / 🔮 混亂 / 幻想沉睡）：以傭兵自身魔法命中判定（與玩家魔法分支 9367 一致）
@@ -10105,7 +10105,7 @@ function autoActions() {
         { id: 'set-haste', pot: 'potion_haste', b: 'haste', buyId: 'set-auto-buy-haste' },
         { id: 'set-brave', pot: 'potion_brave', b: 'brave', req: 'knight,dragon,warrior,royal', buyId: 'set-auto-buy-brave' },
         { id: 'set-blue', pot: 'potion_blue', b: 'blue', buyId: 'set-auto-buy-blue' },
-        { id: 'set-cautious', pot: 'new_item_140', b: 'cautious', req: 'mage', buyId: 'set-auto-buy-cautious' },
+        { id: 'set-cautious', pot: 'new_item_140', b: 'cautious', req: 'mage,illusion', buyId: 'set-auto-buy-cautious' },
         { id: 'set-elfcookie', pot: 'new_item_139', b: 'elfcookie', req: 'elf', buyId: 'set-auto-buy-elfcookie' },
         { id: 'set-poly', pot: 'scroll_poly', b: 'poly', buyId: 'set-auto-buy-poly' },
         { id: 'set-magicbarrier', pot: 'scroll_magicbarrier', b: 'sk_magic_shield' }
@@ -10154,6 +10154,8 @@ function autoActions() {
             if(sk.darkStealth && player._darkStealthCd > state.ticks) return;   // 🔧 暗隱術：冷卻中不自動施放（須身上無暗隱術且冷卻結束才再施放）
             if(sk.awaken && player.mastery !== 'k_awaken' && ['sk_dragon_awaken_antares','sk_dragon_awaken_falion','sk_dragon_awaken_baraka'].some(a => (player.buffs[a]||0) > 0)) return;   // 🐉 覺醒互斥：已有一種覺醒生效時不自動施放其他覺醒（避免互相清除而反覆耗HP/MP）；覺醒精通可同時三種
             if(sk.cube && mapState.current.startsWith('town_')) return;   // 🔮 立方：安全區(村莊)不自動施放，進入狩獵區(非 town_)才展開
+            // 👑 力盔/敏盔版同效果已生效：跳過自動施放對應的法師/王族魔法版（recomputeStats@4037 會把同名 buff 歸零；若仍自動施放會每 tick 被歸零後反覆重施＝無限洗版）
+            if((sid === 'sk_ench_wpn' && (player.buffs.sk_helm_str1||0) > 0) || (sid === 'sk_dex_up' && (player.buffs.sk_helm_dex1||0) > 0) || (sid === 'sk_reveal' && (player.buffs.sk_helm_str2||0) > 0)) return;
             let chk = document.getElementById(`auto-sk-${sid}`);
             if(chk && chk.checked && (!player.buffs[sid] || player.buffs[sid] <= 0)) {
                 castSkill(sid);
@@ -15874,12 +15876,12 @@ function startGame() {
 }
 
 function updateClassPotionRows() {
-    // 勇敢藥水：騎士／龍騎士限定；慎重藥水：法師限定；精靈餅乾：妖精限定
+    // 勇敢藥水：騎士／龍騎士限定；慎重藥水：法師／幻術士限定；精靈餅乾：妖精限定
     let braveRow = document.getElementById('ui-brave-row');
     let cautiousRow = document.getElementById('ui-cautious-row');
     let elfRow = document.getElementById('ui-elfcookie-row');
     if(braveRow) braveRow.classList.toggle('hidden', player.cls !== 'knight' && player.cls !== 'dragon' && player.cls !== 'warrior' && player.cls !== 'royal');
-    if(cautiousRow) cautiousRow.classList.toggle('hidden', player.cls !== 'mage');
+    if(cautiousRow) cautiousRow.classList.toggle('hidden', player.cls !== 'mage' && player.cls !== 'illusion');
     if(elfRow) elfRow.classList.toggle('hidden', player.cls !== 'elf');
 }
 
