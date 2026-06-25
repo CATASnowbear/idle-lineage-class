@@ -10,7 +10,7 @@
  *
  * 不在這裡 commit/push;那由 workflow 在「冒煙測試通過」後才做。
  * ========================================================================== */
-import { writeFileSync, readFileSync, existsSync, mkdirSync, appendFileSync, readdirSync, statSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, mkdirSync, appendFileSync, readdirSync, statSync, rmSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { stampSwVersion } from './stamp-sw-version.mjs';
@@ -53,6 +53,10 @@ const PLUGINS = [
   { file: 'afk-history.js',  comment: '離線掛機歷史紀錄:首頁設定選單列出各角色最近 5 筆離線收益(純唯讀讀 afk_hist_<slot>;可獨立維護,原作者更新後重新加回此行即可)' },
 ];
 
+// 我們自己放在 assets/ 底下、非上游的檔案白名單(孤兒清理時略過,不會被當「作者移除的圖」刪掉)。
+//   目前為空:本專案自有圖示(favicon / pwa-icon-*)都在「根目錄」、不在 assets/。將來若在 assets/ 放自有圖,把路徑加進這裡。
+const OWN_ASSETS = new Set([]);
+
 function setOutput(k, v) {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${k}=${v}\n`);
   console.log(`[out] ${k}=${v}`);
@@ -90,6 +94,7 @@ if (htmlChanged) writeFileSync('index.html', merged);
 //    Linux 上中文檔名直接用 URL;既有檔則先比 SHA,一樣就跳過、不一樣才重抓。
 const assetsAdded = [];
 const assetsChanged = [];
+const assetsRemoved = [];
 try {
   const tree = await fetch(TREE_API, { headers: ghHeaders }).then((r) => r.json());
   const wanted = (tree.tree || []).filter(
@@ -109,6 +114,19 @@ try {
     mkdirSync(dirname(item.path), { recursive: true });
     writeFileSync(item.path, buf);
     (isNew ? assetsAdded : assetsChanged).push(item.path);   // 新增 vs 既有被換
+  }
+
+  // 4b. 清除孤兒圖:作者上游已移除、本地卻還留著的 assets/ 檔 → 直接刪。
+  //   刪了本地檔 → assets-manifest.json(下面 4c 走訪本地產生)就不再含它 → 玩家端 SW reconcileImages
+  //   下次載入發現「快取有、manifest 沒有」會自動 evict,死圖一路收乾淨。
+  //   ⚠ 只在「成功取得上游檔案樹(wanted)」時才跑(在本 try 內);上面 fetch 失敗就不會走到這、不刪,避免誤判把圖清空。
+  if (existsSync('assets')) {
+    const upstreamSet = new Set(wanted.map((t) => t.path));
+    for (const p of walkAssets('assets')) {
+      if (upstreamSet.has(p) || OWN_ASSETS.has(p)) continue;   // 上游現有、或我們自己的 → 保留
+      rmSync(p);
+      assetsRemoved.push(p);
+    }
   }
 } catch (e) {
   console.warn('[warn] 補圖階段出錯(不致命,繼續):', e.message);
@@ -139,7 +157,7 @@ if (existsSync('assets')) {
 //     index.html 一變(原版同步)hash 就變 → 玩家端偵測到新 sw.js → 觸發 PWA 更新流程。
 const codeVersion = stampSwVersion() || '';
 
-const changed = htmlChanged || assetsAdded.length > 0 || assetsChanged.length > 0;
+const changed = htmlChanged || assetsAdded.length > 0 || assetsChanged.length > 0 || assetsRemoved.length > 0;
 // 記錄本次同步時間,供玩家端首頁(afk-syncinfo)顯示「原版最後同步」。
 // 無條件寫;但 workflow 只在 changed 時才 commit 這檔,故倉庫裡的時間=最後一次真的有合併更新的時間。
 writeFileSync('last-sync.json', JSON.stringify({ syncedAt: new Date().toISOString() }) + '\n');
@@ -150,8 +168,10 @@ setOutput('changed', changed ? 'true' : 'false');
 setOutput('html_changed', htmlChanged ? 'true' : 'false');
 setOutput('assets_added', String(assetsAdded.length));
 setOutput('assets_changed', String(assetsChanged.length));   // 既有 asset 被換過(玩家端逐張對帳只重抓這些)
+setOutput('assets_removed', String(assetsRemoved.length));   // 作者移除的孤兒圖(已從本地刪除;玩家端 SW 下次載入自動 evict)
 setOutput('code_version', codeVersion);                      // 程式桶版本(依 index.html＋外掛內容 hash)
 setOutput('game_title', gameTitle);
-console.log(`index.html 變更: ${htmlChanged} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length}`);
+console.log(`index.html 變更: ${htmlChanged} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length} | 移除孤兒圖: ${assetsRemoved.length}`);
 if (assetsAdded.length) console.log('新增:\n' + assetsAdded.join('\n'));
 if (assetsChanged.length) console.log('更新:\n' + assetsChanged.join('\n'));
+if (assetsRemoved.length) console.log('移除(孤兒):\n' + assetsRemoved.join('\n'));
