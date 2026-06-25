@@ -467,6 +467,12 @@
     try { if (typeof buildItemDescHTML === 'function') gameHTML = buildItemDescHTML(_baseInst(id)); } catch (e) {}
     if (!gameHTML) gameHTML = d.d || '';
     var body = gameHTML ? '<div style="line-height:1.8;margin:4px 0;">' + gameHTML + '</div>' : '';
+    // 攻擊速度:遊戲的 buildItemDescHTML 不顯示武器攻速,在這補回(讀 DB 的 spd=每次攻擊間隔秒數,越低越快;未填預設 1.0,與戰鬥碼 wpn.spd 同源)
+    var spdLine = '';
+    if (d.type === 'wpn') {
+      var spd = (d.spd != null) ? d.spd : 1.0;
+      spdLine = '<div style="line-height:1.8;margin:4px 0;"><span class="text-orange-300">攻擊速度: 每 ' + spd + ' 秒一次（數值越低攻擊越快）</span></div>';
+    }
     var priceLine = d.p ? '<div class="m-dex-craft-mats" style="color:#cbd5e1;">賣店價：' + Math.floor(d.p * 0.3).toLocaleString() + ' 金幣</div>' : '';
     // 取得方式:手動補(itemAcquire)/ 歐西里斯寶箱 / 中性句;製作、商店、查掉落鈕沿用
     var acq = '';
@@ -478,7 +484,7 @@
     if (ts2) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts2) + '</div></div>';
     if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
-    return head + typeLine + body + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
+    return head + typeLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
