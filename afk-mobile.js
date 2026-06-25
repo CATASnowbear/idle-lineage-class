@@ -487,9 +487,27 @@
     btn.type = 'button';
     btn.className = 'm-heal-go' + (kind === 'fruit' ? ' m-fruit-go' : '');
     btn.textContent = kind === 'fruit' ? '食用' : '喝水';
-    btn.addEventListener('click', kind === 'fruit' ? eatFruit : manualDrink);
+    bindHoldRepeat(btn, kind === 'fruit' ? eatFruit : manualDrink, kind === 'fruit' ? hasFruit : function () { return !!pickHealPot(); });
     row.appendChild(img); row.appendChild(cnt); row.appendChild(btn);
     return row;
+  }
+  // 按住連續補血:手機長按「喝水/食用」→ 依藥水冷卻(player.cds.pot,1 秒)節奏反覆喝;放開即停。
+  //   沒貨就停(不狂洗「沒有可用」log);按下立即喝一次→快速點一下仍等同單抽。冷卻/補血/消耗仍由原作 useItem 負責。
+  function bindHoldRepeat(btn, doHeal, canHeal) {
+    var timer = null;
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+    function tick() {
+      if (typeof player === 'undefined' || !player) { stop(); return; }
+      if (!canHeal()) { stop(); return; }              // 沒藥水/水果→停,避免每輪洗 log
+      if (player.cds && player.cds.pot > 0) return;     // 冷卻中→這輪略過,等冷卻好再喝
+      doHeal();
+    }
+    function start(e) { if (e) e.preventDefault(); stop(); tick(); timer = setInterval(tick, 150); }
+    btn.addEventListener('pointerdown', start);
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, stop); });
+  }
+  function hasFruit() {
+    return (typeof player !== 'undefined' && player && player.inv) ? player.inv.some(function (x) { return x.id === 'new_item_141' && (x.cnt || 0) > 0; }) : false;
   }
   // 找出「這次手動喝水實際會喝的那瓶」:優先設定選的,其次紅→橙→白,都沒貨回 null。
   function pickHealPot() {
@@ -686,7 +704,7 @@
       'body.m-mobile #m-heal-bar .m-heal-fruit.m-show{display:flex;}',
       'body.m-mobile #m-heal-bar .m-heal-ic{width:36px;height:36px;flex:0 0 auto;border-radius:7px;background:#1e293b;border:1px solid #334155;object-fit:contain;padding:2px;}',
       'body.m-mobile #m-heal-bar .m-heal-cnt{flex:0 0 auto;min-width:44px;color:#e2e8f0;font-size:15px;font-weight:bold;}',
-      'body.m-mobile #m-heal-bar .m-heal-go{flex:1 1 auto;padding:13px;border-radius:10px;color:#fff;font-size:16px;font-weight:bold;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid #ef4444;background:linear-gradient(#dc2626,#b91c1c);}',
+      'body.m-mobile #m-heal-bar .m-heal-go{flex:1 1 auto;padding:13px;border-radius:10px;color:#fff;font-size:16px;font-weight:bold;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid #ef4444;background:linear-gradient(#dc2626,#b91c1c);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;}',   /* 按住連喝:禁長按選字/系統選單,touch-action 避免長按被當手勢 */
       'body.m-mobile #m-heal-bar .m-heal-go:active{filter:brightness(.85);transform:translateY(1px);}',
       'body.m-mobile #m-heal-bar .m-fruit-go{border-color:#22c55e;background:linear-gradient(#16a34a,#15803d);}',   /* 安特的水果列用綠色區分 */
       'body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-ic,body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-cnt,body.m-mobile #m-heal-bar .m-heal-row.m-empty .m-heal-go{filter:grayscale(.65);opacity:.5;}',
@@ -715,9 +733,9 @@
       'body.m-mobile #mob-list .mob-target{height:252px !important;overflow:hidden !important;}',
       'body.m-mobile #mob-list .mob-target > div:first-child > span{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.15;}',
       /* 原作把怪名改成預設 opacity:0、靠滑鼠 hover(或被點到的那隻 .name-show)才顯示(index.html .mob-name)。
-         手機無 hover→所有怪名全程隱形。手機一律強制常顯(只標選取目標資訊太少;5 隻名字靠下方縮字+單行省略塞得下)。
-         原作哪天改回怪名常顯,本行即多餘、無害。 */
-      'body.m-mobile #battle-view .mob-name{opacity:1 !important;}',
+         手機無 hover→所有怪名全程隱形。手機改成「只顯示選取目標(.active)那隻」的怪名(5 隻全顯太擠、窄卡硬塞會被截到剩一字),
+         且不截斷(見下方 .mob-name 規則:單行不換行、比卡寬時往左右溢出)。原作哪天改回怪名常顯,本段即多餘、無害。 */
+      'body.m-mobile #battle-view .mob-target.active .mob-name{opacity:1 !important;}',
       /* 🏜️ 原作「狩獵區條狀背景」#battle-view.area-fit：把戰鬥框鎖成 aspect-ratio:1920/580 + overflow:hidden、
          怪物卡 height:100%。手機窄寬下這條只剩 ~120px、怪被壓成一條矮帶且超小(實測移掉本段就是這樣)。
          手機改成「文字疊圖」緊湊版型:解除短比例、框高隨卡(背景仍 cover 鋪滿、不留黑塊);怪物卡 158px,
@@ -727,12 +745,12 @@
          原作哪天不再用 area-fit 時整段自動失效、無害。 */
       'body.m-mobile #battle-view.area-fit{aspect-ratio:auto !important;overflow:hidden !important;background-size:cover !important;background-position:center !important;}',   /* 框高隨怪物卡;背景 cover 鋪滿(原作 JS inline 設 contain→下方露黑塊,!important 蓋過) */
       'body.m-mobile #battle-view.area-fit #mob-list{height:auto !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target{height:158px !important;min-height:0 !important;position:relative !important;display:flex !important;flex-direction:column !important;justify-content:flex-start !important;padding:1px 11px 2px !important;overflow:hidden !important;}',   /* 左右 11px:讓血條/名字不貼卡邊(絕對定位的怪物圖 inset:0 不受 padding 影響、仍滿版) */
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap{position:absolute !important;inset:0 !important;z-index:0 !important;margin:0 !important;padding:48px 2px 24px !important;box-sizing:border-box !important;align-items:center !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target{height:158px !important;min-height:0 !important;position:relative !important;display:flex !important;flex-direction:column !important;justify-content:flex-start !important;padding:1px 11px 2px !important;overflow:visible !important;}',   /* overflow:visible→選取目標的長名可溢出卡邊不被截;怪物圖改由 .mob-img-wrap 自己 overflow:hidden 裁切、不靠卡片裁 */
+      'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap{position:absolute !important;inset:0 !important;z-index:0 !important;margin:0 !important;padding:48px 2px 24px !important;box-sizing:border-box !important;align-items:center !important;overflow:hidden !important;}',   /* overflow:hidden:把怪物圖裁在卡範圍內(原本靠卡片裁,卡改 visible 後改這裡裁) */
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap .mob-img-inner{height:100% !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap img{height:100% !important;width:auto !important;max-width:100% !important;padding:0 !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name{position:relative !important;z-index:2 !important;margin:0 !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name span{font-size:11px !important;line-height:1.1 !important;display:block !important;max-width:100% !important;white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}',   /* 五格時卡僅 ~55px 寬,名字單行縮字+省略,不換行不撐高 */
+      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name{position:relative !important;z-index:3 !important;margin:0 !important;overflow:visible !important;justify-content:center !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target > .mob-name span{font-size:12px !important;line-height:1.1 !important;white-space:nowrap !important;overflow:visible !important;max-width:none !important;}',   /* 只顯示選取目標:單行不截斷;名字比卡寬時靠 flex 置中往左右等量溢出(卡 overflow:visible 讓它露出) */
       'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:18px"]{position:relative !important;z-index:2 !important;margin:0 !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:16px"]{position:relative !important;z-index:2 !important;margin-top:auto !important;margin-bottom:7px !important;}',   /* 圖下狀態列(🩸💥🛡)用 margin-top:auto 沉到卡底 */
 
