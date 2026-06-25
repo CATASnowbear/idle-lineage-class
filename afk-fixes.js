@@ -222,6 +222,62 @@
   })();
 
   /* --------------------------------------------------------------------------
+   * 修正#6:存檔匯出在 Android 行動模式下載 0 byte — 改用 Web Share API
+   *
+   * 問題:原作 downloadSaveFile 用 blob: + <a download> 觸發下載。Android Chrome 行動模式
+   *   的下載管理員是非同步的,blob URL 常在下載管理員讀取前被 revoke,導致下載 0 byte。
+   *   切到「桌面版網站」模式就正常:該模式下 window.showSaveFilePicker 可用,exportSave 走
+   *   File System API 路徑,根本不進 downloadSaveFile。
+   * 解法:只在 Android 行動模式(UA 含 Android)包住 downloadSaveFile,改用 Web Share API
+   *   (navigator.share with files)。Share API 不走下載管理員,直接交給 Android 系統的
+   *   分享 / 存檔對話框,Android Chrome 75+ 皆支援。
+   *   切桌面版時 UA 不含 Android → 自動走原版(且 showSaveFilePicker 也先攔住,不到這裡);
+   *   iOS / 桌機走原版不動。
+   * 何時可移除:原作者把 downloadSaveFile 改成 Android 可靠的下載方式時,本段即多餘,
+   *   可整段刪掉(抓不到 downloadSaveFile 自動 no-op)。
+   * ------------------------------------------------------------------------ */
+  (function () {
+    var isAndroidMobile = /Android/i.test(navigator.userAgent || '');
+
+    function install() {
+      if (!isAndroidMobile) return true;
+      if (typeof window.downloadSaveFile !== 'function' || window.downloadSaveFile.__androidShareDl) return false;
+      var orig = window.downloadSaveFile;
+      var patched = function (data, fname) {
+        try {
+          var file = new File([data], fname, { type: 'application/json' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: fname })
+              .then(function () {
+                try {
+                  if (typeof window.logSys === 'function')
+                    window.logSys('<span class="text-indigo-300 font-bold">✔ 存檔已匯出：' + fname + '</span>');
+                } catch (e) {}
+              })
+              .catch(function (err) {
+                if (err && err.name === 'AbortError') return;   // 使用者取消分享
+                try { orig(data, fname); } catch (e) {}         // share 失敗才退回原版
+              });
+            return;
+          }
+        } catch (e) {}
+        return orig.apply(this, arguments);   // canShare 不支援(舊版 Android)→ 退回原版
+      };
+      patched.__androidShareDl = true;
+      window.downloadSaveFile = patched;
+      console.log('[AFK-fixes] 匯出下載 Android 改用 Web Share API(修手機 0 byte) 已掛上;非 Android 走原版');
+      return true;
+    }
+
+    try {
+      if (!install()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+        else setTimeout(install, 0);
+      }
+    } catch (e) { console.warn('[AFK-fixes] Android 匯出 Web Share 安裝失敗,已略過:', e); }
+  })();
+
+  /* --------------------------------------------------------------------------
    * 修正#7:適用職業 logo 點擊浮現職業名 tip(桌機 / 手機皆然)
    *
    * 問題:物品顯示的「適用職業」是一排職業 logo 圖示(原作者 buildItemDescHTML 產生,帶 title/alt
