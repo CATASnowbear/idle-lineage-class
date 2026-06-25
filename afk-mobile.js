@@ -1055,10 +1055,30 @@
       var nameEl = host.querySelector ? host.querySelector('.font-bold, b, strong') : null;   // 按鈕內粗體=該項名稱(如精通名)
       return { name: nameEl ? nameEl.textContent.trim() : '', body: t.replace(/\n/g, '<br>'), color: '' };
     }
+    // 技能詳情 HTML:借遊戲自己的技能 tooltip(它把 buildSkillTipHTML 寫進 .game-tooltip)再取出重用,
+    //   不另寫一份格式邏輯(作者改技能呈現會自動跟上)。取不到就回空字串、優雅降級(點了沒事,等同原本)。
+    function skillDetailHTML(host) {
+      if (!host || !host.getAttribute('data-tip-skill')) return '';
+      try {
+        var r = host.getBoundingClientRect();
+        host.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+      } catch (e) { return ''; }
+      var gt = document.querySelector('.game-tooltip');
+      if (!gt) return '';
+      var html = gt.innerHTML || '';
+      gt.style.display = 'none';   // 取出後收掉遊戲 hover tooltip,只用手機卡片呈現
+      return html;
+    }
     function open(c) {
       card.innerHTML = '<button type="button" class="m-tip-x">✕</button>'
         + '<div class="m-tip-name ' + c.color + '">' + c.name + '</div>'
         + '<div class="m-tip-body">' + c.body + '</div>';
+      card.querySelector('.m-tip-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
+      modal.classList.add('open'); modalOpen = true;
+    }
+    // 技能詳情:直接放整段 HTML(技能 tooltip 自帶名稱),不套 name 區塊
+    function openRaw(bodyHTML) {
+      card.innerHTML = '<button type="button" class="m-tip-x">✕</button><div class="m-tip-body">' + bodyHTML + '</div>';
       card.querySelector('.m-tip-x').addEventListener('click', function (e) { e.stopPropagation(); close(); });
       modal.classList.add('open'); modalOpen = true;
     }
@@ -1071,6 +1091,19 @@
       if (swallow && !modal.contains(e.target)) { swallow = false; clearTimeout(swallowTimer); e.preventDefault(); e.stopImmediatePropagation(); }
     }, true);
 
+    // 🔧 手機:點一下「非手動」技能格(div[data-tip-skill])→ 顯示技能詳情卡。
+    //   手動技能是 <button onclick=manualCast>(右下角「施」),不在此攔截 → 維持點擊施放;其詳情走長按。
+    document.addEventListener('click', function (e) {
+      if (!document.body.classList.contains('m-mobile') || modalOpen) return;
+      if (!e.target || !e.target.closest) return;
+      var cell = e.target.closest('div[data-tip-skill]');
+      if (!cell) return;
+      var sh = skillDetailHTML(cell);
+      if (!sh) return;
+      e.preventDefault(); e.stopPropagation();
+      openRaw(sh);
+    }, false);
+
     var timer = null, sx = 0, sy = 0, host = null, hostKind = 'item';
     document.addEventListener('touchstart', function (e) {
       if (!document.body.classList.contains('m-mobile') || modalOpen) return;
@@ -1082,11 +1115,12 @@
         if (te && ic && ic.contains(te) && (te.getAttribute('title') || '').trim()) titleEl = te;
       }
       if (!h && !titleEl) return;
-      host = h || titleEl; hostKind = h ? 'item' : 'title';
+      host = h || titleEl; hostKind = h ? (h.getAttribute('data-tip-skill') ? 'skill' : 'item') : 'title';
       var t = e.touches[0]; sx = t.clientX; sy = t.clientY;
       clearTimeout(timer);
       timer = setTimeout(function () {
         timer = null;
+        if (hostKind === 'skill') { var sh = skillDetailHTML(host); if (!sh) return; openRaw(sh); arm(); return; }   // 長按技能(含手動技能):看詳情
         var c = (hostKind === 'item') ? resolve(host) : resolveTitle(host);
         if (!c) return;        // 解析不出內容 → 不開卡,維持一般操作
         open(c); arm();
