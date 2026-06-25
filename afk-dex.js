@@ -131,15 +131,16 @@
       // 去重:原作者的地圖怪物清單可能把同一隻怪列兩次(如 windwood 重複列杜賓狗),否則出沒地圖會出現兩個同名
       var maps = (mobToMaps[id] || []).map(mapNameOf).filter(function (n, i, a) { return a.indexOf(n) === i; });
       // 合併「全部掉落表」——必須與原作 _auditMobDrops 讀的「同一組」表,否則他統計查得到、我們查不到(戰士印記那批踩過)。
-      // 目前 5 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)、龍騎士(DRAGON_DROPS)、戰士印記(WARRIOR_DROPS)。
-      // 都用「怪物名」當 key、格式 [[id,%]]。職業限定的任務道具(TRIAL_ITEM_CLASS)附註「🐉僅X」;書板/鎖鏈劍/戰士印記全職可掉、不附註。
+      // 目前 6 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)、龍騎士(DRAGON_DROPS)、戰士印記(WARRIOR_DROPS)、記憶水晶(MEM_DROPS·幻術士法術書)。
+      // 都用「怪物名」當 key、格式 [[id,%]]。職業限定的任務道具(TRIAL_ITEM_CLASS)附註「🐉僅X」;書板/鎖鏈劍/戰士印記/記憶水晶全職可掉、不附註。
       function _tagged(list, noteFn) { return (list || []).map(function (e) { return [e[0], e[1], noteFn ? noteFn(e[0]) : null]; }); }
       var raw = [].concat(
         _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[mob.n] : null),
         _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[mob.n] : null),
         _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null),
         _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null, dragonDropNote),
-        _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null, dragonDropNote)
+        _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null, dragonDropNote),
+        _tagged((typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[mob.n] : null)
       );
       var drops = raw
         .map(function (e) { return [e[0], itemNameOf(e[0]), e[1], e[2]]; })   // [id, 名稱, 機率%, 附註]
@@ -173,7 +174,10 @@
       // ④ 在潘朵拉抽獎池(gachaWeight>0)的:雖無固定來源,但確實抽得到 → 也收進來,搜得到名字、詳情卡自動標「目前沒有固定取得途徑」
       //    (避免「明明拿得到卻完全查無」的死角;真正純內部用、gachaWeight=0 又無任何來源的維持排除、不灌爆搜尋)
       var inGacha = (d.gachaWeight > 0);
-      if (!isEquip && !shopSet[id] && !hasAcq && !inGacha) continue;
+      // ⑤ 被任一隻怪掉落的(DROPPED_SET,buildIndexes 已先建好):非裝備但有怪掉的法術書/材料(如記憶水晶=幻術士法術書·gachaWeight=0 那批)
+      //    才搜得到名字、詳情卡會列出哪些怪會掉。掉落查詢本就是查「掉落」,有怪掉的東西理應能直接搜名字。
+      var isDropped = !!DROPPED_SET[id];
+      if (!isEquip && !shopSet[id] && !hasAcq && !inGacha && !isDropped) continue;
       ITEM_INDEX.push({ id: id, n: d.n, hay: String(d.n).toLowerCase() });
     }
     ITEM_INDEX.sort(function (a, b) { return a.n.length - b.n.length || a.n.localeCompare(b.n); });   // 名稱短的(較接近完整匹配)排前面
