@@ -428,6 +428,7 @@
     try { for (var k3 in WARRIOR_EX) (WARRIOR_EX[k3].rewards || []).forEach(function (id) { put(id, '多文（海音）戰士試煉兌換'); }); } catch (e) {}
     try { for (var k4 in PROCEL_EX) (PROCEL_EX[k4].rewards || []).forEach(function (id) { put(id, '普洛凱爾（貝希摩斯）龍騎士兌換'); }); } catch (e) {}
     try { YURIA_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「歐林的日記本」兌換（三選一）'); }); } catch (e) {}
+    try { YURIA_HATIN_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「黑暗哈汀的日記本」兌換（六選一）'); }); } catch (e) {}   // 👹 隱藏的魔族武器
   }
   function trialSourceOf(id) { if (_trialBy === null) buildTrialBy(); return _trialBy[id] || null; }
   function acquireHTML(id) {

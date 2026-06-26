@@ -1,6 +1,6 @@
 {
-  "reconciledIndexCommit": "21e0562f63e46a4cb1ef0c4adb3ecf531537f102",
-  "reconciledIndexBlob": "f4fc0965edef5633ed9079595f968b98342212e1",
-  "reconciledAt": "2026-06-26 19:47 (UTC+8)",
+  "reconciledIndexCommit": "19f2d895e02cef0e70cf3066fb9ed220e206eac0",
+  "reconciledIndexBlob": "45846df882c863c9326249494ab9414824771c68",
+  "reconciledAt": "2026-06-26 21:49 (UTC+8)",
   "note": "小百科(afk-wiki.js / afk-dex.js / afk-extradata.js)的內容已比對到「這一版 index.html」的遊戲資料。更新小百科時的錨點以此為準——先 git fetch+pull,再 `git diff <reconciledIndexCommit> HEAD -- index.html` 就是作者自上次對齊後新增/改的全部。補完小百科後,把本檔的 commit/blob/時間更新成新的 HEAD 一起 commit,錨點才會前進。不要再用 git log afk-wiki.js 的時間回推起點(那不可靠,會漏改版)。"
 }
