@@ -2,8 +2,9 @@
 
 ## 專案性質
 
-- 本體是單一檔案的網頁放置遊戲 `index.html`(約 774KB,**由原作者持續更新**)+ `assets/`。
-- 我們**不擁有也不修改** `index.html` 的原始遊戲程式碼。所有自訂功能一律以「**外掛 JS**」方式實作。
+- 本體是網頁放置遊戲,**由原作者持續更新**。⚠️ 原作者 2026-06-27 起做了**大重構**:從「單一 `index.html`(約 800KB,程式碼全內嵌)」拆成 **`index.html`(殼,約 49KB)＋ `js/*.js`(遊戲邏輯,15 檔:00-data … 14-craft-pandora)＋ `css/style.css`(樣式)** + `assets/`。遊戲全域(`DB`/`tick`/`saveGame`/`MAP_CATEGORIES`…)現在定義在 `js/*.js`(一般 script,全域仍共用),不再在 index.html 裡。
+- 我們**不擁有也不修改** `index.html` / `js/*.js` / `css/*.css` 的原始遊戲程式碼。所有自訂功能一律以「**外掛 JS**」方式實作(外掛 `<script>` 在 `</body>` 前、排在作者 `js/*.js` 之後,故載入時全域已就緒)。
+- **同步已支援多檔結構**:`scripts/sync-upstream.mjs` 會順著 index.html 的 `<script src="js/…">`／`<link href="css/…">` 把 js/、css/ 一起抓進來,每檔用「內容 sha1」當 `?v=` 寫回引用(內容一變 URL 就變、破瀏覽器/PWA 快取,玩家絕不讀到舊版);`sw.js` 對 `.js`/`.css` 走 cache-first、`stamp-sw-version.mjs` 把 js/css 納入 `CODE_VERSION`、workflow `git add` 含 `js css`。作者新增/改名/移除這些檔都自動跟上。
 - 原作者(巴哈姆特 秋玥)的官方版本網址:**https://shines871.github.io/idle-lineage-class/**(原版遊戲就掛在這,index.html 的最新原始碼以此為準)。
 
 ## 「合併原版」= 從原作者站台抓最新 `index.html` 更新本專案
