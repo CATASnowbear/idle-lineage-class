@@ -298,6 +298,35 @@
     ['弓 / 遠距', '走遠距離的命中與傷害、可觸發連射，但需要箭矢。']
   ];
 
+  // 🏛️ 傳統模式「裝備自帶強化值」分布：即時讀 index.html 的 TRAD_EN_TABLES 計算(作者改權重自動跟上)
+  function tradEnhTableHTML() {
+    if (typeof TRAD_EN_TABLES === 'undefined') return '';
+    var th = 'style="text-align:left;padding:4px 6px;border-bottom:1px solid #475569;"';
+    var thc = 'style="text-align:center;padding:4px 6px;border-bottom:1px solid #475569;"';
+    var td = 'style="padding:4px 6px;"', tdc = 'style="text-align:center;padding:4px 6px;"';
+    function stat(tbl) {
+      var tot = 0, ev = 0, p0 = 0, p11 = 0, mx = 0;
+      tbl.forEach(function (e) { tot += e[1]; ev += e[0] * e[1]; if (e[0] === 0) p0 += e[1]; if (e[0] >= 11) p11 += e[1]; if (e[0] > mx) mx = e[0]; });
+      return { ev: ev / tot, p0: p0 / tot * 100, p11: p11 / tot * 100, mx: mx };
+    }
+    function rng(a, b, dec) {
+      var x = dec ? a.toFixed(1) : String(Math.round(a)), y = dec ? b.toFixed(1) : String(Math.round(b));
+      return (x === y) ? x : (x + '~' + y);
+    }
+    var rows = [['武器', 'wpn'], ['防具', 'arm'], ['飾品', 'acc']].map(function (g) {
+      var ks = Object.keys(TRAD_EN_TABLES).filter(function (k) { return k.indexOf(g[1]) === 0; });
+      if (!ks.length) return '';
+      var ss = ks.map(function (k) { return stat(TRAD_EN_TABLES[k]); });
+      var ev = ss.map(function (s) { return s.ev; }), p0 = ss.map(function (s) { return s.p0; }), p11 = ss.map(function (s) { return s.p11; });
+      var mx = Math.max.apply(null, ss.map(function (s) { return s.mx; }));
+      return '<tr><td ' + td + '>' + g[0] + '</td><td ' + tdc + '>+' + mx + '</td><td ' + tdc + '>約 ' + rng(Math.min.apply(null, ev), Math.max.apply(null, ev), true) +
+        '</td><td ' + tdc + '>' + rng(Math.min.apply(null, p0), Math.max.apply(null, p0)) + '%</td><td ' + tdc + '>' + Math.round(Math.max.apply(null, p11)) + '%</td></tr>';
+    }).join('');
+    return '<table style="width:100%;border-collapse:collapse;margin:4px 0;font-size:13px;color:#cbd5e1;"><thead><tr>' +
+      '<th ' + th + '>部位</th><th ' + thc + '>自帶上限</th><th ' + thc + '>平均</th><th ' + thc + '>+0（無強化）</th><th ' + thc + '>+11 以上</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
   // ===== 戰鬥機制(本檔維護;白話講清楚傷害怎麼算) ============================
   var COMBAT_SECTIONS = [
     // ── 一、你的核心數值怎麼來 ──
@@ -384,6 +413,14 @@
       '<b>死亡會損失「該等級最大經驗」的 10%</b>（一般模式死亡不損失經驗）；最多扣到該等級 0%、<b>不會降等</b>。',
       '功能限制：<b>無法賦予裝備祝福</b>（碧恩）、<b>無法進行職業精通</b>（漢）、<b>無法進入「席琳的世界」</b>。',
       '戰鬥簡化：經典模式<b>停用大量武器特效與被動</b>——共鳴、魔擊、連射、反擊、居合、穿透、切割、出血、鈍擊、盾牌格檔，以及騎士的看破／殺戮。一切回歸最樸素的天堂式戰鬥。'
+    ]},
+    { t: '🏛️ 傳統模式（經典之上的硬核）', lines: [
+      '<b>建立在「經典模式」之上的子模式</b>：創角時要<b>先勾經典、才能再勾傳統</b>，同樣<b>選了就永久、建立後無法關閉</b>。傳統角色<b>套用全部經典規則</b>，再額外加下面這些；存檔位以<b>淡紫</b>顯示、角色面板帶「🏛️傳統」標記。',
+      '<b>① 沒有「強化」</b>：所有武器／防具／飾品<b>都不能強化</b>，強化鈕與快速強化全部隱藏。',
+      '<b>② 任何來源都拿不到「施法卷軸」</b>：怪物不掉、黑市不賣、潘朵拉不抽、歐西里斯寶箱不開、入盟不送——對武器／盔甲／飾品施法的卷軸（含祝福／詛咒變體）全面消失。連帶<b>隱藏肯特城兌換 NPC 伊賽馬利</b>，入盟也<b>不再發放卷軸見面禮</b>（退盟自然也不必交還）。',
+      '<b>③ 改成「裝備自帶強化值」</b>：既然不能自己強化，<b>怪物掉落／潘朵拉黑市／製作</b>出的武器／防具／飾品會<b>隨機自帶一個已強化值</b>；<b>商店購買、試煉／任務兌換的裝備一律 +0</b>，寵物裝備、箭矢、材料、以及本就「無法強化」的古老系列也都是 +0。',
+      '自帶強化值<b>偏低、隨機</b>，數值越高越罕見；<b>安定值越高的（高階）裝備分布越好</b>（同部位的範圍差異即來自安定值）：' + tradEnhTableHTML(),
+      '<b>④ 倉庫與傭兵獨立</b>：傳統角色的<b>倉庫</b>和「經典」「一般」都<b>不共通</b>；傭兵也<b>只能招募同為「傳統模式」的存檔</b>（一般／經典／傳統三種互不能跨模式招募）。'
     ]}
   ];
 
@@ -1511,7 +1548,7 @@
       '傭兵＝召喚你<b>其他存檔位的角色</b>一起作戰（自己一人多開、並肩而戰）。到城鎮的 <b>傭兵公會</b> NPC 對話招募——<b>肯特城／海音／歐瑞村莊</b> 三處都有。',
       '共 <b>8 個存檔格</b>，可招募「目前所在格<b>以外</b>」的角色；空的存檔格不能招。',
       '<b>費用＝該角色等級 × 10000 金幣</b>（從你當下金幣扣）。解除或「全員退出」時<b>費用不退還</b>，之後想再帶要重新付費招募。',
-      '<b>分遊戲模式</b>：一般模式只能招「一般模式存檔」、經典模式只能招「經典模式存檔」，<b>不能跨模式</b>招募。'
+      '<b>分遊戲模式</b>：一般／經典／<b>傳統</b>三種模式各自獨立，<b>只能招募與自己同模式的存檔</b>，不能跨模式招募。'
     ]},
     { t: '同時能帶幾名', lines: [
       '一般職業：最多同時上場 <b>3 名</b>（就算你有 8 格存檔也一樣）。',
@@ -1519,7 +1556,7 @@
     ]},
     { t: '傭兵的戰力＝招募當下的「快照」', lines: [
       '傭兵直接用<b>那名存檔角色自己的</b>職業、裝備、技能、精通、套裝、配點來結算戰力，跟你主角無關（<b>不吃你主角的精通</b>，吃他自己存檔的）。',
-      '出手方式照各自職業：法師<b>施法</b>（約 2 秒一次）、妖精用<b>弓／三重矢</b>、幻術士用<b>奇古獸／魔劍</b>、龍騎士放<b>吃 HP 的龍魔法</b>、黑暗妖精物理並自動掛劇毒、騎士／戰士純物理（騎士含看破／殺戮被動）；攻擊速度依各自武器。',
+      '出手方式照各自職業（依你幫該角色設定的攻擊技能）：法師<b>施法</b>（約 2 秒一次）、妖精用<b>弓／三重矢</b>、幻術士用<b>奇古獸／魔劍</b>、龍騎士放<b>吃 HP 的龍魔法</b>、黑暗妖精物理並自動掛劇毒、騎士純物理（含看破／殺戮被動）、<b>戰士</b>純物理或放<b>咆哮</b>（對全體固定傷害）、<b>王族</b>純物理或放<b>呼喚盟友</b>（號召所有上場傭兵各補一刀）；攻擊速度依各自武器。',
       '⚠️ <b>是「招募當下定型的快照」</b>：事後再幫那名角色升級、換裝、改精通，傭兵<b>不會自動跟著變強</b>——要在傭兵公會<b>「解除→重新招募」</b>才會更新戰力（也要再付一次費用）。'
     ]},
     { t: '不會陣亡，死亡／存讀檔都不消失', lines: [
