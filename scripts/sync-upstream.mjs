@@ -86,35 +86,39 @@ const block = PLUGINS.map((p) => {
   return `<!-- ${p.comment} -->\n<script src="${p.file}${ver}"></script>`;
 }).join('\n') + '\n';
 
-// === 同步作者外部 js/ 程式碼檔(作者已把遊戲邏輯從單一 index.html 拆成 js/*.js,由 <script src="js/..."> 載入)===
-//   同步必須一起把這些 js 抓進來,否則合併版只剩空殼、遊戲全域(DB/tick/saveGame…)全無、外掛掛不上(smoke 會擋)。
-//   防「作者改了 js、玩家卻讀到舊快取」:每個 js 都用「內容 sha1」當 ?v= 掛在 index.html 引用上——內容一變 hash 就變
-//   → URL 變 → 瀏覽器 / PWA(sw.js 對 .js 走 cache-first 且尊重 query)一定重抓新版,不會讀到舊的;沒變的維持 hash、續用快取。
-const JS_REF_RE = /<script\s+src="(js\/[^"?]+\.js)"(?:\?v=[^"]*)?\s*><\/script>/g;
-const jsFiles = [...new Set([...upstream.matchAll(JS_REF_RE)].map((m) => m[1]))];
-const jsAdded = [], jsChanged = [], jsRemoved = [];
-const jsHash = {};
-for (const path of jsFiles) {
+// === 同步作者外部子資源(作者已把遊戲程式碼/樣式從單一 index.html 拆成 js/*.js 與 css/*.css)===
+//   同步必須一起把這些檔抓進來,否則:缺 js → 遊戲全域(DB/tick/saveGame…)全無、外掛掛不上(smoke 擋);缺 css → 背景/版面樣式掉光(白底)。
+//   防「作者改了檔、玩家卻讀到舊快取」:每個檔都用「內容 sha1」當 ?v= 掛在 index.html 引用上——內容一變 hash 就變
+//   → URL 變 → 瀏覽器 / PWA(sw.js 對 .js/.css 走 cache-first 且尊重 query)一定重抓新版,不會讀到舊的;沒變的維持 hash、續用快取。
+//   作者日後新增/改名/移除這些檔都自動跟上(順著 index.html 的引用走 + 清孤兒)。
+const SUBRES_DIRS = ['js', 'css'];
+const SUBRES_RE = new RegExp('(?:src|href)="((?:' + SUBRES_DIRS.join('|') + ')\\/[^"?]+\\.(?:js|css))"', 'g');
+const subFiles = [...new Set([...upstream.matchAll(SUBRES_RE)].map((m) => m[1]))];
+const subAdded = [], subChanged = [], subRemoved = [];
+const subHash = {};
+for (const path of subFiles) {
   const buf = Buffer.from(await fetch(`https://${UPSTREAM_USER}.github.io/${REPO}/` + path.split('/').map(encodeURIComponent).join('/'),
     { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error('抓 ' + path + ' 失敗: HTTP ' + r.status); return r.arrayBuffer(); }));
-  jsHash[path] = createHash('sha1').update(buf).digest('hex').slice(0, 10);
+  subHash[path] = createHash('sha1').update(buf).digest('hex').slice(0, 10);
   const isNew = !existsSync(path);
   if (isNew || !readFileSync(path).equals(buf)) {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, buf);
-    (isNew ? jsAdded : jsChanged).push(path);
+    (isNew ? subAdded : subChanged).push(path);
   }
 }
-// 清孤兒 js:本地 js/ 有、作者新版已不再引用的 → 刪(避免留舊檔害誤載)
-if (existsSync('js')) {
-  const wanted = new Set(jsFiles);
-  for (const name of readdirSync('js')) {
-    const p = 'js/' + name;
-    if (/\.js$/.test(name) && statSync(p).isFile() && !wanted.has(p)) { rmSync(p); jsRemoved.push(p); }
+// 清孤兒:本地 js/ css/ 有、但作者新版已不再引用的 → 刪(避免留舊檔害誤載)
+const wantedSub = new Set(subFiles);
+for (const dir of SUBRES_DIRS) {
+  if (!existsSync(dir)) continue;
+  for (const name of readdirSync(dir)) {
+    const p = dir + '/' + name;
+    if (/\.(js|css)$/.test(name) && statSync(p).isFile() && !wantedSub.has(p)) { rmSync(p); subRemoved.push(p); }
   }
 }
-// 把 index.html 的 js 引用改寫成帶內容 hash 的 ?v=(破快取);沒有 js/ 引用時 upstreamHtml === upstream(相容舊單檔版)
-const upstreamHtml = upstream.replace(JS_REF_RE, (_full, path) => `<script src="${path}?v=${jsHash[path]}"></script>`);
+// 把 index.html 的 js/css 引用改寫成帶內容 hash 的 ?v=(破快取);沒有引用時 upstreamHtml === upstream(相容舊單檔版)
+let upstreamHtml = upstream;
+for (const path of subFiles) upstreamHtml = upstreamHtml.split('"' + path + '"').join('"' + path + '?v=' + subHash[path] + '"');
 
 const merged = upstreamHtml.replace('</body>', block + '</body>');
 
@@ -190,7 +194,7 @@ if (existsSync('assets')) {
 const codeVersion = stampSwVersion() || '';
 
 const changed = htmlChanged || assetsAdded.length > 0 || assetsChanged.length > 0 || assetsRemoved.length > 0
-  || jsAdded.length > 0 || jsChanged.length > 0 || jsRemoved.length > 0;
+  || subAdded.length > 0 || subChanged.length > 0 || subRemoved.length > 0;
 // 記錄本次同步時間,供玩家端首頁(afk-syncinfo)顯示「原版最後同步」。
 // 無條件寫;但 workflow 只在 changed 時才 commit 這檔,故倉庫裡的時間=最後一次真的有合併更新的時間。
 writeFileSync('last-sync.json', JSON.stringify({ syncedAt: new Date().toISOString() }) + '\n');
@@ -202,15 +206,15 @@ setOutput('html_changed', htmlChanged ? 'true' : 'false');
 setOutput('assets_added', String(assetsAdded.length));
 setOutput('assets_changed', String(assetsChanged.length));   // 既有 asset 被換過(玩家端逐張對帳只重抓這些)
 setOutput('assets_removed', String(assetsRemoved.length));   // 作者移除的孤兒圖(已從本地刪除;玩家端 SW 下次載入自動 evict)
-setOutput('code_version', codeVersion);                      // 程式桶版本(依 index.html＋外掛＋js/ 內容 hash)
-setOutput('js_added', String(jsAdded.length));               // 作者外部 js 新增
-setOutput('js_changed', String(jsChanged.length));           // 作者外部 js 內容被換(玩家端靠引用 ?v=內容hash 自動重抓)
-setOutput('js_removed', String(jsRemoved.length));           // 作者移除的孤兒 js(已從本地刪)
+setOutput('code_version', codeVersion);                      // 程式桶版本(依 index.html＋外掛＋js/＋css/ 內容 hash)
+setOutput('code_added', String(subAdded.length));            // 作者外部 js/css 新增
+setOutput('code_changed', String(subChanged.length));        // 作者外部 js/css 內容被換(玩家端靠引用 ?v=內容hash 自動重抓)
+setOutput('code_removed', String(subRemoved.length));        // 作者移除的孤兒 js/css(已從本地刪)
 setOutput('game_title', gameTitle);
-console.log(`index.html 變更: ${htmlChanged} | js: +${jsAdded.length}/~${jsChanged.length}/-${jsRemoved.length} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length} | 移除孤兒圖: ${assetsRemoved.length}`);
-if (jsAdded.length) console.log('新增 js:\n' + jsAdded.join('\n'));
-if (jsChanged.length) console.log('更新 js:\n' + jsChanged.join('\n'));
-if (jsRemoved.length) console.log('移除 js(孤兒):\n' + jsRemoved.join('\n'));
+console.log(`index.html 變更: ${htmlChanged} | 程式/樣式: +${subAdded.length}/~${subChanged.length}/-${subRemoved.length} | 新增圖檔: ${assetsAdded.length} | 更新既有圖: ${assetsChanged.length} | 移除孤兒圖: ${assetsRemoved.length}`);
+if (subAdded.length) console.log('新增 js/css:\n' + subAdded.join('\n'));
+if (subChanged.length) console.log('更新 js/css:\n' + subChanged.join('\n'));
+if (subRemoved.length) console.log('移除 js/css(孤兒):\n' + subRemoved.join('\n'));
 if (assetsAdded.length) console.log('新增:\n' + assetsAdded.join('\n'));
 if (assetsChanged.length) console.log('更新:\n' + assetsChanged.join('\n'));
 if (assetsRemoved.length) console.log('移除(孤兒):\n' + assetsRemoved.join('\n'));
