@@ -34,6 +34,8 @@ export function stampSwVersion() {
   if (existsSync('index.html')) parts.push(readFileSync('index.html'));
   if (existsSync('manifest.webmanifest')) parts.push(readFileSync('manifest.webmanifest'));
   for (const f of readdirSync('.').filter((n) => /^afk-.*\.js$/.test(n)).sort()) parts.push(readFileSync(f));
+  // 作者外部遊戲程式碼 js/*.js 也納入:作者改任何一支 → hash 變 → CODE_VERSION 變 → PWA 偵測得到更新(不會只更新外掛、漏掉遊戲本體)
+  if (existsSync('js')) for (const f of readdirSync('js').filter((n) => /\.js$/.test(n)).sort()) parts.push(readFileSync('js/' + f));
   const hash = createHash('sha1').update(Buffer.concat(parts)).digest('hex').slice(0, 12);
   const version = 'code-' + hash;
 
