@@ -1155,6 +1155,7 @@
     if (e.classicHide) p.push('經典模式無法進入');
     return p.join('・');
   }
+  function mapTitleOf(v) { for (var c in MAP_CATEGORIES) { var l = MAP_CATEGORIES[c]; for (var i = 0; i < l.length; i++) if (l[i].v === v) return l[i].t; } return null; }
   function renderMap() {
     if (typeof MAP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到地圖資料。</div>';
     var h = '<div class="m-wiki-note">遊戲移動方式：打開<b>地圖選單</b>→ 選分類 → 選地圖直接傳送（受進入條件擋）。下面每張地圖都標出<b>📍進入路徑（在哪個分類）</b>、<b>等級範圍</b>（看該圖怪物等級）與<b>進入條件</b>。所以即使用搜尋（例 <b>底比斯</b>）也看得到它在「時空裂痕」分類底下。</div>';
@@ -1169,6 +1170,18 @@
         h += '<div class="m-wiki-kv"><b>' + esc(e.t) + '</b>' + bits.join('　') + '</div>';
       });
     });
+    // 🔒 隱藏狩獵區域：不在地圖選單，要在母樓層手動傳送進入（動態讀遊戲 HIDDEN_AREA_PARENT/NAMES，作者新增自動跟上）
+    if (typeof HIDDEN_AREA_PARENT !== 'undefined' && typeof HIDDEN_AREA_NAMES !== 'undefined') {
+      h += '<div class="m-wiki-sub">🔒 隱藏狩獵區域</div>';
+      h += '<div class="m-wiki-note" style="margin-top:0;">這些區域<b>不在地圖選單、無法直接選</b>。進入方式：先到下面對應的「母地圖」那一張，在該圖<b>手動施放「傳送術」或使用「瞬間移動卷軸」</b>就會進入隱藏房（<b>自動瞬移／逃離頭目那種不算</b>，必須手動觸發）。</div>';
+      var _h2p = {}; for (var _pz in HIDDEN_AREA_PARENT) _h2p[HIDDEN_AREA_PARENT[_pz]] = _pz;   // 母樓層→隱藏 反轉成 隱藏→母樓層
+      Object.keys(HIDDEN_AREA_NAMES).forEach(function (hid) {
+        var pz = _h2p[hid], pname = pz ? (mapTitleOf(pz) || pz) : '?', lv = mapLvRange(hid), bits = [];
+        bits.push('<span class="c-mappath">📍 在「' + esc(pname) + '」內手動傳送進入</span>');
+        if (lv) bits.push('<b style="color:#86efac;margin:0;">' + lv + '</b>');
+        h += '<div class="m-wiki-kv"><b>' + esc(HIDDEN_AREA_NAMES[hid]) + '</b>' + bits.join('　') + '</div>';
+      });
+    }
     return h;
   }
 

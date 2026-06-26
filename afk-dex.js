@@ -97,6 +97,7 @@
   function mapNameOf(id) {
     try {
       if (EXTRA_MAP_NAMES[id]) return EXTRA_MAP_NAMES[id];
+      if (typeof HIDDEN_AREA_NAMES !== 'undefined' && HIDDEN_AREA_NAMES[id]) return HIDDEN_AREA_NAMES[id];   // 🏛️ 隱藏狩獵區域(惡靈封印室等):不在 MAP_CATEGORIES,讀遊戲全域補中文名
       // 🗼 傲慢之塔:樓層(pride_fN)與區間(pride_a_b)地圖無靜態中文名,比照遊戲內命名動態產生
       var _pf = /^pride_f(\d+)$/.exec(id); if (_pf) return '傲慢之塔 ' + _pf[1] + 'F';
       var _pr = /^pride_(\d+)_(\d+)$/.exec(id); if (_pr) return '傲慢之塔 ' + _pr[1] + '~' + _pr[2] + '樓（直接挑戰）';
