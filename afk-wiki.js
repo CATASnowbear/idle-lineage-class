@@ -51,13 +51,14 @@
       location.href = location.href.split('?')[0].split('#')[0] + qs;
       return;
     }
-    if (window.AFK_DEX_API && AFK_DEX_API.close) AFK_DEX_API.close();   // 模態連模態:先關掉來源(掉落查詢)模態,否則兩個疊著看不到小百科
-    openModal();   // 開小百科模態並切到指定分頁/搜尋
+    var sib = !!(window.AFK_DEX_API && AFK_DEX_API.isOpen && AFK_DEX_API.isOpen());   // 來源(掉落查詢)模態是否開著
+    if (sib && AFK_DEX_API.close) AFK_DEX_API.close();   // 模態連模態:先關來源模態(否則兩個疊著看不到小百科),它會交出歷史層
+    openModal(sib);   // 從掉落查詢切過來→接手它那層歷史(不另壓),返回鍵才不殘留
     applyUrlState({ q: opts.q || '', tab: opts.tab || '', cls: opts.cls || '' });
   }
   // 跨頁切換用:關掉小百科模態並交出一層歷史(不呼叫 history.back,避免誤觸掉落查詢的 popstate 連帶誤關),供對方接手顯示
   function closeForNav() { var m = document.getElementById('m-wiki-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); if (_navDepth > 0) _navDepth--; }
-  window.AFK_WIKI_API = { goto: gotoWiki, close: closeForNav };   // 通用跨頁前往小百科(模態/網址自動)+ 切換時關閉,供掉落查詢等反向連結重用
+  window.AFK_WIKI_API = { goto: gotoWiki, close: closeForNav, isOpen: _isModalClosable };   // goto 通用跨頁前往小百科;close/isOpen 供跨頁切換(關閉來源、接手歷史層)
   // 獨立頁:狀態(搜尋字/分頁/職業)←→ 網址,方便複製連結分享(replaceState,不灌爆瀏覽記錄)
   function _wikiParam(n) { try { return new URLSearchParams(location.search).get(n); } catch (e) { return null; } }
   var _tabSet = null, _clsSet = null;
@@ -1026,7 +1027,7 @@
     document.getElementById('m-wiki-close').addEventListener('click', userCloseTop);
     m.addEventListener('click', function (e) { if (e.target === m) userCloseTop(); });
   }
-  function openModal() {
+  function openModal(adopt) {
     var m = document.getElementById('m-wiki-modal');
     if (!m) return;
     if (typeof player !== 'undefined' && player && player.cls) state.cls = player.cls;   // 已進遊戲就預設自己的職業
@@ -1036,7 +1037,7 @@
     var wasOpen = m.classList.contains('open');
     m.classList.add('open');
     render();
-    if (!wasOpen && !m.getAttribute('data-standalone')) _pushNav();   // 開啟壓一層歷史 → 手機返回鍵可關
+    if (!wasOpen && !m.getAttribute('data-standalone')) { if (adopt === true) { if (_navDepth < 1) _navDepth = 1; } else _pushNav(); }   // 開啟壓一層歷史 → 返回鍵可關;adopt===true:接手來源模態交出的層、不另壓(跨頁切換)。嚴格 true:按鈕 onclick 會傳 MouseEvent 進來,不可當 adopt
   }
   function closeModal() { var m = document.getElementById('m-wiki-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
 

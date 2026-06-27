@@ -44,9 +44,10 @@
       location.href = location.href.split('?')[0].split('#')[0] + '?view=' + VIEW + (opts.q ? '&q=' + encodeURIComponent(opts.q) : '');
       return;
     }
-    if (window.AFK_WIKI_API && AFK_WIKI_API.close) AFK_WIKI_API.close();   // 模態連模態:先關掉來源(小百科)模態,否則 dex 被它疊在後面看不到(兩者 z-index 同、小百科 DOM 在後蓋住)
+    var sib = !!(window.AFK_WIKI_API && AFK_WIKI_API.isOpen && AFK_WIKI_API.isOpen());   // 來源(小百科)模態是否開著
+    if (sib && AFK_WIKI_API.close) AFK_WIKI_API.close();   // 模態連模態:先關來源模態(否則 dex 同 z-index 被它蓋住),它會交出歷史層
     if (_isPop()) userCloseTop();   // 在 dex 詳情彈窗內先關它(退一層歷史)
-    openModal();
+    openModal(sib);   // 從小百科切過來→接手它那層歷史(不另壓),返回鍵才不殘留
     var i = document.getElementById('m-dex-input'); if (i) i.value = opts.q || '';
     doSearch();
     var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
@@ -462,7 +463,7 @@
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
-  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex, close: closeForNav };   // itemDetailHTML 供小百科裝備頁重用詳情;goto({q}) 通用跨頁前往掉落查詢(模態/網址自動);close 切換時關閉
+  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex, close: closeForNav, isOpen: _isModalClosable };   // goto({q}) 通用跨頁前往掉落查詢;close/isOpen 供跨頁切換(關閉來源、接手歷史層)
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
@@ -759,7 +760,7 @@
       gotoDex({ q: b.getAttribute('data-dexq') || b.getAttribute('data-item') || '' });
     });
   }
-  function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) _pushNav(); } }
+  function openModal(adopt) { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) { if (adopt === true) { if (_navDepth < 1) _navDepth = 1; } else _pushNav(); } } }   // adopt===true:接手來源模態交出的歷史層、不另壓(跨頁切換用,避免返回鍵殘留)。嚴格比對 true:按鈕 onclick 會把 MouseEvent 當參數傳進來,不可當 adopt
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
 
   // ----- CSS --------------------------------------------------------------
