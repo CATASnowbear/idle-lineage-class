@@ -966,7 +966,7 @@
     var curMax = 1, curCb = null;
     function clampV(v) { v = Math.floor(Number(v) || 0); if (!(v > 0)) v = 1; if (v > curMax) v = curMax; return v; }
     function openQty(name, max, cb) {
-      curMax = Math.max(1, max | 0); curCb = cb;
+      curMax = Math.max(1, Math.floor(Number(max) || 0)); curCb = cb;   // ⚠ 不能用 `max | 0`:位元運算會把數量截成 32-bit,≥2^31(約21.5億)就溢位→只能領 1 個(踩過)
       titleEl.textContent = '「' + name + '」要幾個？（1 ~ ' + curMax + '）';
       input.max = curMax; input.value = curMax;
       modal.classList.add('open');
