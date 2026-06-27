@@ -130,6 +130,8 @@
   }
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  // 🔗 名字 → 點擊跳掉落查詢搜尋(配 afk-dex 全域 [data-dexq] 委派,模態連模態/網址連網址);製作頁/地圖頁等共用
+  function wDexLink(name) { return '<span class="m-dexlink" data-dexq="' + esc(name) + '">' + esc(name) + '</span>'; }
 
   // ===== 共用:時間 / 屬性 / 骰子 → 玩家講法 ==================================
   var ELE = { none: '無屬性', water: '💧 水', wind: '🌪 風', fire: '🔥 火', earth: '🪨 地' };
@@ -1167,7 +1169,7 @@
         bits.push('<span class="c-mappath">📍 領域「' + esc(reg.label) + '」</span>');
         bits.push(lv ? ('<b style="color:#86efac;margin:0;">' + lv + '</b>') : '安全區（無怪物）');
         if (unlock) bits.push('<span class="c-mapunlock">' + unlock + '</span>');
-        h += '<div class="m-wiki-kv"><b>' + esc(m.t) + '</b>' + bits.join('　') + '</div>';
+        h += '<div class="m-wiki-kv"><b>' + wDexLink(m.t) + '</b>' + bits.join('　') + '</div>';   // 🔗 地圖名可點→查該圖有哪些怪
       });
     });
     // 🔒 隱藏狩獵區域：不在地圖選單，要在母樓層手動傳送進入（動態讀遊戲 HIDDEN_AREA_PARENT/NAMES，作者新增自動跟上）
@@ -1179,7 +1181,7 @@
         var pz = _h2p[hid], pname = pz ? (mapTitleOf(pz) || pz) : '?', lv = mapLvRange(hid), bits = [];
         bits.push('<span class="c-mappath">📍 隱藏狩獵區域｜在「' + esc(pname) + '」手動施放傳送術／用瞬間移動卷軸進入</span>');
         if (lv) bits.push('<b style="color:#86efac;margin:0;">' + lv + '</b>');
-        h += '<div class="m-wiki-kv"><b>' + esc(HIDDEN_AREA_NAMES[hid]) + '</b>' + bits.join('　') + '</div>';
+        h += '<div class="m-wiki-kv"><b>' + wDexLink(HIDDEN_AREA_NAMES[hid]) + '</b>' + bits.join('　') + '</div>';   // 🔗 隱藏區域名可點→查該圖有哪些怪
       });
     }
     return h;
@@ -1575,10 +1577,10 @@
       var where = esc(info.name) + (info.town ? '（' + esc(info.town) + '）' : '');
       html += '<div class="m-wiki-sub">🔨 ' + where + '</div>';
       html += recs.map(function (r) {
-        var nm = itemName(r.result) + ((r.yield && r.yield > 1) ? '（一次 ×' + r.yield + '）' : '');
-        var mats = (r.req || []).map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') || '—';
+        var nmHtml = wDexLink(itemName(r.result)) + ((r.yield && r.yield > 1) ? '（一次 ×' + r.yield + '）' : '');   // 🔗 成品名可點→查它哪來
+        var mats = (r.req || []).map(function (m) { return (m.id === 'gold' ? esc(itemName(m.id)) : wDexLink(itemName(m.id))) + '×' + m.cnt; }).join('、') || '—';   // 🔗 材料名可點(金幣除外)
         // 每筆都附「在哪做」:搜尋會只抓到這一列(抓不到上面的 NPC 標題),所以 NPC 要寫進每列才查得到在哪做
-        return '<div class="m-wiki-kv"><b>' + esc(nm) + '</b>在 ' + where + ' 製作　材料：' + esc(mats) + '</div>';
+        return '<div class="m-wiki-kv"><b>' + nmHtml + '</b>在 ' + where + ' 製作　材料：' + mats + '</div>';
       }).join('');
     }
     // 👑 惡魔王武器:炎魔之影客製製作(消耗 +11 以上指定惡魔武器 + 素材,不在 CRAFT_RECIPES 裡)

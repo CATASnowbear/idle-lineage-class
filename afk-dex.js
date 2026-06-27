@@ -325,7 +325,7 @@
       var where = esc(npc.name) + (npc.town ? '（' + esc(npc.town) + '）' : '');
       var mats = rec.req.map(function (m) {
         var mn = (DB.items[m.id] && DB.items[m.id].n) || m.id;
-        return esc(mn) + (m.plus11 ? '（須 +11 以上）' : '') + ' ×' + m.cnt;
+        return '<span class="m-dexlink" data-dexq="' + esc(mn) + '">' + esc(mn) + '</span>' + (m.plus11 ? '（須 +11 以上）' : '') + ' ×' + m.cnt;   // 🔗 材料名可點→查它哪來
       }).join('、');
       var y = (rec.yield && rec.yield > 1) ? '（一次產出 ' + rec.yield + ' 個）' : '';
       return '<div class="m-dex-craft-where">在 <b>' + where + '</b> 製作' + y + '</div>' +
@@ -752,11 +752,11 @@
     m.addEventListener('click', function (e) { if (e.target === m) userCloseTop(); });   // 點背景關閉
     document.getElementById('m-dex-itempop-close').addEventListener('click', userCloseTop);
     document.getElementById('m-dex-itempop').addEventListener('click', function (e) { if (e.target.id === 'm-dex-itempop') userCloseTop(); });   // 點彈窗背景關閉
-    // 「查有哪些怪會掉這件」鈕:全域委派 → dex 詳情彈窗內 或 小百科裝備頁 點到都能用;走通用 gotoDex(模態連模態、網址連網址)
+    // 通用跨頁委派:「查掉落」鈕(.m-dex-pop-search,data-item) + 任何「名字連結」([data-dexq]) → gotoDex(模態連模態、網址連網址)。小百科/掉落查詢頁皆可用。
     document.addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('.m-dex-pop-search') : null;
+      var b = e.target.closest ? e.target.closest('.m-dex-pop-search,[data-dexq]') : null;
       if (!b) return;
-      gotoDex({ q: b.getAttribute('data-item') || '' });
+      gotoDex({ q: b.getAttribute('data-dexq') || b.getAttribute('data-item') || '' });
     });
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) _pushNav(); } }
@@ -831,6 +831,8 @@
       '.m-dex-craft-mats{color:#94a3b8;}',
       '.m-dex-pop-search{margin-top:12px;width:100%;border:1px solid #334155;background:#1e293b;color:#7dd3fc;border-radius:8px;padding:11px;font-size:13.5px;font-weight:bold;cursor:pointer;font-family:inherit;}',
       '.m-dex-pop-search:active{background:#334155;}',
+      '.m-dexlink{color:#7dd3fc;cursor:pointer;border-bottom:1px dotted #38bdf8;}',   // 🔗 通用「名字 → 跳掉落查詢搜尋」inline 連結(配 data-dexq);小百科/掉落查詢共用(dex CSS 全頁可見)
+      '.m-dexlink:active{color:#bae6fd;}',
       '.m-dex-nodrop{font-size:13px;color:#64748b;}',
       '.m-dex-drops{width:100%;border-collapse:collapse;font-size:13px;}',
       '.m-dex-drops td{padding:3px 4px;border-bottom:1px solid #1e293b;color:#e2e8f0;}',
