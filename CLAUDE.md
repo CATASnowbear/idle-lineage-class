@@ -123,6 +123,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 > **小百科 / 掉落查詢的「獨立頁」(`?view=`)**:`index.html?view=wiki`、`index.html?view=dex` 會讓對應外掛把面板鋪滿整頁(藏掉創角/遊戲畫面、改 `document.title`、隱藏關閉鈕、背景點擊不關),並在最上方加一條**頁首導覽**(`#m-standalone-nav`:🏠首頁 / 📚小百科 / 📖掉落查詢,active 標亮)可互切與回首頁。看起來像獨立網頁。首頁兩顆入口旁各有一顆 `↗` 小鈕用 `window.open` 開新分頁到這網址;原本點主鈕開 modal 的行為保留。(頁首 `buildStandaloneNav` 在兩支外掛各有一份相同實作,只有 active 那支會跑、用 id 去重。)**資料仍來自 index.html 的 `DB`/`MOB_DROPS`/… 全域**(無法真的抽成獨立檔——那些 const 夾在原作者主程式裡、且每小時自動同步會整支覆蓋),所以獨立頁就是「重用 index.html 當資料源、只顯示該面板」。全寫在外掛內、不動原作者碼,自動同步不會洗掉。
 
+> **🔗 小百科 ↔ 掉落查詢「跨頁連結」一律走通用 helper(別自己刻 openModal/location.href)**:要打通兩邊、做「點某物 → 跳到對方並定位」的連結時,呼叫對方暴露的 mode-aware `goto`——`AFK_DEX_API.goto({q})`(前往掉落查詢並搜尋)、`AFK_WIKI_API.goto({tab,cls,q})`(前往小百科並切分頁/搜尋)。它會自動判斷:**在任一獨立頁(`?view=`)→ 導去對方 `?view=…&q=/tab=/cls=`(網址連網址,對方初始化 `applyUrlState`/讀 `?q=` 還原);在遊戲內(模態)→ 開對方模態並套用(模態連模態)**。判斷用 `inStandaloneView()`(任一 `?view=` 即獨立頁)。範例:裝備詳情「🔍 查有哪些怪會掉這件」鈕(class `m-dex-pop-search`,全域委派→`gotoDex`)。**新增跨頁連結時:① 重用/擴充對方的 `goto`(需要新參數就加進 `goto` 與對方的 `applyUrlState`/初始化讀取),不要在呼叫端自己判斷模態/網址;② 反向若還沒有對應 `goto` 就比照現有那支鏡像新增。**
+
 > 前五支互相低耦合;手機版的離線摘要會自動打開日誌。afk-dex 純讀資料、桌機手機都掛。
 > `afk-sw.js` 註冊 `sw.js`;`sw.js` 自 PWA 改版後是**雙桶分離快取**(cache-first):
 > - **程式桶 `CODE_CACHE`**(版本 `CODE_VERSION`):index.html + 全部外掛 js + manifest + PWA 圖示 + 外部 CDN(Tailwind/placehold,離線也要能用)。
