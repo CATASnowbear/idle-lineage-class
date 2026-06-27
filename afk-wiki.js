@@ -127,6 +127,15 @@
     if (sk.dmgDice) return '（威力約 ' + dice(sk.dmgDice) + '）';
     return '';
   }
+  // 🔮 幻術士「立方」週期效果(cubeTick 為準):每 iv/10 秒觸發一次
+  function cubeDesc(c) {
+    var s = (c.iv || 0) / 10;
+    if (c.kind === 'mp') return '每 ' + s + ' 秒回復 ' + (c.val || 5) + ' MP';
+    if (c.kind === 'dmg') return '每 ' + s + ' 秒對全體敵人造成 ' + (c.dice ? dice(c.dice) : '') + ' ' + (ELE[c.ele] || '') + '傷害（吃幻術士等級加成）';
+    if (c.kind === 'slow') return '每 ' + s + ' 秒讓全體敵人「緩速」4 秒';
+    if (c.kind === 'mrdown') return '每 ' + s + ' 秒讓當前目標「魔防減半」' + (c.dur || 4) + ' 秒';
+    return '週期效果';
+  }
   function healTxt(sk) {
     if (!sk.healDice && !sk.healBase) return '回復 HP';
     var base = sk.healBase || 0;
@@ -155,7 +164,9 @@
   function statDeltaTxt(d) {
     var out = [];
     for (var k in d) {
-      var v = d[k]; var lbl = STAT_LABEL[k] || k;
+      var v = d[k];
+      if (k === 'ac') { var a = -v; out.push('防禦(AC) ' + (a >= 0 ? '+' : '−') + Math.abs(a)); continue; }   // ⚠ buff 的 d.ac 以「d.ac -= 值」套用(js/02-stats):正值=降 AC=防禦變好。顯示「實際 AC 變化(=-v)」並標 (AC) 提醒越低越好,否則正負相反(鋼鐵防護/狂暴術都會反)
+      var lbl = STAT_LABEL[k] || k;
       out.push(lbl + ' ' + (v >= 0 ? '+' : '') + v);
     }
     return out.join('、');
@@ -206,6 +217,10 @@
       if (sk.d) parts.push(statDeltaTxt(sk.d));
       if (sk.haste) parts.push('攻擊速度 +33%');
       if (sk.summon) parts.push('召喚 ' + (sk.summon.n || '生物').replace(/^.*：/, '') + ' 協助戰鬥');
+      if (sk.cube) parts.push(cubeDesc(sk.cube));   // 🔮 立方:旋轉立方的週期效果(傷害/緩速/魔防減半/回MP)
+      if (sk.illuSummon) parts.push('搭配「幻術精通」時召喚' + String(sk.n).replace(/^.*：/, '') + '幻象一同攻擊（詳見職業專精）');   // 🔮 幻覺召喚
+      if (sk.dmgTakenReduce) parts.push('受到傷害 −' + sk.dmgTakenReduce + '%');   // 🔮 幻覺：化身
+      if (sk.painReflect) parts.push('期間受到傷害時，對攻擊者反射等量無屬性魔法傷害');
       var body = parts.join('、') || '提供增益效果';
       return body + durTxt(sk.dur);
     }
