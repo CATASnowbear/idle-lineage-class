@@ -7,6 +7,14 @@
 - **同步已支援多檔結構**:`scripts/sync-upstream.mjs` 會順著 index.html 的 `<script src="js/…">`／`<link href="css/…">` 把 js/、css/ 一起抓進來,每檔用「內容 sha1」當 `?v=` 寫回引用(內容一變 URL 就變、破瀏覽器/PWA 快取,玩家絕不讀到舊版);`sw.js` 對 `.js`/`.css` 走 cache-first、`stamp-sw-version.mjs` 把 js/css 納入 `CODE_VERSION`、workflow `git add` 含 `js css`。作者新增/改名/移除這些檔都自動跟上。
 - 原作者(巴哈姆特 秋玥)的官方版本網址:**https://shines871.github.io/idle-lineage-class/**(原版遊戲就掛在這,index.html 的最新原始碼以此為準)。
 
+## 🔁 漏東西 / 犯會重演的錯 → 當下就把教訓寫回這份 CLAUDE.md(鐵則,使用者明訂・2026-06-27)
+
+> 只要發現「漏掉了什麼」或「犯了會再犯的錯」(例:作者新掉落沒進掉落查詢、某英文沒翻成中文、同步漏抓某類資料、某數值算錯…),**修完當下就把『根因＋怎麼偵測/避免＋判準』總結成一條,寫進這份 CLAUDE.md 最貼近的章節**,讓下次同類問題靠這份文件就能擋下來。
+>
+> - **不要只默默修好**——沒寫進來,下次換個東西又會踩同一類雷(聖地遺物漏進掉落查詢就是這樣被使用者抓到的)。
+> - 寫法跟著現有條目:標題一句話講結論、內文寫「為什麼會漏/錯 + 怎麼偵測或避免 + 自我檢查判準」、附日期與踩過的案例。
+> - 寫完在回覆裡一句話告知補了哪條、補在哪,讓使用者能否決。
+
 ## 「合併原版」= 從原作者站台抓最新 `index.html` 更新本專案
 
 > **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
@@ -147,7 +155,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 3. **把新內容補進對應分頁**——分兩種:
    - **讀遊戲資料、自動同步的**(通常不用改):職業專精讀 `MASTERY_DATA`、職業魔法讀 `DB.skills`、席琳套裝讀 `SHERINE_SET_TEXT`、掉落查詢讀 `DB` 與五張掉落表(見下方 ⭐)。
    - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、負重 `LOAD_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、血盟 `PLEDGE_SECTIONS`、傲慢之塔 `TOWER_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
-   - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格 `spBlock` 到那個面板**(並把關鍵字加進 `SPECIAL_KEYS` 讓搜尋自動展開)。原版每次改動全域掉落都要同步補這裡,不要只更新小百科。
+   - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格到 `SPECIAL_BLOCKS`**(`{id,title,keys,lines}`;關鍵字放 `keys`、搜尋會自動展開)。原版每次改動全域掉落都要同步補這裡,不要只更新小百科。
+     **🔎 偵測法(別再漏)**:同步作者新版時,grep 掉落結算 code(`js/05-kill-progression.js` 的 `killMob`、`js/06` 等)裡**所有「條件式 `gainItem(...)`」**——`if(...) gainItem(...)` 那種、不是從某張 `*_DROPS` 表 `forEach` 出來的,逐一對照 `SPECIAL_BLOCKS` 有沒有涵蓋,漏的補上。**踩過(2026-06-27):聖地遺物**(`mat_holy_relic`,持「死亡騎士之印記」在拉斯塔巴德區域殺任何怪 0.1%、V2.32 新增)——它不在任何掉落表、patch note 只當拉斯塔巴德武器的「材料」一筆帶過,做 V2.32 時只顧卡片/製作/地圖頭條、沒掃 killMob 的新條件式掉落,於是漏進 `SPECIAL_BLOCKS`,玩家在掉落查詢搜不到才被發現。**判準:作者更新後,任何 `if(條件) gainItem` 的腳本掉落都要在掉落查詢找得到。**
    - **⭐ 製作不一定都在 `CRAFT_RECIPES`,有「客製製作」另開資料結構,掉落查詢/製作頁要另外補讀**:掉落查詢物品卡與小百科製作頁的製作資訊只讀 `CRAFT_RECIPES`,但**有些裝備走獨立的客製製作系統、不在 `CRAFT_RECIPES`**,例:惡魔王武器走 `DEMONKING_RECIPES`+`DEMONKING_MATS`(炎魔之影:消耗 +11 以上指定惡魔武器、繼承其強化/詞綴/席琳套裝)。症狀=「某件裝備查不到在哪製作、且常常一整批」。**遇到「明明可做卻查不到製作」→ 去 `index.html` grep `_RECIPES`/`buildXXXCraftHTML`/該裝備 id**,找到那組客製配方後,**同時補進** `afk-dex.js` 的 `buildCraftIndex`(物品卡)**和** `afk-wiki.js` 的 `renderCraft`(製作頁),兩邊都要。
    - **⭐ 新掉落物可能不在 `MOB_DROPS`、而在「獨立掉落表」或「純兌換」→ 掉落查詢會查不到,更新小百科時務必一起檢查補上**(龍騎士血之渴望那串踩過):掉落查詢(`afk-dex.js` `buildIndexes`)要與**原作 `_auditMobDrops`(遊戲內「統計→掉落物」用的)讀同一組掉落表**,否則他統計查得到、我們查不到(戰士印記 `WARRIOR_DROPS` 漏讀踩過)。**判斷哪幾張的權威來源就是 grep `_auditMobDrops` 看他 push 哪些表**,照抄。目前 5 張:**`MOB_DROPS`／`DARK_WEAPON_DROPS`／`DARK_CRYSTAL_DROPS`／`DRAGON_DROPS`／`WARRIOR_DROPS`**。作者再開**新表**(他會加進 `_auditMobDrops`),就把它也加進 `buildIndexes` 的 `raw` 串接(職業限定的任務道具用 `dragonDropNote`/`TRIAL_ITEM_CLASS` 標「🐉僅X」、全職可掉的不附註)。**純兌換/無怪掉的成品**(龍騎士書板·鎖鏈劍·臂甲走「普洛凱爾」兌換、50級試煉獎勵…)沒有任何怪會掉,要在 `afk-extradata.js` 的 `AFK_EXTRA.itemAcquire[id].short` 補「取得方式」;且這類「**非裝備、非商店**」物品(如 `skillbk` 書板)要被收進物品搜尋索引才搜得到名字。**收錄條件(`buildItemIndex`):裝備／在商店(`SHOP_LISTS`)／有 `itemAcquire`／或 `gachaWeight>0`(在潘朵拉抽獎池)** 任一即收。**症狀=玩家在掉落查詢搜某新物品/材料卻查不到**。判準:作者新增的東西「在 `MOB_DROPS` 裡嗎?」不在 → 去找它在哪張掉落表/哪種兌換,補進掉落查詢,別只更新小百科。
    - **⭐ 「沒有固定來源」已自動偵測(含寶箱與各種試煉/兌換結構)**:掉落查詢 `hasFixedSource(id)` 統一判斷來源,讀:`DROPPED_SET`(怪掉)＋`_craftIndex`(製作,含 `CRAFT_RECIPES`/`DEMONKING_RECIPES`/`LUMIEL_RECIPES`)＋`_shopIndex`(商店)＋`itemAcquire`(手動)＋`boxTiersOf`(歐西里斯寶箱 `OSIRIS_BOX_*`)＋**`trialSourceOf`(各職業試煉/兌換設定結構:`TRIAL_50_CFG`/`DARK_TRIAL_CFG`/`SHENIEN_EX`/`WARRIOR_EX`/`PROCEL_EX`/`YURIA_REWARDS`)**。這些都**讀遊戲全域、作者改設定自動跟上,不必逐物品手動補**(瑪那水晶球等 50 級試煉成品、影子裝、幻術士裝、戰士團裝、臂甲都靠 `trialSourceOf` 現身)。**潘朵拉限定物(`gachaWeight>0` 且查無固定來源)→ 自動收進搜尋 + 詳情卡標中性句「目前沒有固定取得途徑」**(依規則不提潘朵拉)。**作者新增「會發裝備的新結構」時**(grep `rewards:`/`reward:`/`_EX`/`_CFG`),把它加進 `buildTrialBy()` 即可一次涵蓋整批。真正剩的死角只有「`gachaWeight=0`、不在任何結構、又沒怪掉」的廢棄/起始裝(留空合理)。
