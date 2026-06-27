@@ -1528,9 +1528,9 @@
       var ic = ''; try { ic = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (eIc) {}
       var icImg = ic ? '<img src="' + esc(ic) + '" alt="" style="width:26px;height:26px;object-fit:contain;flex:none;border-radius:4px;" onerror="this.style.display=\'none\'">' : '';
       return '<div class="m-wiki-card m-eq-card">' +
-        '<div class="m-eq-head" data-eq="' + esc(id) + '" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
-          '<span style="display:flex;align-items:center;gap:7px;min-width:0;">' + icImg + '<span class="' + nameCls + ' font-bold">' + esc(d.n) + (d.legend ? ' ✦' : '') + '</span></span>' +
-          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;flex:none;">' + esc(equipCompact(d)) + '</span>' +
+        '<div class="m-eq-head" data-eq="' + esc(id) + '" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">' +
+          '<span style="display:flex;align-items:center;gap:7px;flex-shrink:0;">' + icImg + '<span class="' + nameCls + ' font-bold" style="white-space:nowrap;">' + esc(d.n) + (d.legend ? ' ✦' : '') + '</span></span>' +
+          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;flex-shrink:1;min-width:0;">' + esc(equipCompact(d)) + '</span>' +
         '</div>' +
         '<div class="m-eq-detail" style="display:none;border-top:1px solid #1e293b;margin-top:6px;padding-top:6px;">' + equipDetailHTML(id) + '</div>' +
       '</div>';
