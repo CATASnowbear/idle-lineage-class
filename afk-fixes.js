@@ -239,29 +239,42 @@
   (function () {
     var isAndroidMobile = /Android/i.test(navigator.userAgent || '');
 
+    // 檔名淨化成 ASCII:含中文角色名的檔名,在安卓分享/存進 Download 後,DownloadsProvider 那筆
+    //   MediaStore 記錄常 size=0(下載列表顯示 0B),經該記錄讀回是空字串 → 匯入 JSON.parse('') 失敗。
+    //   去掉非 ASCII / 不安全字元(內容不改)即可避開(實體檔本來就正常)。
+    function asciiName(fname) {
+      var s = String(fname || 'save.json')
+        .replace(/[^\x20-\x7E]/g, '').replace(/[\\/:*?"<>|]/g, '')
+        .replace(/\s+/g, '_').replace(/_+/g, '_').replace(/_(\.)/g, '$1').replace(/^_+/, '');
+      if (!/\.json$/i.test(s)) s += '.json';
+      if (s === '.json') s = 'save.json';
+      return s;
+    }
+
     function install() {
       if (!isAndroidMobile) return true;
       if (typeof window.downloadSaveFile !== 'function' || window.downloadSaveFile.__androidShareDl) return false;
       var orig = window.downloadSaveFile;
       var patched = function (data, fname) {
+        var safe = asciiName(fname);
         try {
-          var file = new File([data], fname, { type: 'application/json' });
+          var file = new File([data], safe, { type: 'application/json' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            navigator.share({ files: [file], title: fname })
+            navigator.share({ files: [file], title: safe })
               .then(function () {
                 try {
                   if (typeof window.logSys === 'function')
-                    window.logSys('<span class="text-indigo-300 font-bold">✔ 存檔已匯出：' + fname + '</span>');
+                    window.logSys('<span class="text-indigo-300 font-bold">✔ 存檔已匯出：' + safe + '</span>');
                 } catch (e) {}
               })
               .catch(function (err) {
                 if (err && err.name === 'AbortError') return;   // 使用者取消分享
-                try { orig(data, fname); } catch (e) {}         // share 失敗才退回原版
+                try { orig(data, safe); } catch (e) {}          // share 失敗才退回原版
               });
             return;
           }
         } catch (e) {}
-        return orig.apply(this, arguments);   // canShare 不支援(舊版 Android)→ 退回原版
+        return orig.call(this, data, safe);   // canShare 不支援(舊版 Android)→ 退回原版(仍用淨化檔名)
       };
       patched.__androidShareDl = true;
       window.downloadSaveFile = patched;
