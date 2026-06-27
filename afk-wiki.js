@@ -39,6 +39,22 @@
   function standaloneUrl() {
     return location.href.split('?')[0].split('#')[0] + '?view=' + VIEW;   // 去掉現有 query/hash 再帶 view
   }
+  // 🔗 通用跨頁:是否在任一獨立頁(?view=,不限本外掛) → 決定連結走「網址」還是「模態」
+  function inStandaloneView() { try { return !!new URLSearchParams(location.search).get('view'); } catch (e) { return false; } }
+  // 🔗 通用「前往小百科」(供掉落查詢等任何跨頁連結重用):模態連模態、網址連網址。opts={tab,cls,q}
+  function gotoWiki(opts) {
+    opts = opts || {};
+    if (inStandaloneView()) {   // 網址連網址:導去 ?view=wiki&...(小百科初始化 applyUrlState 會讀 q/tab/cls 還原)
+      var qs = '?view=' + VIEW;
+      if (opts.q) qs += '&q=' + encodeURIComponent(opts.q);
+      else { if (opts.tab) qs += '&tab=' + encodeURIComponent(opts.tab); if (opts.cls) qs += '&cls=' + encodeURIComponent(opts.cls); }
+      location.href = location.href.split('?')[0].split('#')[0] + qs;
+      return;
+    }
+    openModal();   // 模態連模態:開小百科模態並切到指定分頁/搜尋
+    applyUrlState({ q: opts.q || '', tab: opts.tab || '', cls: opts.cls || '' });
+  }
+  window.AFK_WIKI_API = { goto: gotoWiki };   // 通用跨頁前往小百科(模態/網址自動);供掉落查詢等反向連結重用
   // 獨立頁:狀態(搜尋字/分頁/職業)←→ 網址,方便複製連結分享(replaceState,不灌爆瀏覽記錄)
   function _wikiParam(n) { try { return new URLSearchParams(location.search).get(n); } catch (e) { return null; } }
   var _tabSet = null, _clsSet = null;
@@ -1458,7 +1474,7 @@
     var html = '';
     try {
       if (window.AFK_DEX_API && AFK_DEX_API.itemDetailHTML) {
-        html = '<div class="m-eq-stats" style="margin-top:4px;line-height:1.8;">' + AFK_DEX_API.itemDetailHTML(id, { noHead: 1, noSearchBtn: 1 }) + '</div>';
+        html = '<div class="m-eq-stats" style="margin-top:4px;line-height:1.8;">' + AFK_DEX_API.itemDetailHTML(id, { noHead: 1 }) + '</div>';
       } else {   // 降級:API 沒載到才退回最簡版(數值 + 取得方式)
         if (typeof buildItemDescHTML === 'function') {
           var base = { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false };

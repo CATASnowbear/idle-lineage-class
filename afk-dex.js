@@ -34,6 +34,22 @@
   function standaloneUrl() {
     return location.href.split('?')[0].split('#')[0] + '?view=' + VIEW;
   }
+  // 🔗 通用跨頁:是否在「獨立頁」(任一 ?view=,不限本外掛)→ 決定連結走「網址」還是「模態」
+  function inStandaloneView() { try { return !!new URLSearchParams(location.search).get('view'); } catch (e) { return false; } }
+  // 🔗 通用「前往掉落查詢」(供小百科等任何跨頁連結重用):模態連模態、網址連網址。
+  //    opts.q = 預設搜尋字。獨立頁 → 導去 ?view=dex&q=(dex 初始化讀 q 自動搜);模態(遊戲內) → 開 dex 模態並搜尋。
+  function gotoDex(opts) {
+    opts = opts || {};
+    if (inStandaloneView()) {   // 網址連網址
+      location.href = location.href.split('?')[0].split('#')[0] + '?view=' + VIEW + (opts.q ? '&q=' + encodeURIComponent(opts.q) : '');
+      return;
+    }
+    if (_isPop()) userCloseTop();   // 模態連模態:在 dex 詳情彈窗內先關它(退一層歷史)
+    openModal();
+    var i = document.getElementById('m-dex-input'); if (i) i.value = opts.q || '';
+    doSearch();
+    var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
+  }
   // 獨立頁:把目前搜尋字寫進網址(replaceState,不灌爆上一頁/下一頁),方便複製連結分享給別人
   function syncUrl() {
     if (!isStandalone()) return;
@@ -443,14 +459,14 @@
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
-  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML };   // itemDetailHTML 供小百科「裝備」分頁重用完整詳情(noHead/noSearchBtn)
+  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex };   // itemDetailHTML 供小百科裝備頁重用完整詳情;goto({q}) 通用跨頁前往掉落查詢(模態/網址自動)
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
   var IT_SLOT = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
   function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
   function itemDetailHTML(id, opts) {
-    opts = opts || {};   // 🔧 noHead:不要圖示+名稱列(呼叫端自己有名稱,如小百科裝備卡);noSearchBtn:不要「查掉落」互動鈕(改列怪物掉落文字,給非 dex 頁重用)
+    opts = opts || {};   // 🔧 noHead:不要圖示+名稱列(呼叫端自己有名稱,如小百科裝備卡)。「查掉落」鈕一律帶(只在有怪掉時)、click 走全域 handler,dex 內或小百科裝備頁皆可用
     var d = DB.items[id];
     if (!d) return '<div class="m-dex-hint">查無此物品資料。</div>';
     var icon = '';
@@ -484,13 +500,9 @@
     if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
     var _tc = trialClassOf(id);
     var trialLine = _tc ? '<div class="m-dex-craft" style="margin:4px 0;border-left:3px solid #b45309;padding-left:7px;"><div class="m-dex-craft-h">🔒 職業限定</div><div class="m-dex-craft-mats">只有 <b>' + _tc.join('／') + '</b> 擊殺對應怪物才會掉落（其他職業打同一隻怪不會掉）。</div></div>' : '';
-    var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
-    var tail = searchBtn;
-    if (opts.noSearchBtn) {   // 非 dex 頁(無互動鈕,如小百科裝備):改列怪物掉落文字(與 acquireHTML 同邏輯)
-      if (_dropBy === null) buildDropBy();
-      var mobs = _dropBy[id];
-      tail = (mobs && mobs.length) ? ('<div class="m-dex-craft"><div class="m-dex-craft-h">👹 怪物掉落</div><div class="m-dex-craft-mats">' + mobs.slice(0, 12).map(esc).join('、') + (mobs.length > 12 ? ' …等 ' + mobs.length + ' 種' : '') + '（機率見掉落查詢）</div></div>') : '';
-    }
+    // 「查有哪些怪會掉這件」鈕:只在真的有怪會掉時顯示(純製作/兌換成品不顯示);click 由全域 handler 接 → dex 詳情彈窗內 或 小百科裝備頁 點到都會開掉落查詢並以物品名搜尋
+    if (_dropBy === null) buildDropBy();
+    var tail = (_dropBy[id] && _dropBy[id].length) ? '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>' : '';
     return head + typeLine + trialLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + tail;
   }
   function openItemPop(id) {
@@ -737,14 +749,11 @@
     m.addEventListener('click', function (e) { if (e.target === m) userCloseTop(); });   // 點背景關閉
     document.getElementById('m-dex-itempop-close').addEventListener('click', userCloseTop);
     document.getElementById('m-dex-itempop').addEventListener('click', function (e) { if (e.target.id === 'm-dex-itempop') userCloseTop(); });   // 點彈窗背景關閉
-    // 詳情卡裡的「查有哪些怪會掉這件」→ 關卡片 + 以物品名搜尋
-    document.getElementById('m-dex-itempop-body').addEventListener('click', function (e) {
+    // 「查有哪些怪會掉這件」鈕:全域委派 → dex 詳情彈窗內 或 小百科裝備頁 點到都能用;走通用 gotoDex(模態連模態、網址連網址)
+    document.addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('.m-dex-pop-search') : null;
       if (!b) return;
-      userCloseTop();   // 關彈窗(並退一層歷史),再以物品名搜尋
-      var i = document.getElementById('m-dex-input');
-      if (i) { i.value = b.getAttribute('data-item') || ''; doSearch(); }
-      var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
+      gotoDex({ q: b.getAttribute('data-item') || '' });
     });
   }
   function openModal() { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) _pushNav(); } }
