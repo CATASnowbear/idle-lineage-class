@@ -467,7 +467,7 @@ const SAVE_DEFAULTS = {
     prideBeatJenis: false, demonTempleOpen: false, flameAffinity: 0, trialStage: 0, prideRank: { best: null, last: null, isNew: false }, prideRankSherine: { best: null, last: null, isNew: false },
     riftRank: { best: null, last: null, isNew: false }, riftRankSherine: { best: null, last: null, isNew: false }, riftRewardMs: null,
     elfEle: null, poly: null, summon: null, charmed: null, hot: null,
-    manualCd: {}, blessings: {}, cardDex: {}, equipDex: {},
+    manualCd: {}, blessings: {}, cardDex: {}, cardDexV: 0, equipDex: {},
     alloc:   { str:0, dex:0, con:0, int:0, wis:0, cha:0 },
     panacea: { str:0, dex:0, con:0, int:0, wis:0, cha:0 },
     cds:     { pot:0, atkSk:0, healSk:0, purifySk:0 },

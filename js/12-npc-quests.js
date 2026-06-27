@@ -29,14 +29,20 @@ const CARDDEX_KEY = 'lineage_idle_carddex';
 const EQUIPDEX_KEY = 'lineage_idle_equipdex';
 function _dexKey(base, p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (base + '_trad') : (_p && _p.classicMode) ? (base + '_classic') : base; }   // 🏛️ 傳統／🎮 經典 各自獨立桶（同倉庫規則）
 function _readDex(base){ try { let s = localStorage.getItem(_dexKey(base)); if (s) { let o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch(e){} return {}; }
-function saveCardDex(){ if (player && player.cardDex) { try { localStorage.setItem(_dexKey(CARDDEX_KEY), JSON.stringify(player.cardDex)); } catch(e){} } }
+function saveCardDex(){ if (player && player.cardDex) { try { localStorage.setItem(_dexKey(CARDDEX_KEY), JSON.stringify(Object.assign({ _v: 2 }, player.cardDex))); } catch(e){} } }   // 🎴 _v:2＝積分制（區分舊階級桶）
 function saveEquipDex(){ if (player && player.equipDex) { try { localStorage.setItem(_dexKey(EQUIPDEX_KEY), JSON.stringify(player.equipDex)); } catch(e){} } }
-// 讀檔／創角時呼叫：把共用桶併進 player.cardDex/equipDex（卡片取較高階·裝備取聯集·只增不減），並回寫共用桶（種子化＋遷移舊存檔 per-character 資料·不丟失）
+// 讀檔／創角時呼叫：把共用桶併進 player.cardDex/equipDex（卡片取較高分·裝備取聯集·只增不減），並回寫共用桶（種子化＋遷移舊存檔 per-character 資料·不丟失）
 function loadSharedCollections(){
     if (!player) return;
-    let shCard = _readDex(CARDDEX_KEY), shEquip = _readDex(EQUIPDEX_KEY);
+    let shRaw = _readDex(CARDDEX_KEY), shEquip = _readDex(EQUIPDEX_KEY);
+    // 🎴 卡片積分制遷移（一次性）：舊階級(1/2/3)→積分(1/10/100)。共用桶以 _v 標記、玩家存檔以 cardDexV 標記。
+    let _mig = (typeof cardTierToScore === 'function') ? cardTierToScore : function(v){ return v || 0; };
+    let _bucketOld = (shRaw && shRaw._v !== 2);
+    let shCard = {};
+    for (let k in shRaw) { if (k === '_v') continue; shCard[k] = _bucketOld ? _mig(shRaw[k]) : shRaw[k]; }
+    if (player.cardDex && player.cardDexV !== 2) { for (let k in player.cardDex) player.cardDex[k] = _mig(player.cardDex[k]); player.cardDexV = 2; }
     let mC = Object.assign({}, shCard), pc = player.cardDex || {};
-    for (let k in pc) if ((pc[k] || 0) > (mC[k] || 0)) mC[k] = pc[k];   // 🎴 卡片：取較高階（普<銀<金）
+    for (let k in pc) if ((pc[k] || 0) > (mC[k] || 0)) mC[k] = pc[k];   // 🎴 卡片：取較高分（只增不減）
     player.cardDex = mC;
     player.equipDex = Object.assign({}, shEquip, player.equipDex || {});   // 🗡️ 裝備：布林聯集
     saveCardDex(); saveEquipDex();

@@ -462,21 +462,21 @@ function selectClass(c) {
 
     // 3. 更新說明文字
     if (curCreate.cls === 'knight') {
-        document.getElementById('class-desc').innerText = "騎士：依靠天生的技巧與堅持不懈的努力, 獲得最高戰力與尊貴氣質的角色。能使用各式武器與防具, 在初始數值中力量最高,是戰鬥專精的職業。";
+        document.getElementById('class-desc').innerText = "騎士：力量最高的戰鬥專精職業，能使用各式武器與防具。";
     } else if (curCreate.cls === 'mage') {
-        document.getElementById('class-desc').innerText = "法師：將世界的所有法則理解為「殷海薩」與「格蘭肯」 之神的鬥爭,並全心投入魔法研究的學者。身體能力較弱,但能施展強大魔法, 是專精魔法的職業。";
+        document.getElementById('class-desc').innerText = "法師：身體較弱但能施展強大魔法的魔法專精職業。";
     } else if (curCreate.cls === 'elf') {
-        document.getElementById('class-desc').innerText = "妖精：在妖精森林建立據點的自然化身。這個種族既愛護人類,同時表現出冷靜與果斷。以均衡能力操控各種武器,是多才多藝的職業。";
+        document.getElementById('class-desc').innerText = "妖精：能力均衡、操控各種武器的多才多藝職業。";
     } else if (curCreate.cls === 'dark') {
-        document.getElementById('class-desc').innerText = "黑暗妖精：墮入暗影、棲身於沉默洞穴的妖精分支。敏捷最高、體質脆弱，精通匕首、雙刀、鋼爪與十字弓，並施展獨有的黑暗妖精魔法與劇毒之術。擅長迴避與雙擊，是高風險高機動的暗影獵手。";
+        document.getElementById('class-desc').innerText = "黑暗妖精：敏捷最高、體質脆弱，精通匕首/雙刀/鋼爪/十字弓與劇毒，擅長迴避與雙擊的高機動獵手。";
     } else if (curCreate.cls === 'illusion') {
-        document.getElementById('class-desc').innerText = "幻術士：以記憶水晶操弄心靈與幻象的施術者。基本魔防較高，能以「奇古獸」武器將攻擊化為必中的魔法傷害，並施展混亂、恐慌等異常幻術與召喚幻覺協同作戰。出生於希培利亞村莊。";
+        document.getElementById('class-desc').innerText = "幻術士：魔防較高，以「奇古獸」武器將攻擊化為必中魔法傷害，並施展混亂等幻術。出生於希培利亞。";
     } else if (curCreate.cls === 'dragon') {
-        document.getElementById('class-desc').innerText = "龍騎士：承襲巨龍之力的近戰戰士。體質與力量兼備，多數龍魔法以「生命力（HP）」為代價施展，能以覺醒、血之渴望大幅提升攻速，並以鎖鏈劍累積「弱點曝光」配合屠宰者爆發。出生於貝希摩斯。";
+        document.getElementById('class-desc').innerText = "龍騎士：體質與力量兼備的近戰戰士，龍魔法多以 HP 為代價，能大幅提升攻速並以鎖鏈劍累積「弱點曝光」。出生於貝希摩斯。";
     } else if (curCreate.cls === 'warrior') {
-        document.getElementById('class-desc').innerText = "戰士：力量與體質兼備的純近戰鬥士。專精斧頭與鈍器，能雙持單手鈍器同時揮擊，並以熱血、憤怒、忍耐三系被動與技能爆發；魔防偏低，但可學習一階法師魔法輔助。出生於海音。";
+        document.getElementById('class-desc').innerText = "戰士：力量與體質兼備的純近戰職業，專精斧頭與鈍器、可雙持單手鈍器，魔防偏低。出生於海音。";
     } else if (curCreate.cls === 'royal') {
-        document.getElementById('class-desc').innerText = "王族：天生的領袖，以魅力號召眾多夥伴並肩作戰——可同時僱用的傭兵數量隨魅力提升（3＋魅力/15，最多 7 名）。慣用單手劍與匕首，可習得王族專屬魔法（精準目標／呼喚盟友／灼熱武器等）與法師魔法。王子天生效忠特羅斯、公主天生效忠依詩蒂，無法選擇或退出血盟。出生於說話之島。";
+        document.getElementById('class-desc').innerText = "王族：天生的領袖，傭兵上限隨魅力提升（3＋魅力/15，最多 7 名），習得王族專屬魔法。天生加入血盟、不可退出。出生於說話之島。";
     }
     
     document.getElementById('stat-allocation').style = "";

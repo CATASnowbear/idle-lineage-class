@@ -737,14 +737,16 @@ function applySherineBuff(idx) {
         if (_mad) _m._sherineMad = true;   // 🔮 瘋狂旗標：供傷害/掉落/結晶/套裝效果倍率分流
     }
 }
-// 🔮 席琳的恩賜：席琳的世界中每次刷新 1% 機率讓場上一隻怪（含頭目）獲得恩賜（血盟除外）
-//  ⚠️ 已移除「每 3 分鐘冷卻」與「頭目除外」限制：只要 1% 機率判定到即觸發、可連續觸發、頭目亦可；仍維持「場上同時僅一隻恩賜怪」
+// 🔮 席琳的恩賜：席琳的世界中每次刷新 1% 機率讓場上一隻怪獲得恩賜（血盟除外）
+//  一般席琳＝原版：每 3 分鐘最多一次、場上同時僅一隻、頭目(王)不被祝福；🔥 瘋狂席琳：無 3 分鐘冷卻、無「同時一隻」限制、頭目(王)亦可被祝福
 function applySherineGrace(idx) {
+    let _mad = sherineMadActive();   // 🔥 瘋狂席琳：無冷卻、無「同時一隻」、含頭目；一般席琳維持原版三限制
     if (sherineWorldActive() && !isSiegeArea(mapState.current)
         && mapState.mobs[idx] && mapState.mobs[idx].race !== '血盟'
-        && !mapState.mobs.some(m => m && m._grace)
+        && (_mad || state.ticks >= (mapState.graceCdAt || 0))
+        && (_mad || !mapState.mobs.some(m => m && m._grace))
         && Math.random() < 0.01) {
-        let _gc = mapState.mobs.filter(m => m && !m._dead && m.curHp > 0 && m.race !== '血盟');   // 👑 含頭目（不再排除 boss）
+        let _gc = mapState.mobs.filter(m => m && !m._dead && m.curHp > 0 && m.race !== '血盟' && (_mad || !m.boss));   // 一般：排除頭目；瘋狂：含頭目
         if (_gc.length) {
             let g = _gc[Math.floor(Math.random() * _gc.length)];
             g._grace = true;
@@ -752,6 +754,7 @@ function applySherineGrace(idx) {
             g.exp = Math.floor((g.exp || 0) * 10);
             g.goldMin = Math.floor((g.goldMin || 0) * 10);
             g.goldMax = Math.floor((g.goldMax || 0) * 10);
+            if (!_mad) mapState.graceCdAt = state.ticks + 1800;  // 3 分鐘冷卻只在一般席琳設定（瘋狂無冷卻）
             logSys(`<span class="grace-badge font-bold">✦ 席琳的恩賜降臨！</span><span class="c-sherine font-bold">${g.n}</span><span class="text-red-300"> 獲得了席琳的力量……擊敗它以奪取豐厚的報酬！</span>`);
         }
     }

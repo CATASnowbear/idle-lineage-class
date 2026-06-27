@@ -56,13 +56,13 @@
 
         <div id="creation-panel" class="hidden flex flex-row gap-6 items-start">
 
-            <div id="creation-img-wrap" class="w-[340px] h-[560px] border-4 border-amber-800 p-2 bg-slate-950/40 rounded-lg shadow-[0_0_30px_rgba(0,0,0,0.9)] outline outline-1 outline-offset-4 outline-amber-700/40 flex items-center justify-center shrink-0 overflow-hidden">
+            <div id="creation-img-wrap" class="w-[340px] h-[600px] border-4 border-amber-800 p-2 bg-slate-950/40 rounded-lg shadow-[0_0_30px_rgba(0,0,0,0.9)] outline outline-1 outline-offset-4 outline-amber-700/40 flex items-center justify-center shrink-0 overflow-hidden">
                 <img id="class-preview-img" src="assets/start/prince.png" alt="職業預覽" class="w-full h-full object-cover object-top rounded pointer-events-none drop-shadow-[0_10px_15px_rgba(0,0,0,0.8)]">
             </div>
 
-            <div id="creation-controls" class="flex-1 h-[560px] flex flex-col justify-between min-w-0">
-                <div id="creation-row" class="flex gap-4 flex-1 h-[470px]">
-                    <div id="creation-class-box" class="w-[290px] h-[470px] bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col shrink-0">
+            <div id="creation-controls" class="flex-1 h-[600px] flex flex-col justify-between min-w-0">
+                <div id="creation-row" class="flex gap-4 flex-1 min-h-0">
+                    <div id="creation-class-box" class="w-[290px] h-full bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col shrink-0">
                         <h2 class="text-lg text-yellow-400 mb-3 font-bold shrink-0">1. 選擇職業</h2>
                         <!-- 職業按鈕區：8 個職業（16 鈕）一次完整顯示、不捲動；👑 王族放第一位 -->
                         <div class="grid grid-cols-2 gap-1.5 shrink-0 content-start">
@@ -86,7 +86,7 @@
                         <div id="class-desc" class="mt-3 text-slate-300 text-sm leading-relaxed flex-1 min-h-0 overflow-y-auto pr-1"></div>
                     </div>
                     
-                    <div class="flex-1 h-[470px] bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col" id="stat-allocation">
+                    <div class="flex-1 h-full bg-slate-800/50 p-5 rounded-xl border border-slate-700 flex flex-col" id="stat-allocation">
                         <h2 class="text-lg text-yellow-400 mb-4 font-bold flex justify-between items-center shrink-0">
                             <span>2. 分配能力</span>
                             <span class="text-emerald-400 text-sm">剩餘: <span id="creation-pts" class="text-xl">0</span></span>
@@ -102,19 +102,19 @@
                     </div>
                 </div>
                 
-                <label class="flex items-center gap-2 mt-3 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（硬核）規則，無法事後關閉">
+                <label class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（硬核）規則，無法事後關閉">
                     <input type="checkbox" id="create-classic-toggle" onchange="onToggleClassic(this)" class="w-5 h-5 accent-amber-600 shrink-0">
                     <span class="text-amber-300 font-bold shrink-0">經典模式</span>
-                    <span class="text-slate-400 text-xs">砍半的經驗與金錢、掉寶率僅 1/10，死掉還噴經驗——感受更「經典」的天堂回憶（永久・預設關閉）</span>
+                    <span class="text-slate-400 text-xs">經驗/金錢砍半、掉寶率 1/10、死亡噴經驗（永久）</span>
                 </label>
                 <label id="lbl-create-traditional" class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none opacity-40" title="須先勾選「經典模式」才能選擇；傳統模式為經典之上的子模式，永久生效">
                     <input type="checkbox" id="create-traditional-toggle" onchange="onToggleTraditional(this)" disabled class="w-5 h-5 accent-purple-600 shrink-0">
                     <span class="text-purple-300 font-bold shrink-0">傳統模式</span>
-                    <span class="text-slate-400 text-xs">經典之上：所有裝備不可強化（隱藏快速強化），怪物/黑市不出施法卷軸；改由掉落/黑市/製作的裝備「自帶隨機強化值」。倉庫與角色獨立，須先勾經典（永久）</span>
+                    <span class="text-slate-400 text-xs">經典之上：裝備不可強化、無施法卷軸，改由掉落/製作裝備自帶隨機強化值（永久）</span>
                 </label>
-                <div class="flex gap-4 shrink-0 mt-2">
-                    <button onclick="backToMenu()" class="btn w-1/4 py-3 text-base">返回</button>
-                    <button onclick="startGame()" id="btn-start" class="btn w-3/4 py-3 font-bold text-lg text-white shadow-lg" disabled>開始冒險</button>
+                <div class="flex gap-4 shrink-0 mt-3">
+                    <button onclick="backToMenu()" class="btn w-1/4 py-2.5 text-base">返回</button>
+                    <button onclick="startGame()" id="btn-start" class="btn w-3/4 py-2.5 font-bold text-lg text-white shadow-lg" disabled>開始冒險</button>
                 </div>
             </div>
             
@@ -386,21 +386,21 @@
     </div>
 
 <script src="js/00-data.js?v=b0786ec371"></script>
-<script src="js/01-drops-config.js?v=ea900d7f3b"></script>
+<script src="js/01-drops-config.js?v=c3f0f1e978"></script>
 <script src="js/02-stats-recompute.js?v=f5961f5591"></script>
 <script src="js/03-combat-core.js?v=ed8057f824"></script>
 <script src="js/04-combat-attack.js?v=08cd2941ba"></script>
-<script src="js/05-kill-progression.js?v=bac1360e68"></script>
+<script src="js/05-kill-progression.js?v=6c6ae3cc16"></script>
 <script src="js/06-status-allies.js?v=4f594f29ee"></script>
 <script src="js/07-skills-cast.js?v=78a3958125"></script>
 <script src="js/08-items-equip.js?v=2eaf18edfd"></script>
 <script src="js/09-vfx-render.js?v=0c33516c4e"></script>
 <script src="js/10-ui-tabs.js?v=a8998ebb6d"></script>
 <script src="js/11-world-map.js?v=e0c28aa6dc"></script>
-<script src="js/12-npc-quests.js?v=292786c3a4"></script>
-<script src="js/13-shop-save.js?v=dfaaf393a8"></script>
+<script src="js/12-npc-quests.js?v=af84ed8237"></script>
+<script src="js/13-shop-save.js?v=167cd39430"></script>
 <script src="js/14-craft-pandora.js?v=5a352e1dc0"></script>
-<script src="js/15-cards.js?v=15228dba36"></script>
+<script src="js/15-cards.js?v=ab37099e07"></script>
 <script src="js/16-equip-book.js?v=da7ddfa39f"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260627e"></script>

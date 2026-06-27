@@ -96,9 +96,13 @@ const CARD_MOB_MAPS = {};      // mobName -> [mapKey,...]
     });
 })();
 
-// ---- 圖鑑狀態助手（player.cardDex：怪名 -> 已開啟最高階 1/2/3）----
-function cardDexTier(name) { return (player.cardDex && player.cardDex[name]) || 0; }
-function cardSetDex(name, tier) { if (!player.cardDex) player.cardDex = {}; if ((player.cardDex[name] || 0) < tier) { player.cardDex[name] = tier; if (typeof saveCardDex === 'function') saveCardDex(); } }   // 🎴 共用桶：登錄新階即回寫
+// ---- 圖鑑狀態助手（player.cardDex：怪名 -> 隱藏積分 0~100；使用普卡+1/銀卡+10/金卡+100分）----
+//  顯示階由積分推導：≥1→普卡資訊、≥10→銀卡、≥100→金卡（單獨使用效果同舊制；亦可靠累積低階卡開通高階）。此為內部判斷，不對玩家說明。
+const CARD_POINTS = [1, 10, 100];   // 🎴 普/銀/金 使用所得積分
+function cardDexScore(name) { return (player.cardDex && player.cardDex[name]) || 0; }
+function cardDexTier(name) { let s = cardDexScore(name); return s >= 100 ? 3 : (s >= 10 ? 2 : (s >= 1 ? 1 : 0)); }
+function cardTierToScore(v) { v = v || 0; return v >= 3 ? 100 : (v === 2 ? 10 : (v >= 1 ? 1 : 0)); }   // 🎴 舊存檔遷移：階級(1/2/3)→積分(1/10/100)（僅 loadSharedCollections 遷移時呼叫）
+function cardAddScore(name, points) { if (!player.cardDex) player.cardDex = {}; let cur = player.cardDex[name] || 0; let nv = Math.min(100, cur + points); if (nv !== cur) { player.cardDex[name] = nv; if (typeof saveCardDex === 'function') saveCardDex(); } return nv; }   // 🎴 加分（上限100），登錄即回寫共用桶
 function cardRegionTier(key) {   // 該地區「全部怪物皆達」的最高階（0=未完成）
     let names = CARD_REGION_MOBS[key]; if (!names || !names.length) return 0;
     let minT = 3;
@@ -125,7 +129,7 @@ function rollCardDrops(mob) {
 function _cardDropRoll(name, tier, rate) {
     if (Math.random() >= rate) return;
     let ct = CARD_TIERS[tier - 1];
-    if (cardDexTier(name) >= tier) {   // 已收錄（含更高階）→ 自動賣出
+    if (cardDexScore(name) >= 100) {   // 🎴 圖鑑已開通(滿100分)→ 自動賣出；未滿則進背包累積（低階卡也算分）
         player.gold += ct.price;
         logSys(`<span class="${ct.col} font-bold">${name} 的${ct.sfx}</span><span class="text-slate-400"> 已收錄，自動賣出 +${ct.price} 金幣。</span>`);
     } else {
@@ -133,17 +137,23 @@ function _cardDropRoll(name, tier, rate) {
     }
 }
 
-// ---- 使用一張卡片（useItem 分派）：登錄圖鑑並消耗；若已達該階則改為販賣 ----
+// ---- 使用卡片（useItem 分派）：加積分登錄；持有多張同卡 → 自動全部使用至滿100分即止；已開通則無法使用 ----
 function useCardItem(item) {
     let d = DB.items[item.id]; if (!d || !d.cardMob) return;
     let nm = d.cardMob, tier = d.cardTier, ct = CARD_TIERS[tier - 1];
-    if (cardDexTier(nm) >= tier) {   // 已收錄 → 賣出（沿用既有販賣管線）
-        if (typeof sellItem === 'function') sellItem(item.uid, 1, d.p);
+    let pts = CARD_POINTS[tier - 1], cur = cardDexScore(nm);
+    if (cur >= 100) {   // 🎴 圖鑑已開通(滿100分)：無法使用
+        logSys(`<span class="${ct.col} font-bold">「${nm}」</span><span class="text-slate-400"> 的圖鑑已開通，無法使用。</span>`);
+        if (typeof closeModal === 'function') closeModal();
         return;
     }
-    cardSetDex(nm, tier);
-    if ((item.cnt || 1) > 1) item.cnt -= 1; else player.inv = player.inv.filter(i => i.uid !== item.uid);
-    logSys(`<span class="${ct.col} font-bold">卡片收集冊登錄了「${nm}」（${ct.sfx}）！</span>`);
+    // 🎴 自動全部使用：用到滿100分即止（多餘留在背包）。單張使用效果同舊制。
+    let have = item.cnt || 1;
+    let need = Math.ceil((100 - cur) / pts);
+    let useN = Math.min(have, need);
+    cardAddScore(nm, useN * pts);
+    if (have > useN) item.cnt = have - useN; else player.inv = player.inv.filter(i => i.uid !== item.uid);
+    logSys(`<span class="${ct.col} font-bold">卡片收集冊登錄了「${nm}」！</span>` + (useN > 1 ? `<span class="text-slate-400">（自動使用 ${useN} 張）</span>` : ''));
     if (typeof calcStats === 'function') calcStats();   // 套用可能的地區完成加成
     if (typeof renderTabs === 'function') renderTabs(true);
     if (typeof updateUI === 'function') updateUI();
