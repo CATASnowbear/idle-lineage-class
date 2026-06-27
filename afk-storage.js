@@ -173,7 +173,7 @@
     var gear = document.createElement('button');
     gear.id = 'afk-stg-gear';
     gear.type = 'button';
-    gear.textContent = '⚙ 設定';
+    gear.textContent = '⚙ 其他功能';
     var list = document.createElement('div');
     list.id = 'afk-stg-menu';
     wrap.appendChild(gear);

@@ -53,6 +53,7 @@ const PLUGINS = [
   { file: 'afk-storage.js',  comment: '首頁設定鈕:檢查存檔大小(純唯讀列出 localStorage 各 key 用量;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-history.js',  comment: '離線掛機歷史紀錄:首頁設定選單列出各角色最近 5 筆離線收益(純唯讀讀 afk_hist_<slot>;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-analytics.js', comment: 'Cloudflare Web Analytics beacon 注入:統計人數/開啟次數(只在正式站台送;可獨立維護,原作者更新後重新加回此行即可)' },
+  { file: 'afk-skin.js', comment: '首頁「加掛版」品牌標記 + 外掛區外框(純視覺;需排在其他 afk-* 之後;可獨立維護,原作者更新後重新加回此行即可)' },
 ];
 
 // 我們自己放在 assets/ 底下、非上游的檔案白名單(孤兒清理時略過,不會被當「作者移除的圖」刪掉)。
