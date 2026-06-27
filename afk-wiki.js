@@ -1358,7 +1358,7 @@
 
   // 卡片收集:動態讀遊戲 CARD_TIERS(售價)/CARD_REGIONS(地區完成加成)/CARD_STAT_LABEL;掉率與解鎖資訊以 js/15-cards.js 的 rollCardDrops/renderCardBook 為準。
   function renderCard() {
-    var out = '<div class="m-wiki-note">「卡片收集」：每隻怪（<b>血盟與建築類除外</b>）極低機率掉「怪物卡片」，<b>使用</b>卡片在「收集冊」登錄該怪、解鎖牠的資料；把一個地區的怪收齊還有<b>屬性加成</b>。收集冊是創角自帶、唯一、不能賣也不能存倉的道具，使用即翻開。</div>';
+    var out = '<div class="m-wiki-note">「卡片收集」：每隻怪（<b>血盟與建築類除外</b>）極低機率掉「怪物卡片」，<b>使用</b>卡片在「收集冊」登錄該怪、解鎖牠的資料；把一個地區的怪收齊還有<b>屬性加成</b>。收集冊是創角自帶、唯一、不能賣也不能存倉的道具，使用即翻開。<br><b>每隻角色各自收集</b>——不像倉庫全角色共通，每個存檔位有自己的收集進度。</div>';
 
     var tiers = (typeof CARD_TIERS !== 'undefined') ? CARD_TIERS : [];
     var price = function (t) { var c = tiers[t - 1]; return c ? Number(c.price).toLocaleString() : '?'; };
@@ -1378,7 +1378,7 @@
       return [esc(r.name), esc(lbl[r.stat] || r.stat), '+' + r.vals[0], '+' + r.vals[1], '+' + r.vals[2]];
     });
     out += wCard('🏅 地區完成加成（把一個地區的怪收齊）',
-      wDesc('把某地區<b>所有怪</b>都收到同一階，就拿到該地區加成（<b>取已達到的最高階</b>：全金 > 全銀 > 全普）。加成不大但確實有——和遊戲更新情報寫的「當作沒有」不同，這裡以實際程式為準：') +
+      wDesc('把某地區<b>所有怪</b>都收到同一階，就拿到該地區加成（<b>取已達到的最高階</b>：全金 > 全銀 > 全普）。加成不大但確實有：') +
       wTbl(['地區', '加成', '全普卡', '全銀卡', '全金卡'], rows) +
       wDesc('提醒：<b>之後同地區新增怪物，原本收滿的地區會變成沒收滿</b>（加成跟著消失，要把新怪也收齊才會回來）。')
     );
