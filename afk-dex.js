@@ -44,12 +44,15 @@
       location.href = location.href.split('?')[0].split('#')[0] + '?view=' + VIEW + (opts.q ? '&q=' + encodeURIComponent(opts.q) : '');
       return;
     }
-    if (_isPop()) userCloseTop();   // 模態連模態:在 dex 詳情彈窗內先關它(退一層歷史)
+    if (window.AFK_WIKI_API && AFK_WIKI_API.close) AFK_WIKI_API.close();   // 模態連模態:先關掉來源(小百科)模態,否則 dex 被它疊在後面看不到(兩者 z-index 同、小百科 DOM 在後蓋住)
+    if (_isPop()) userCloseTop();   // 在 dex 詳情彈窗內先關它(退一層歷史)
     openModal();
     var i = document.getElementById('m-dex-input'); if (i) i.value = opts.q || '';
     doSearch();
     var r = document.getElementById('m-dex-results'); if (r) r.scrollTop = 0;
   }
+  // 跨頁切換用:關掉掉落查詢模態(含物品彈窗)並交出一層歷史(不 history.back,避免誤觸小百科 popstate),供對方接手顯示
+  function closeForNav() { var m = document.getElementById('m-dex-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); if (_isPop()) document.getElementById('m-dex-itempop').classList.remove('open'); if (_navDepth > 0) _navDepth--; }
   // 獨立頁:把目前搜尋字寫進網址(replaceState,不灌爆上一頁/下一頁),方便複製連結分享給別人
   function syncUrl() {
     if (!isStandalone()) return;
@@ -459,7 +462,7 @@
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
-  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex };   // itemDetailHTML 供小百科裝備頁重用完整詳情;goto({q}) 通用跨頁前往掉落查詢(模態/網址自動)
+  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex, close: closeForNav };   // itemDetailHTML 供小百科裝備頁重用詳情;goto({q}) 通用跨頁前往掉落查詢(模態/網址自動);close 切換時關閉
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
