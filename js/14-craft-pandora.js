@@ -1619,7 +1619,7 @@ window.onload = () => {
         if(sk.msg) parts.push(`<div class="text-slate-400" style="font-size:11px;margin-top:4px;">${sk.msg}</div>`);
         return parts.join('');
     }
-    function buildItemTipHTML(id){
+    function buildItemTipHTML(id, hidePrice){
         let d = DB.items[id]; if(!d) return '';
         let nameColor = getItemColor({ id });
         let parts = [];
@@ -1683,7 +1683,7 @@ window.onload = () => {
             _eff = filterClassicEffLabels(_eff);   // 🎮 經典模式：移除已停用特效字樣
             if(_eff.length) parts.push(`<div class="text-rose-300 font-bold" style="font-size:12px;">特效：${_eff.join(' / ')}</div>`);
         }
-        if(typeof d.p === 'number' && d.p > 0) parts.push(`<div class="text-yellow-400" style="font-size:12px;">售價 ${d.p.toLocaleString()} 金幣</div>`);
+        if(!hidePrice && typeof d.p === 'number' && d.p > 0) parts.push(`<div class="text-yellow-400" style="font-size:12px;">售價 ${d.p.toLocaleString()} 金幣</div>`);   // 🗡️ 裝備收集冊 hidePrice=true：隱藏售價
         if(d.d) parts.push(`<div class="text-slate-400" style="font-size:11px;margin-top:4px;">${d.d}</div>`);
         return parts.join('');
     }
@@ -1721,7 +1721,7 @@ window.onload = () => {
             }
         } else if(tId){
             // 🗡️ 收集冊：依基底物品 ID 顯示資訊（已收集裝備）
-            if(el._id !== ('BID:'+tId)){ let h = buildItemTipHTML(tId); if(!h){ hideTip(); return; } el.innerHTML = h; el._id = 'BID:'+tId; }
+            if(el._id !== ('BID:'+tId)){ let h = buildItemTipHTML(tId, true); if(!h){ hideTip(); return; } el.innerHTML = h; el._id = 'BID:'+tId; }   // 🗡️ 收集冊隱藏售價
         } else {
             // 商店/製作圖示：依 icon → 基底物品 ID 顯示
             if(!ICON2ID) buildMap();
