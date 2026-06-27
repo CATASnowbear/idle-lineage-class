@@ -458,7 +458,8 @@
     var img = icon ? '<img class="m-dex-iimg" src="' + esc(icon) + '" alt="" onerror="this.style.display=\'none\'">' : '';
     var nameCls = d.legend ? ' c-legend' : '';
     var head = opts.noHead ? '' : ('<div class="m-dex-ihead">' + img + '<div class="m-dex-iname-big' + nameCls + '">' + esc(d.n) + '</div></div>');
-    var typeLine = '<div style="color:#94a3b8;font-size:12px;margin:2px 0 4px;">' + esc(IT_TYPE[d.type] || d.type || '道具') + (d.slot ? '・' + esc(IT_SLOT[d.slot] || d.slot) : '') + '</div>';
+    var handTxt = (d.type === 'wpn' && typeof isTwoHandedWpn === 'function') ? ('・' + (isTwoHandedWpn(d) ? '雙手' : '單手')) : '';   // 🗡️ 武器標單手/雙手(用遊戲 isTwoHandedWpn:弓或w2h且非oneHand=雙手)
+    var typeLine = '<div style="color:#94a3b8;font-size:12px;margin:2px 0 4px;">' + esc(IT_TYPE[d.type] || d.type || '道具') + (d.slot ? '・' + esc(IT_SLOT[d.slot] || d.slot) : '') + handTxt + '</div>';
     // 數值/說明:用遊戲自己的 buildItemDescHTML(全物品共用、與遊戲內顯示一致、作者新增裝備/特效自動跟上),
     //   base 實例(en:0、無詞綴)。失敗或空(如無描述材料)則退回顯示物品說明文字。適用職業 logo 由它產生,點擊有 tip(afk-fixes#7)。
     var gameHTML = '';

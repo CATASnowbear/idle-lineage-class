@@ -1473,7 +1473,7 @@
   // 列表精簡行(一眼看重點);詳情常駐隱藏故搜尋仍涵蓋全部內容
   function equipCompact(d) {
     var bits = [];
-    if (d.type === 'wpn') { if (d.dmgS != null) bits.push('攻擊 ' + d.dmgS + '/' + d.dmgL); if (d.hit) bits.push('命中 ' + (d.hit > 0 ? '+' : '') + d.hit); }
+    if (d.type === 'wpn') { bits.push((typeof isTwoHandedWpn === 'function' && isTwoHandedWpn(d)) ? '雙手' : '單手'); if (d.dmgS != null) bits.push('攻擊 ' + d.dmgS + '/' + d.dmgL); if (d.hit) bits.push('命中 ' + (d.hit > 0 ? '+' : '') + d.hit); }
     else if (d.ac != null) bits.push('防禦(AC) ' + ((-d.ac) >= 0 ? '+' : '') + (-d.ac));
     if (d.req && d.req !== 'all') bits.push(String(d.req).split(',').map(function (x) { return EQUIP_REQ_CN[x] || x; }).join('／') + '專用');   // 多職業 req(如 knight,elf,dark)逐一轉中文
     return bits.join('　');
@@ -1504,10 +1504,12 @@
     function card(e) {
       var d = e.d, id = e.id;
       var nameCls = d.legend ? 'c-legend' : 'text-slate-100';
+      var ic = ''; try { ic = (typeof getIconUrl === 'function') ? getIconUrl(d) : ''; } catch (eIc) {}
+      var icImg = ic ? '<img src="' + esc(ic) + '" alt="" style="width:26px;height:26px;object-fit:contain;flex:none;border-radius:4px;" onerror="this.style.display=\'none\'">' : '';
       return '<div class="m-wiki-card m-eq-card">' +
-        '<div class="m-eq-head" data-eq="' + esc(id) + '" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:baseline;">' +
-          '<span class="' + nameCls + ' font-bold">' + esc(d.n) + (d.legend ? ' ✦' : '') + '</span>' +
-          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;">' + esc(equipCompact(d)) + '</span>' +
+        '<div class="m-eq-head" data-eq="' + esc(id) + '" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px;align-items:center;">' +
+          '<span style="display:flex;align-items:center;gap:7px;min-width:0;">' + icImg + '<span class="' + nameCls + ' font-bold">' + esc(d.n) + (d.legend ? ' ✦' : '') + '</span></span>' +
+          '<span class="m-eq-compact" style="color:#94a3b8;font-size:12px;text-align:right;flex:none;">' + esc(equipCompact(d)) + '</span>' +
         '</div>' +
         '<div class="m-eq-detail" style="display:none;border-top:1px solid #1e293b;margin-top:6px;padding-top:6px;">' + equipDetailHTML(id) + '</div>' +
       '</div>';

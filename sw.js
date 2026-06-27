@@ -25,8 +25,13 @@
  * ========================================================================== */
 <<<<<<< HEAD
 <<<<<<< HEAD
-const CODE_VERSION = 'code-59a43a4eb19a';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-0148'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+<<<<<<< HEAD
+const CODE_VERSION = 'code-bef915caf575';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-0355'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+=======
+const CODE_VERSION = 'code-1e1a7ae6cd45';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-0353'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+>>>>>>> e6f9db4 (小百科裝備:列表每件加圖示(getIconUrl) + 武器標單手/雙手(isTwoHandedWpn,列表+詳情+掉落查詢))
 =======
 const CODE_VERSION = 'code-25bd76a2e50e';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
 const BUILD_ID     = '0628-0015'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
