@@ -150,22 +150,36 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 >
 > **🔴 鐵則 2:diff 不只看「新增的資料定義」,更要看「既有公式／機制被改」——機制改動不會以新 `sk_`/`item` 出現,純掃新增一定漏。** 重點讀 `js/02-stats-recompute`、`js/04-combat-attack`、`js/01-drops-config`、`js/05-kill-progression` 裡**被修改的行(diff 的 `-`/`+` 成對)**:傷害公式、加成範圍、掉率倍率、模式行為、存檔/共用桶規則。踩過 2026-06-28:第一輪只 grep 新增定義,把「統一觸發型武器特效公式(法師特效不再吃法術階級加成)」「武器+11最終傷害倍率改吃到特效/技能」「瘋狂席琳(怪傷×3)」「收集冊依模式共用(同倉庫規則)」全漏了——這些都是改既有邏輯、不是新增。**自我檢查:我有沒有把 js/02、js/04 的 diff 一行行讀過,而不只是 grep 新 `sk_`/`set_`/`item`?**
 
-1. **先同步遠端,再用 `wiki-checkpoint.json` 的錨點抓 diff(不要用 git log 猜起點——踩過,會漏改版)**:
-   - **務必先 `git fetch origin && git pull --rebase origin main`**:自動同步會在背景把作者新版推上來,本機落後就會拿舊的去比、漏掉剛進來的改版(2026-06-21 席琳套裝改版就是這樣差點漏掉)。
-   - 讀 `wiki-checkpoint.json` 的 `reconciledIndexCommit`,那是「小百科上次對齊到的 index.html 版本」,即本次 diff 的起點。
-2. **diff 出作者自上次對齊後改了什麼**:
-   `git diff <reconciledIndexCommit> HEAD -- index.html`——**整段都看過,別只靠 grep**(這次的計件規則改在註解+邏輯裡,純 grep 資料 pattern 會漏);要快速定位可再 `| grep -E '"sk_|set_|DB\.sets|SHERINE_|MASTERY|type: "(quest|mastery)"|eff: "|_RECIPES'`。
-   重點抓:新技能(`sk_`)、新套裝(`set_`/`DB.sets`)、新試煉/精通 NPC、新武器特性 `eff`、席琳套裝(`SHERINE_SET_TEXT`/`SHERINE_EFFECTS` 結構與計件規則)、`MASTERY_DATA`、客製製作(`_RECIPES`)變動。
-3. **把新內容補進對應分頁**——分兩種:
-   - **讀遊戲資料、自動同步的**(通常不用改):職業專精讀 `MASTERY_DATA`、職業魔法讀 `DB.skills`、席琳套裝讀 `SHERINE_SET_TEXT`、掉落查詢讀 `DB` 與五張掉落表(見下方 ⭐)。
-   - **本檔手動維護的清單(這些才要手動補)**:武器特性 `WEAPON_TRAITS`、套裝 `SETS`、強化機制 `ENHANCE_SECTIONS`、負重 `LOAD_SECTIONS`、席琳各區 `SHERINE_SECTIONS`、血盟 `PLEDGE_SECTIONS`、傲慢之塔 `TOWER_SECTIONS`、任務 `QUEST_BY_CLASS`/`QUEST_COMMON`、技能白話補充 `EFFECT_OVERRIDE`。例:作者新增「惡魔套裝(set_12)」→ 手動加進 `SETS`。
+> 這套 SOP 是 **diff 驅動、逐檔逐頁、機械式對照**(2026-06-28 重訂,取代舊的「grep 找新增」式)——核心是「每個有變的檔都讀完整 diff,照固定『檔→頁』對照表歸位」,不靠印象判斷「應該做過了」。
+
+1. **同步遠端 + 取錨點**:先 `git fetch origin && git pull --rebase origin main`(自動同步會在背景推作者新版,不 pull 會拿舊的比、漏改版);讀 `wiki-checkpoint.json` 的 `reconciledIndexCommit` 當 diff 起點(別用 git log 猜)。
+2. **列出所有變動的檔(不挑)**:`git diff <reconciledIndexCommit> HEAD --stat -- js/ css/`——**清單上每個有變的檔都要讀**,不可只挑「看起來有新東西」的。
+3. **逐檔讀完整 diff,照「檔 → 負責頁」對照表把每個 hunk 歸位**:對每個變動檔跑 `git diff <reconciledIndexCommit> HEAD -- js/<檔>`,**新增的 `+` 行和修改的 `-`/`+` 成對都要讀**(改既有公式/機制不會以新 `sk_`/`item` 出現,只看新增一定漏),逐一確認對應頁有反映、沒有就補:
+
+   | 改到的檔 | 看什麼 | 對應小百科頁 / dex |
+   |---|---|---|
+   | `00-data` | 新 技能/物品/套裝/武器/地圖 定義 | 職業魔法·裝備(自動) / 套裝 `SETS`(手動) / 掉落查詢 |
+   | `01-drops` | 掉率、世界模式(席琳一般/瘋狂)機制、恩賜 | 席琳 / 掉落查詢 / 戰鬥機制 |
+   | `02-stats` | 屬性/衍生值公式、buff 套用、封頂 | 能力值 / 技能效果(`statDeltaTxt`/`skillEffect`) |
+   | `03`-`04` combat | 傷害公式、命中、武器特效 proc、強化倍率、異常狀態 | 戰鬥機制 / 武器特性 / 強化 |
+   | `05`-kill | 條件式掉落(`if … gainItem`)、經驗/升級 | 掉落查詢 `SPECIAL_BLOCKS` |
+   | `06`-status-allies | 新異常狀態 `kind`、傭兵、召喚 | 戰鬥機制(異常狀態) / 傭兵 / 帶寵物 |
+   | `07`-`08` | 施法、裝備規則 | 職業魔法 / 裝備 |
+   | `11`-world-map | 地圖/領域 | 地圖 |
+   | `12`-npc-quests | 任務/試煉/兌換 NPC、倉庫、收集冊 `_dexKey` | 任務 / 掉落查詢來源 / 卡片·裝備圖鑑 |
+   | `13`-shop-save | 商店、存檔、**遊戲模式(一般/經典/傳統)行為** | 戰鬥機制(模式對照) / 卡片·裝備圖鑑(共用桶) |
+   | `14`-craft-pandora | 製作配方 | 製作 |
+   | `15`-`16` | 卡片/裝備收集(掉落、積分、共用、加成) | 卡片 / 裝備圖鑑 |
+
+   補內容分兩類:**讀遊戲資料自動同步的**(職業專精`MASTERY_DATA`、職業魔法`DB.skills`、裝備`DB.items`、掉落查詢`DB`+五張掉落表)通常不用改;**本檔手動維護的**(`WEAPON_TRAITS`/`SETS`/`ENHANCE_SECTIONS`/`LOAD_SECTIONS`/`SHERINE_SECTIONS`/`PLEDGE_SECTIONS`/`TOWER_SECTIONS`/`QUEST_BY_CLASS`/`QUEST_COMMON`/`skillNote`)才要手動補(例:新增「惡魔套裝」→ 加進 `SETS`)。**⚠ 跨系統的玩法要在相關頁互相帶到**——例:遊戲模式(一般/經典/傳統)頁要講「卡片/裝備收集冊依模式各自共用(同倉庫規則)」、席琳一般/瘋狂、傭兵同模式限制等,不要只寫在單一分頁。下面 ⭐ 是補內容時的細則:
    - **⭐ 全域掉落規則 → 補進掉落查詢的「全域特殊掉落規則」面板(`afk-dex.js` 的 `specialPanelHTML`)**:凡是「不綁特定怪、依條件觸發」的掉落(席琳結晶、施法卷軸變祝福/詛咒、賦予祝福卷軸、區域額外掉落、進化果實…這類掃描怪屬性/區域/全域機率的掉落),因為不在任一怪的 `MOB_DROPS` 裡、掉落查詢搜不到,**一律手動加一格到 `SPECIAL_BLOCKS`**(`{id,title,keys,lines}`;關鍵字放 `keys`、搜尋會自動展開)。原版每次改動全域掉落都要同步補這裡,不要只更新小百科。
      **🔎 偵測法(別再漏)**:同步作者新版時,grep 掉落結算 code(`js/05-kill-progression.js` 的 `killMob`、`js/06` 等)裡**所有「條件式 `gainItem(...)`」**——`if(...) gainItem(...)` 那種、不是從某張 `*_DROPS` 表 `forEach` 出來的,逐一對照 `SPECIAL_BLOCKS` 有沒有涵蓋,漏的補上。**踩過(2026-06-27):聖地遺物**(`mat_holy_relic`,持「死亡騎士之印記」在拉斯塔巴德區域殺任何怪 0.1%、V2.32 新增)——它不在任何掉落表、patch note 只當拉斯塔巴德武器的「材料」一筆帶過,做 V2.32 時只顧卡片/製作/地圖頭條、沒掃 killMob 的新條件式掉落,於是漏進 `SPECIAL_BLOCKS`,玩家在掉落查詢搜不到才被發現。**判準:作者更新後,任何 `if(條件) gainItem` 的腳本掉落都要在掉落查詢找得到。**
    - **⭐ 製作不一定都在 `CRAFT_RECIPES`,有「客製製作」另開資料結構,掉落查詢/製作頁要另外補讀**:掉落查詢物品卡與小百科製作頁的製作資訊只讀 `CRAFT_RECIPES`,但**有些裝備走獨立的客製製作系統、不在 `CRAFT_RECIPES`**,例:惡魔王武器走 `DEMONKING_RECIPES`+`DEMONKING_MATS`(炎魔之影:消耗 +11 以上指定惡魔武器、繼承其強化/詞綴/席琳套裝)。症狀=「某件裝備查不到在哪製作、且常常一整批」。**遇到「明明可做卻查不到製作」→ 去 `index.html` grep `_RECIPES`/`buildXXXCraftHTML`/該裝備 id**,找到那組客製配方後,**同時補進** `afk-dex.js` 的 `buildCraftIndex`(物品卡)**和** `afk-wiki.js` 的 `renderCraft`(製作頁),兩邊都要。
    - **⭐ 新掉落物可能不在 `MOB_DROPS`、而在「獨立掉落表」或「純兌換」→ 掉落查詢會查不到,更新小百科時務必一起檢查補上**(龍騎士血之渴望那串踩過):掉落查詢(`afk-dex.js` `buildIndexes`)要與**原作 `_auditMobDrops`(遊戲內「統計→掉落物」用的)讀同一組掉落表**,否則他統計查得到、我們查不到(戰士印記 `WARRIOR_DROPS` 漏讀踩過)。**判斷哪幾張的權威來源就是 grep `_auditMobDrops` 看他 push 哪些表**,照抄。目前 5 張:**`MOB_DROPS`／`DARK_WEAPON_DROPS`／`DARK_CRYSTAL_DROPS`／`DRAGON_DROPS`／`WARRIOR_DROPS`**。作者再開**新表**(他會加進 `_auditMobDrops`),就把它也加進 `buildIndexes` 的 `raw` 串接(職業限定的任務道具用 `dragonDropNote`/`TRIAL_ITEM_CLASS` 標「🐉僅X」、全職可掉的不附註)。**純兌換/無怪掉的成品**(龍騎士書板·鎖鏈劍·臂甲走「普洛凱爾」兌換、50級試煉獎勵…)沒有任何怪會掉,要在 `afk-extradata.js` 的 `AFK_EXTRA.itemAcquire[id].short` 補「取得方式」;且這類「**非裝備、非商店**」物品(如 `skillbk` 書板)要被收進物品搜尋索引才搜得到名字。**收錄條件(`buildItemIndex`):裝備／在商店(`SHOP_LISTS`)／有 `itemAcquire`／或 `gachaWeight>0`(在潘朵拉抽獎池)** 任一即收。**症狀=玩家在掉落查詢搜某新物品/材料卻查不到**。判準:作者新增的東西「在 `MOB_DROPS` 裡嗎?」不在 → 去找它在哪張掉落表/哪種兌換,補進掉落查詢,別只更新小百科。
    - **⭐ 「沒有固定來源」已自動偵測(含寶箱與各種試煉/兌換結構)**:掉落查詢 `hasFixedSource(id)` 統一判斷來源,讀:`DROPPED_SET`(怪掉)＋`_craftIndex`(製作,含 `CRAFT_RECIPES`/`DEMONKING_RECIPES`/`LUMIEL_RECIPES`)＋`_shopIndex`(商店)＋`itemAcquire`(手動)＋`boxTiersOf`(歐西里斯寶箱 `OSIRIS_BOX_*`)＋**`trialSourceOf`(各職業試煉/兌換設定結構:`TRIAL_50_CFG`/`DARK_TRIAL_CFG`/`SHENIEN_EX`/`WARRIOR_EX`/`PROCEL_EX`/`YURIA_REWARDS`)**。這些都**讀遊戲全域、作者改設定自動跟上,不必逐物品手動補**(瑪那水晶球等 50 級試煉成品、影子裝、幻術士裝、戰士團裝、臂甲都靠 `trialSourceOf` 現身)。**潘朵拉限定物(`gachaWeight>0` 且查無固定來源)→ 自動收進搜尋 + 詳情卡標中性句「目前沒有固定取得途徑」**(依規則不提潘朵拉)。**作者新增「會發裝備的新結構」時**(grep `rewards:`/`reward:`/`_EX`/`_CFG`),把它加進 `buildTrialBy()` 即可一次涵蓋整批。真正剩的死角只有「`gachaWeight=0`、不在任何結構、又沒怪掉」的廢棄/起始裝(留空合理)。
    - **⭐ 取得方式只標「可控」的,潘朵拉黑市(轉蛋)是隨機池、不列(使用者決定)**:掉落查詢物品卡的「取得方式」列(`itemDetailHTML`)**只顯示可控取得**——靈魂之球喚回(巴列斯/巴風特魔杖,走 `SOULORB_RESTORE`)、龍騎士普洛凱爾兌換成品(走 `itemAcquire`)等;**潘朵拉的黑市抽獎雖然幾乎什麼都抽得到,但太不可控、列了是雜訊,刻意不顯示**(別把『潘朵拉抽獎』當來源文字寫出來;但用 `gachaWeight>0` 判斷「在抽獎池→可搜尋＋詳情卡標中性句『目前沒有固定取得途徑』」是另一回事、是 OK 的,見上節 `hasFixedSource`)。**即使潘朵拉是某物的「唯一」來源也一樣不列**——改寫「目前沒有固定取得途徑」這類中性句,不要寫「只能潘朵拉抽」(使用者明確要求:潘朵拉太難取得、不算取得方式)。小百科「技能書怎麼拿」之類的說明同此原則:只寫試煉/製作/商店/掉落等可控來源,潘朵拉一律不提。製作/掉落另由 `craftInfoHTML` 與搜尋鈕呈現。**(舊「傳說裝備」頁 `renderLegend`/`legendAcquire`/`LEGEND_SOULORB` 已隨「裝備」分頁上線移除;裝備頁的取得方式統一走 `AFK_DEX_API.acquireHTML`,喚回類成品靠 `itemAcquire[id].short` 呈現。`itemAcquire` 的 `chain` 欄是舊傳說頁專用、目前無人讀,新增資料只需填 `short`。)** **遇到新的喚回/兌換機制**(grep `soulorb`/`_restore`/`eff:`)→ 結果裝備補進 `SOULORB_RESTORE`(dex 物品卡)與 `itemAcquire[id].short`(裝備頁/掉落查詢共用)。
-4. 補完照「每次 push 前檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。**並把 `wiki-checkpoint.json` 更新成現在的 HEAD**:`reconciledIndexCommit`＝`git rev-parse HEAD`、`reconciledIndexBlob`＝`git rev-parse HEAD:index.html`、`reconciledAt`＝台灣時間(UTC+8),跟這次小百科改動一起 commit——錨點前進了,下次才不會重複比同一段。
+4. **每動到一頁就 Playwright 無頭 render 該頁實測**:確認顯示正確(數據對)、無漏翻英文、無 raw key(`sk_`/地圖 id 之類)、無 JS error。改了哪頁測哪頁,別只改不驗。
+5. 補完照「每次 push 前檢查清單」bump 對應外掛 `?v=`(動到 `afk-dex.js` 也要 bump 它)、無頭瀏覽器測過再推。**並把 `wiki-checkpoint.json` 更新成現在的 HEAD**:`reconciledIndexCommit`＝`git rev-parse HEAD`、`reconciledIndexBlob`＝`git rev-parse HEAD:index.html`、`reconciledAt`＝台灣時間(UTC+8),note 寫「逐檔對過、動了哪些頁」,跟這次小百科改動一起 commit——錨點前進了,下次才不會重複比同一段。
 
 ### 內容鐵則(踩過、別再犯)
 
