@@ -95,17 +95,17 @@
   // 地圖 id → 中文名：統一委派 afk-extradata 的共用解析(唯一一份,涵蓋隱藏區/攀登/遺忘之島/攻城/村莊…)
   function mapNameOf(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : id; } catch (e) { return id; } }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
-  // 龍騎士掉落表附註:職業限定的任務道具標「🐉僅X」(讀 TRIAL_ITEM_CLASS);書板/鎖鏈劍全職可掉→不附註
-  var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士' };
-  function dragonDropNote(id) {
+  // 職業限定掉落附註:試煉/兌換道具(TRIAL_ITEM_CLASS)僅該職業擊殺才掉,標「🔒僅X」讓所有職業都看得到是誰限定;非限定道具(書板/鎖鏈劍/印記等全職可掉)不在表內→回 null 不附註。
+  var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
+  function trialClassOf(id) {
     try {
       if (typeof TRIAL_ITEM_CLASS !== 'undefined' && TRIAL_ITEM_CLASS[id]) {
-        var c = TRIAL_ITEM_CLASS[id]; var arr = Array.isArray(c) ? c : [c];
-        return '🐉僅' + arr.map(function (x) { return _CLS_CN[x] || x; }).join('／');
+        var c = TRIAL_ITEM_CLASS[id]; return (Array.isArray(c) ? c : [c]).map(function (x) { return _CLS_CN[x] || x; });
       }
     } catch (e) {}
     return null;
   }
+  function trialClassNote(id) { var a = trialClassOf(id); return a ? ('🔒僅' + a.join('／')) : null; }
 
   // ----- 預先建索引(只跑一次) ---------------------------------------------
   function buildIndexes() {
@@ -118,14 +118,14 @@
       var maps = (mobToMaps[id] || []).map(mapNameOf).filter(function (n, i, a) { return a.indexOf(n) === i; });
       // 合併「全部掉落表」——必須與原作 _auditMobDrops 讀的「同一組」表,否則他統計查得到、我們查不到(戰士印記那批踩過)。
       // 目前 6 張:MOB_DROPS、黑暗武器(DARK_WEAPON_DROPS)、三階黑精靈水晶(DARK_CRYSTAL_DROPS)、龍騎士(DRAGON_DROPS)、戰士印記(WARRIOR_DROPS)、記憶水晶(MEM_DROPS·幻術士法術書)。
-      // 都用「怪物名」當 key、格式 [[id,%]]。職業限定的任務道具(TRIAL_ITEM_CLASS)附註「🐉僅X」;書板/鎖鏈劍/戰士印記/記憶水晶全職可掉、不附註。
-      function _tagged(list, noteFn) { return (list || []).map(function (e) { return [e[0], e[1], noteFn ? noteFn(e[0]) : null]; }); }
+      // 都用「怪物名」當 key、格式 [[id,%]]。任何表裡的職業限定試煉道具(TRIAL_ITEM_CLASS)一律附註「🔒僅X」;非限定道具(書板/鎖鏈劍/戰士印記/記憶水晶等全職可掉)→trialClassNote 回 null、不附註。
+      function _tagged(list) { return (list || []).map(function (e) { return [e[0], e[1], trialClassNote(e[0])]; }); }
       var raw = [].concat(
         _tagged((typeof MOB_DROPS !== 'undefined') ? MOB_DROPS[mob.n] : null),
         _tagged((typeof DARK_WEAPON_DROPS !== 'undefined') ? DARK_WEAPON_DROPS[mob.n] : null),
         _tagged((typeof DARK_CRYSTAL_DROPS !== 'undefined') ? DARK_CRYSTAL_DROPS[mob.n] : null),
-        _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null, dragonDropNote),
-        _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null, dragonDropNote),
+        _tagged((typeof DRAGON_DROPS !== 'undefined') ? DRAGON_DROPS[mob.n] : null),
+        _tagged((typeof WARRIOR_DROPS !== 'undefined') ? WARRIOR_DROPS[mob.n] : null),
         _tagged((typeof MEM_DROPS !== 'undefined') ? MEM_DROPS[mob.n] : null)
       );
       var drops = raw
@@ -420,6 +420,8 @@
     if (_dropBy === null) buildDropBy();
     var d = DB.items[id]; if (!d) return '';
     var parts = [];
+    var _tc = trialClassOf(id);
+    if (_tc) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🔒 職業限定</div><div class="m-dex-craft-mats">只有 <b>' + _tc.join('／') + '</b> 擊殺對應怪物才會掉落（其他職業打同一隻怪不會掉、掉落查詢也標「🔒僅' + _tc.join('／') + '」）。</div></div>');
     var exa = (window.AFK_EXTRA && AFK_EXTRA.itemAcquire) ? AFK_EXTRA.itemAcquire[id] : null;
     if (exa && exa.short) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🔑 取得方式</div><div class="m-dex-craft-mats">' + esc(exa.short) + '</div></div>');
     parts.push(craftInfoHTML(id));
@@ -477,8 +479,10 @@
     var ts2 = (exAcq && exAcq.short) ? null : trialSourceOf(id);
     if (ts2) acq += '<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts2) + '</div></div>';
     if (!(exAcq && exAcq.short) && !(tiers && tiers.length) && !ts2 && !hasFixedSource(id)) acq += '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">取得方式：目前沒有固定取得途徑</div></div>';
+    var _tc = trialClassOf(id);
+    var trialLine = _tc ? '<div class="m-dex-craft" style="margin:4px 0;border-left:3px solid #b45309;padding-left:7px;"><div class="m-dex-craft-h">🔒 職業限定</div><div class="m-dex-craft-mats">只有 <b>' + _tc.join('／') + '</b> 擊殺對應怪物才會掉落（其他職業打同一隻怪不會掉）。</div></div>' : '';
     var searchBtn = '<button class="m-dex-pop-search" data-item="' + esc(d.n) + '">🔍 查有哪些怪會掉這件</button>';
-    return head + typeLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
+    return head + typeLine + trialLine + body + spdLine + priceLine + craftInfoHTML(id) + shopInfoHTML(id) + acq + searchBtn;
   }
   function openItemPop(id) {
     var pop = document.getElementById('m-dex-itempop'); if (!pop) return;
