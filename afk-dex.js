@@ -411,6 +411,8 @@
     try { for (var k4 in PROCEL_EX) (PROCEL_EX[k4].rewards || []).forEach(function (id) { put(id, '普洛凱爾（貝希摩斯）龍騎士兌換'); }); } catch (e) {}
     try { YURIA_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「歐林的日記本」兌換（三選一）'); }); } catch (e) {}
     try { YURIA_HATIN_REWARDS.forEach(function (r) { put(r.id, '尤麗婭（說話之島）：以「黑暗哈汀的日記本」兌換（六選一）'); }); } catch (e) {}   // 👹 隱藏的魔族武器
+    try { SHIMIZHE_REWARDS.forEach(function (id) { put(id, '希米哲（海賊島村莊）：以「兒子的信＋遺骸＋肖像畫」各 1 兌換（五選一・無限次）'); }); } catch (e) {}   // 🏴‍☠️ 藍海賊裝備
+    try { put('acc_summon_ctrl', '雷德（銀騎士村）：以五枚部下證明戒指＋魔法寶石 ×100 兌換'); } catch (e) {}   // RED_QUEST_REQS / doRedExchange 的成品(召喚控制戒指)
   }
   function trialSourceOf(id) { if (_trialBy === null) buildTrialBy(); return _trialBy[id] || null; }
   function acquireHTML(id) {

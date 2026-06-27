@@ -501,7 +501,8 @@
     }
   };
   var QUEST_COMMON = [
-    { n: '雷德的復仇', npc: '雷德 ＠銀騎士村', req: '魔法寶石 ×100，以及五枚部下證明戒指各 ×1（黑暗棲林者／馴獸師／精靈使／喚獸師／黑暗法師戒指）', from: '五戒指皆出自拉斯塔巴德區（黑暗棲林者 0.1%、馴獸師 0.05%、精靈使 0.001%、喚獸師 0.01%、黑暗法師 0.01%；機率極低、相當硬核）', rw: '召喚控制戒指' }
+    { n: '雷德的復仇', npc: '雷德 ＠銀騎士村', req: '魔法寶石 ×100，以及五枚部下證明戒指各 ×1（黑暗棲林者／馴獸師／精靈使／喚獸師／黑暗法師戒指）', from: '五戒指皆出自拉斯塔巴德區（黑暗棲林者 0.1%、馴獸師 0.05%、精靈使 0.001%、喚獸師 0.01%、黑暗法師 0.01%；機率極低、相當硬核）', rw: '召喚控制戒指' },
+    { n: '藍海賊裝備（五件擇一）', npc: '希米哲 ＠海賊島村莊', req: '兒子的信 ×1、兒子的遺骸 ×1、兒子的肖像畫 ×1', from: '信：藍尾蜥蜴 3%；遺骸：高等蜥蜴人 3%；肖像畫：海賊骷髏首領 2%（皆海賊島一帶）', rw: '藍海賊頭巾／皮盔甲／手套／長靴／斗篷，五選一・無兌換次數限制（其中藍海賊斗篷也可直接打高等蜥蜴人 0.8% 掉）' }
   ];
   // 50 級試煉(依職業):接取 → 依序交付任務道具 → 完成開放「魔族神殿」→ 之後用炎魔交付物重複兌換傳說武器
   var TRIAL_50 = {
@@ -1188,7 +1189,8 @@
   function renderSearch(q) {
     var parts = [];
     SEARCH_SOURCES.forEach(function (s) {
-      var clsList = s.cls ? CLASSES : [null];
+      // cls 分頁逐職業各搜一次;任務分頁另含「全職業共通」桶(QUEST_COMMON：雷德/希米哲等只在 cls='all' 渲染,否則搜不到)
+      var clsList = s.cls ? (s.key === 'quest' ? [{ k: 'all', n: '全職業共通' }].concat(CLASSES) : CLASSES) : [null];
       clsList.forEach(function (c) {
         var tmp = document.createElement('div');
         tmp.innerHTML = tabHTML(s.key, c ? c.k : state.cls);
@@ -1398,7 +1400,7 @@
     { k: 'wpn', n: '⚔️ 武器' }, { k: 'helm', n: '🪖 頭部' }, { k: 'armor', n: '🛡 身體' },
     { k: 'shield', n: '🔰 盾牌／副手' }, { k: 'cloak', n: '🧥 斗篷' }, { k: 'gloves', n: '🧤 手套' },
     { k: 'boots', n: '🥾 鞋子' }, { k: 'belt', n: '🎗️ 腰帶' }, { k: 'ring', n: '💍 戒指' },
-    { k: 'amulet', n: '📿 項鍊' }, { k: 'tshirt', n: '👕 內衣' }, { k: 'pet', n: '🐾 寵物裝備' }
+    { k: 'amulet', n: '📿 項鍊' }, { k: 'ear', n: '👂 耳環' }, { k: 'tshirt', n: '👕 內衣' }, { k: 'pet', n: '🐾 寵物裝備' }
   ];
   var EQUIP_REQ_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };
   function equipGroupKey(d) { return (d.type === 'wpn') ? 'wpn' : (d.slot || 'other'); }

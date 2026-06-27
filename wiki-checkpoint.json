@@ -1,6 +1,6 @@
 {
-  "reconciledIndexCommit": "19f2d895e02cef0e70cf3066fb9ed220e206eac0",
-  "reconciledIndexBlob": "45846df882c863c9326249494ab9414824771c68",
-  "reconciledAt": "2026-06-26 21:49 (UTC+8)",
-  "note": "小百科(afk-wiki.js / afk-dex.js / afk-extradata.js)的內容已比對到「這一版 index.html」的遊戲資料。更新小百科時的錨點以此為準——先 git fetch+pull,再 `git diff <reconciledIndexCommit> HEAD -- index.html` 就是作者自上次對齊後新增/改的全部。補完小百科後,把本檔的 commit/blob/時間更新成新的 HEAD 一起 commit,錨點才會前進。不要再用 git log afk-wiki.js 的時間回推起點(那不可靠,會漏改版)。"
+  "reconciledIndexCommit": "2ea101a694e75c231a280010b539ab8ff247f5fe",
+  "reconciledIndexBlob": "e271475bdb442c9ecbb8f2cb144f17087459559b",
+  "reconciledAt": "2026-06-27 00:53 (UTC+8)",
+  "note": "⚠️ 原作者 2026-06-27 已把遊戲從單一 index.html 重構成 index.html(殼)＋js/*.js(遊戲邏輯)＋css/style.css。遊戲資料(DB/技能/掉落/任務)現在都在 js/*.js,不在 index.html 裡。更新小百科的 diff 起點仍以本 commit 為錨,但要改看 js/:`git diff <reconciledIndexCommit> HEAD -- js/`(不是 index.html)才看得到作者改了什麼。本次只做定點修補(希米哲/藍海賊任務、耳環裝備欄、釋放元素/骷髏毀壞技能說明、掉落查詢接希米哲+雷德兌換來源),並非對新 js/ 結構做完整逐項 reconcile——日後有空建議對 js/ 全量重對一次。補完小百科後把本檔 commit/blob/時間更新成新 HEAD 一起 commit。"
 }
