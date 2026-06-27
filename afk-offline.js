@@ -145,9 +145,14 @@
   }
 
   // ----- 進度遮罩 ---------------------------------------------------------
-  var overlayEl = null, overlayBar = null, overlayTxt = null;
+  var overlayEl = null, overlayBar = null, overlayTxt = null, overlayFill = null;
+  // 「長按放棄剩餘收益」:_holdStart=按住起始時間(0=沒按住);_abortCatchup=放棄旗標(迴圈會跳出)。
+  var HOLD_MS = 1500;           // 按住這麼久才放棄
+  var HOLD_SLICE_MS = 30;       // 按住期間把結算切片縮小,讓「按滿 1.5 秒就立刻停」不延遲
+  var _holdStart = 0, _abortCatchup = false;
   function showOverlay(totalTicks) {
     if (overlayEl) return;
+    _abortCatchup = false; _holdStart = 0;
     overlayEl = document.createElement('div');
     overlayEl.setAttribute('style', [
       'position:fixed', 'inset:0', 'z-index:99999',
@@ -169,6 +174,46 @@
     overlayEl.appendChild(title);
     overlayEl.appendChild(barWrap);
     overlayEl.appendChild(overlayTxt);
+
+    // 「長按放棄剩餘收益」按鈕 + 上方「放棄中」讀條。
+    //   ⚠ 讀條用 transform:scaleX(走合成器/GPU 執行緒),不用 width transition——補跑會卡住主執行緒,
+    //     width 動畫跑不動(空白條踩過);transform 不受主執行緒阻塞,按住時照樣順順填滿。
+    var holdLabel = document.createElement('div');
+    holdLabel.setAttribute('style', 'font-size:12px;color:#fca5a5;height:15px;opacity:0;transition:opacity .15s;margin-top:6px;');
+    holdLabel.textContent = '放棄中…';
+    var holdTrack = document.createElement('div');
+    holdTrack.setAttribute('style', 'width:min(60vw,260px);height:6px;background:#3f1d1d;border-radius:4px;overflow:hidden;opacity:0;transition:opacity .15s;');
+    overlayFill = document.createElement('div');
+    overlayFill.setAttribute('style', 'height:100%;width:100%;background:#ef4444;transform-origin:left;transform:scaleX(0);');
+    holdTrack.appendChild(overlayFill);
+    var abandonBtn = document.createElement('button');
+    abandonBtn.setAttribute('style', 'margin-top:4px;padding:10px 22px;font-size:14px;font-weight:bold;color:#fecaca;background:#7f1d1d;border:1px solid #b91c1c;border-radius:10px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none;');
+    abandonBtn.textContent = '長按放棄剩餘收益';
+    overlayEl.appendChild(holdLabel);
+    overlayEl.appendChild(holdTrack);
+    overlayEl.appendChild(abandonBtn);
+
+    function startHold(e) {
+      if (e) e.preventDefault();
+      if (_holdStart) return;
+      _holdStart = performance.now();
+      holdLabel.style.opacity = '1'; holdTrack.style.opacity = '1';
+      overlayFill.style.transition = 'none'; overlayFill.style.transform = 'scaleX(0)';
+      void overlayFill.offsetWidth;   // 強制重排,讓接下來的 transition 確實從 0 開始
+      overlayFill.style.transition = 'transform ' + HOLD_MS + 'ms linear';
+      overlayFill.style.transform = 'scaleX(1)';
+    }
+    function cancelHold() {
+      if (!_holdStart) return;
+      _holdStart = 0;
+      holdLabel.style.opacity = '0'; holdTrack.style.opacity = '0';
+      overlayFill.style.transition = 'transform .12s ease-out'; overlayFill.style.transform = 'scaleX(0)';
+    }
+    abandonBtn.addEventListener('pointerdown', startHold);
+    abandonBtn.addEventListener('pointerup', cancelHold);
+    abandonBtn.addEventListener('pointerleave', cancelHold);
+    abandonBtn.addEventListener('pointercancel', cancelHold);
+
     document.body.appendChild(overlayEl);
   }
   function updateOverlay(frac, done, total) {
@@ -179,7 +224,8 @@
   }
   function removeOverlay() {
     if (overlayEl && overlayEl.parentNode) overlayEl.parentNode.removeChild(overlayEl);
-    overlayEl = overlayBar = overlayTxt = null;
+    overlayEl = overlayBar = overlayTxt = overlayFill = null;
+    _holdStart = 0;   // _abortCatchup 留給摘要判斷,下次 showOverlay 才重置
   }
 
   // ----- 收益快照 / 摘要 --------------------------------------------------
@@ -400,11 +446,11 @@
 
     var done = 0, died = false;
     try {
-      while (done < totalTicks) {
+      while (done < totalTicks && !_abortCatchup) {
         if (player.dead || !state.running) { died = !!player.dead; break; }
         var t0 = performance.now();
-        while (done < totalTicks && !player.dead && state.running &&
-               (performance.now() - t0) < sliceMs) {
+        while (done < totalTicks && !player.dead && state.running && !_abortCatchup &&
+               (performance.now() - t0) < (_holdStart ? HOLD_SLICE_MS : sliceMs)) {   // 按住放棄時切片縮小,讓 1.5 秒一到就立刻停
           tick();
           settleDeadMobs();
           done++;
@@ -420,6 +466,8 @@
         }
         if (withOverlay) updateOverlay(done / totalTicks, done, totalTicks);
         await pace(sliceMs);   // 前景 rAF / 背景 Worker 溫和節拍(切走也續算)
+        // 「長按放棄剩餘收益」按滿 HOLD_MS → 設旗標跳出(已算到的收益本就累積保留,等同撞死即停)
+        if (_holdStart && (performance.now() - _holdStart) >= HOLD_MS) _abortCatchup = true;
       }
     } catch (e) {
       console.error('[AFK] 離線補跑發生例外，已中止:', e);
@@ -490,6 +538,10 @@
     }
     if (climbSegs && climbSegs.length) summarizeClimb(climbSegs, done, died);   // 攀登:逐層摘要
     else summarize(before, after, done, died, (isObl && oblEndMap) ? oblEndMap : huntMap, kingInfo);   // 遺忘之島:用實際結束地圖顯示地圖名;軍王之室:附帶擊敗輪數/鑰匙消耗摘要
+    if (_abortCatchup) {   // 玩家長按放棄:標一句「已略過剩餘」(收益只算到放棄當下,剩餘時間不再結算、不會重算)
+      var _skipMin = Math.max(0, Math.round((totalTicks - done) * TICK_MS / 60000));
+      try { if (typeof logSys === 'function') logSys('<span style="color:#fca5a5;font-weight:bold;">⏭ 已放棄剩餘約 ' + _skipMin + ' 分鐘的離線收益（你提前結束了結算）。</span>'); } catch (e) {}
+    }
 
     // 📜 寫一筆離線掛機歷史紀錄(僅在「有 timing(真實離線)且真的結算了 done>0 tick」時記;debug forceCatchup 無 timing → 不記)
     try {
