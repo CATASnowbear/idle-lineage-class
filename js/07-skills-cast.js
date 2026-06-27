@@ -847,10 +847,10 @@ function autoCastSpells() {
 //    屬性詞綴與遠古系詞綴不再由這些管道隨機產生（改由象牙塔『碧恩』的賦予祝福卷軸取得）。
 //    🔮 席琳的世界擊殺掉落仍套用 ×3（祝福機率 3%）。
 function rollAffixesNew() {
-    let m = _sherineLootCtx ? 3 : 1;
+    let m = _sherineLootCtx ? (_sherineLootCtx.mad ? 5 : 3) : 1;   // 🔮 席琳的世界 祝福機率 ×3（瘋狂×5）
     return { attr: false, bless: (Math.random() < 0.01 * m), anc: false };
 }
 function rollAffixesOld() {
-    let m = _sherineLootCtx ? 3 : 1;
+    let m = _sherineLootCtx ? (_sherineLootCtx.mad ? 5 : 3) : 1;   // 🔮 席琳的世界 祝福機率 ×3（瘋狂×5）
     return { attr: false, bless: (Math.random() < 0.01 * m), anc: false };
 }

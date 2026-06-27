@@ -16,6 +16,9 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
         d = DB.items[id];
     }
 
+    // 🗡️ 裝備收集冊：獲得任何武器/防具/飾品(非箭矢)即登錄圖鑑（永久·只增不減）
+    if (typeof registerEquipObtained === 'function') registerEquipObtained(id);
+
     // 🔧 持有上限 maxHold（如精靈的私語=10）：裁切本次獲得量使總持有不超過上限；已達上限則不獲得
     if (d && d.maxHold) {
         let _held = player.inv.reduce((s, i) => s + (i.id === id ? (i.cnt || 0) : 0), 0);
@@ -34,12 +37,12 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     }
 
     // 🔮 席琳套裝效果：指定部位（武器/頭盔/盔甲/手套/長靴/斗篷/腰帶）※項鍊已改為腰帶
-    //  - 席琳的世界擊殺掉落：一般怪0.1%、恩賜怪0.5%、頭目5%（40 種均勻抽一）
+    //  - 席琳的世界擊殺掉落：一般怪0.1%、恩賜怪0.5%、頭目5%（9 組均勻抽一；🔮 瘋狂的席琳世界再 ×3）
     //  - 席琳製作（_forceSherineSet）：必定附帶隨機一種
     let seteff = false;
     if (d) {
         let _slotOk = sherineSetEligible(d);
-        if (_slotOk && _sherineLootCtx && Math.random() < (_sherineLootCtx.boss ? 0.05 : (_sherineLootCtx.grace ? 0.005 : 0.001))) {
+        if (_slotOk && _sherineLootCtx && Math.random() < (_sherineLootCtx.boss ? 0.05 : (_sherineLootCtx.grace ? 0.005 : 0.001)) * (_sherineLootCtx.mad ? 3 : 1)) {
             seteff = SHERINE_EFFECTS[Math.floor(Math.random() * SHERINE_EFFECTS.length)];
             logSys(`<span class="c-sherine font-bold">✦ 掉落的裝備蘊含著席琳的祝福：【${seteff}】！</span>`);
         }
@@ -231,6 +234,7 @@ function useItem(u, silent = false) {
 
     // 🎴 卡片收集冊：翻開全螢幕書頁；卡片：登錄圖鑑（已收錄則改賣出）
     if (d.eff === 'cardbook') { if (silent) return; if (typeof openCardBook === 'function') openCardBook(); return; }
+    if (d.eff === 'equipbook') { if (silent) return; if (typeof openEquipBook === 'function') openEquipBook(); return; }   // 🗡️ 裝備收集冊
     if (d.eff === 'card') { if (silent) return; if (typeof useCardItem === 'function') useCardItem(item); return; }
 
     // 🗼 封印的傲慢之塔傳送符：使用後解封，獲得對應的 傲慢之塔傳送符（消耗 1 個）

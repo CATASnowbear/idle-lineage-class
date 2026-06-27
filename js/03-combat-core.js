@@ -865,7 +865,7 @@ function procLightArrow(t) {
     let isCrit = Math.random() * 100 < player.d.magicCrit;
     let skillTier = sk.tier || 1;
     let spCoef = (1 + (3 * player.d.magicDmg / 16)) * (1 + (skillTier / 3));
-    let mageDmgMult = (player.cls === 'mage') ? (1.5 + skillTier / 20) : 1.0;   // 與一般攻擊魔法一致
+    let mageDmgMult = 1.0;   // 🔧 共鳴(光箭)為武器觸發特效，不再吃法師「法術階級加成」(1.5+階/20)；僅限法師自己消耗 MP 施放的法術
     let magicCritMult = isCrit ? (1 + player.d.magicCritDmg / 100) : 1.0;
     let baseMagicDmg = roll(sk.dmgDice[0], sk.dmgDice[1]);
     let core = baseMagicDmg * spCoef * magicCritMult;
@@ -1222,7 +1222,7 @@ function witchIceLance() {
     let isCrit = Math.random()*100 < player.d.magicCrit;
     let tier = sk.tier || 1;
     let spCoef = (1 + 3*player.d.magicDmg/16) * (1 + tier/3);
-    let mageMult = (player.cls === 'mage') ? (1.5 + tier/20) : 1.0;
+    let mageMult = 1.0;   // 🔧 魔女5/5(共鳴觸發)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + player.d.magicCritDmg/100) : 1;
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
     let fixed = (t.e === 'fire') ? 6 : 0;   // 水剋火
@@ -1257,7 +1257,7 @@ function manaMasteryRefund(spent) {
 }
 // 🔮 是否為魔杖/法杖類武器（沿用 js/10 同一套名稱判定，排除黃金權杖＝王族單手劍）：
 //    魔劍精通(i_magicsword)只把「非奇古獸的近戰武器」轉成奇古獸必中魔法路徑，魔杖本即施法武器、不應再轉（必中/攻速+30% 皆排除）。
-function isWandWeapon(d) { return !!(d && d.type === 'wpn' && (/魔杖|法杖/.test(d.n || '') || (/杖/.test(d.n || '') && !/權杖/.test(d.n || '')))); }
+function isWandWeapon(d) { return !!(d && d.type === 'wpn' && (d.isWand || /魔杖|法杖/.test(d.n || '') || (/杖/.test(d.n || '') && !/權杖/.test(d.n || '')))); }   // 🔮 d.isWand：名稱非「杖」但實為單手魔杖者（惡魔鐮刀）顯式標記
 // 🔮 幻術士 奇古獸一般攻擊：[奇古獸骰 × (1 + 魔法傷害/16)] + 額外魔法點數 + 額外傷害；視為魔法傷害、100%命中、受目標MR減免（奇古獸精通無視MR）。
 //    觸發路徑：裝備奇古獸(wpn.qigu)恆走此式；或 魔劍精通 + 任意非弓「且非魔杖」武器亦套用此式。屬性詞綴→對應屬性(剋屬性+6)。
 // 🔮 幻術士專屬加成：所有傷害(奇古獸普攻/特效/傷害技能/立方/幻覺召喚物)最終 ×(1+等級/50)；非幻術士回 1（玩家傳 player、傭兵傳 ally）

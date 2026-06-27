@@ -1571,7 +1571,7 @@ window.onload = () => {
 (function(){
     let tipEl = null, ICON2ID = null;
     const TYPE_LABEL = { wpn:'武器', arm:'防具', acc:'飾品', scroll:'卷軸', pot:'藥水', skillbk:'魔法書', etc:'道具', material:'素材' };
-    const STAT_LABEL = { ac:'AC', mr:'魔防(MR)', dr:'傷害減免', er:'迴避(ER)', str:'力量', dex:'敏捷', con:'體質', int:'智力', wis:'精神', cha:'魅力', mhp:'HP上限', mmp:'MP上限', hpR:'HP恢復', mpR:'MP恢復', resFire:'火屬性抗性', resWater:'水屬性抗性', resEarth:'地屬性抗性', resWind:'風屬性抗性' };
+    const STAT_LABEL = { ac:'AC', mr:'魔防(MR)', dr:'傷害減免', er:'迴避(ER)', str:'力量', dex:'敏捷', con:'體質', int:'智力', wis:'精神', cha:'魅力', mhp:'HP上限', mmp:'MP上限', hpR:'HP恢復', mpR:'MP恢復', resFire:'火屬性抗性', resWater:'水屬性抗性', resEarth:'地屬性抗性', resWind:'風屬性抗性', meleeHit:'近距離命中', rangedHit:'遠距離命中', meleeDmg:'近距離傷害', rangedDmg:'遠距離傷害', mdmg:'魔法傷害', extraHit:'額外命中', extraDmg:'額外傷害' };
     const EFF_LABEL = { moonburst:'月光爆裂', pierce:'穿透', dice_death:'即死', haste:'自我加速', immStone:'免疫石化', mp_drain:'命中恢復MP', crush:'重擊', cleave:'切割' };
     function sgn(v){ return (v>=0?'+':'') + v; }
     function buildMap(){ ICON2ID = {}; for(let id in DB.items){ let d = DB.items[id]; if(d) ICON2ID[getIconUrl(d)] = id; } }
@@ -1637,8 +1637,8 @@ window.onload = () => {
             if(ex.length) parts.push(`<div class="text-slate-300">${ex.join(' / ')}</div>`);
         } else if(d.type === 'arm' || d.type === 'acc'){
             let st = [];
-            ['ac','mr','dr','er','str','dex','con','int','wis','cha','mhp','mmp','hpR','mpR','resFire','resWater','resEarth','resWind'].forEach(k => {
-                if(d[k] !== undefined && d[k] !== 0) st.push(`${STAT_LABEL[k]||k} ${sgn(d[k])}`);
+            ['ac','mr','dr','er','str','dex','con','int','wis','cha','mhp','mmp','hpR','mpR','resFire','resWater','resEarth','resWind','meleeHit','rangedHit','meleeDmg','rangedDmg','mdmg','extraHit','extraDmg'].forEach(k => {
+                if(d[k] !== undefined && d[k] !== 0) st.push(`${STAT_LABEL[k]||k} ${sgn(k === 'ac' ? -d[k] : d[k])}`);   // 🔧 AC 顯示取負（ac:3 ＝ 防禦 AC-3，越低越好），與背包資訊欄一致
             });
             if(st.length) parts.push(`<div class="text-slate-300">${st.join(' / ')}</div>`);
         } else if(d.type === 'skillbk' && d.sk && DB.skills[d.sk]){
@@ -1665,6 +1665,13 @@ window.onload = () => {
             if(d.immStone)             _eff.push('免疫石化');
             if(d.immPoison)            _eff.push('免疫中毒');
             if(d.unique)               _eff.push('唯一（最多裝備1個）');
+            // 🏹 與背包資訊欄一致補齊：弓連射 / 魔杖共鳴・魔擊 / 蕾雅冰裂術 / 附魔施放（經典模式由 filterClassicEffLabels 過濾停用者）
+            if(d.rapidfire)            _eff.push('連射 ' + d.rapidfire + '%');
+            if(d.eff === 'magicstrike') _eff.push('魔擊');
+            if(d.meleeHitSpell)        _eff.push(d.meleeHitSpell.skn || '命中觸發');
+            if(d.spellProc)            _eff.push('施放' + (d.spellProc.skn || ''));
+            if(d.procSkill)            _eff.push('施放' + ((DB.skills[d.procSkill] && DB.skills[d.procSkill].n) || ''));
+            if(typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(id)) _eff.push('共鳴');
             // 🔧 武器標籤特效（反擊/居合/鈍擊/出血）：來自 WEAPON_TAGS（非 eff 欄位），與背包資訊欄一致顯示
             if(d.type === 'wpn' && typeof getWeaponTags === 'function'){
                 if(typeof weaponHasBleed === 'function' && weaponHasBleed(id)) _eff.push('出血');
@@ -1690,12 +1697,14 @@ window.onload = () => {
     document.addEventListener('mousemove', function(e){
         let host = e.target && e.target.closest ? e.target.closest('.tip-host') : null;
         let ic = document.getElementById('interaction-content');
-        // 技能頁的技能 host（data-tip-skill）不限於 NPC 互動面板；其餘 host 仍限定於 interaction-content
-        let ok = host && ((ic && ic.contains(host)) || host.hasAttribute('data-tip-skill'));
+        let eb = document.getElementById('equip-book');
+        // 技能頁 host（data-tip-skill）與收集冊 host（data-tip-id）不限於 NPC 互動面板；其餘 host 仍限定於 interaction-content
+        let ok = host && ((ic && ic.contains(host)) || (eb && !eb.classList.contains('hidden') && eb.contains(host)) || host.hasAttribute('data-tip-skill') || host.hasAttribute('data-tip-id'));
         if(!ok){ hideTip(); return; }
         let el = getTip();
         let tSkill = host.getAttribute('data-tip-skill');
         let tUid = host.getAttribute('data-tip-uid');
+        let tId = host.getAttribute('data-tip-id');
         if(tSkill){
             // 技能頁：依技能 ID 顯示能力
             if(el._id !== 'SK:'+tSkill){ let h = buildSkillTipHTML(tSkill); if(!h){ hideTip(); return; } el.innerHTML = h; el._id = 'SK:'+tSkill; }
@@ -1710,6 +1719,9 @@ window.onload = () => {
                     + `<div class="text-slate-300" style="font-size:12px;line-height:1.5;">${buildItemDescHTML(it)}</div>`;
                 el._id = key;
             }
+        } else if(tId){
+            // 🗡️ 收集冊：依基底物品 ID 顯示資訊（已收集裝備）
+            if(el._id !== ('BID:'+tId)){ let h = buildItemTipHTML(tId); if(!h){ hideTip(); return; } el.innerHTML = h; el._id = 'BID:'+tId; }
         } else {
             // 商店/製作圖示：依 icon → 基底物品 ID 顯示
             if(!ICON2ID) buildMap();

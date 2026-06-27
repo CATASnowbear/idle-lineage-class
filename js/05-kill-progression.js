@@ -150,7 +150,7 @@ function killMob(idx) {
     if (mob.curHp > 0) mob.curHp = 0;     // 待清算期間不可被當成活目標
     let _kbRoom = !!KING_ROOMS[mapState.current];   // 🔧 軍王之室
     let _kbNoReward = _kbRoom && !mob.boss;                     // 除頭目外（地獄束縛犬）：不給金錢/掉落
-    _sherineLootCtx = mob._sherine ? { boss: !!mob.boss, grace: !!mob._grace } : null;   // 🔮 席琳的世界：本次擊殺掉落套用 詞綴×3／套裝效果判定（恩賜怪套裝機率×5）
+    _sherineLootCtx = mob._sherine ? { boss: !!mob.boss, grace: !!mob._grace, mad: !!mob._sherineMad } : null;   // 🔮 席琳的世界：本次擊殺掉落套用 詞綴×3(瘋狂×5)／套裝效果判定（恩賜怪套裝機率×5、瘋狂再×3）
     _tradLootCtx = traditionalActive();   // 🏛️ 傳統模式：本次擊殺掉落的裝備隨機自帶強化值＋抑制施法卷軸（於 _sherineLootCtx 清除處一併關閉）
     _vfxLootCtx = true;   // ✨ VFX：本次擊殺掉落期間→gainItem 對潘朵拉權重=1 物品閃光
     try {
@@ -246,7 +246,7 @@ function killMob(idx) {
 
     // === 怪物專屬掉落（依「怪物掉落資料.md」）：每樣物品各自獨立判定一次 ===
     let dropList = _kbNoReward ? [] : (MOB_DROPS[mob.n] || []);   // 🔧 魔獸軍王之室：除頭目外不掉落物品
-    let _dropBase = (mob._grace ? 10 : (mob._sherine ? 3 : 1));   // 🔮 席琳的世界 ×3／恩賜怪 ×10（不含經典 ×1/10，供試煉道具用）
+    let _dropBase = (mob._grace ? 10 : (mob._sherine ? (mob._sherineMad ? 5 : 3) : 1));   // 🔮 席琳的世界 ×3（瘋狂×5）／恩賜怪 ×10（不含經典 ×1/10，供試煉道具用）
     let _dropMult = _dropBase * classicDropMult();   // 🎮 經典模式：×1/10（涵蓋怪物掉落表／黑暗武器／黑精靈水晶／祝福卷軸／區域額外掉落；試煉道具走 _dropBase×trialItemDropMult 不受 ×1/10）
     dropList.forEach(entry => {
         let itemId = entry[0];
@@ -334,7 +334,7 @@ function killMob(idx) {
         else if ((mob.lv || 1) >= 41) _cr = 0.00003;
         else if ((mob.lv || 1) >= 31) _cr = 0.00002;
         else if ((mob.lv || 1) >= 21) _cr = 0.00001;
-        if (_cr > 0 && Math.random() < _cr * classicDropMult()) {
+        if (_cr > 0 && Math.random() < _cr * classicDropMult() * (mob._sherineMad ? 3 : 1)) {   // 🔮 瘋狂的席琳世界：結晶掉率 ×3（一般怪／頭目皆然）
             gainItem('sherine_crystal', 1);
             logSys(`<span class="c-sherine font-bold">✦✦ 席琳結晶 從 ${mob.n} 的殘骸中浮現！✦✦</span>`);
         }
@@ -724,25 +724,27 @@ function applySherineBuff(idx) {
     if (!_m) return;
     // 攻城區與血盟敵人除外，其餘怪物強化＋報酬翻倍
     if (sherineWorldActive() && !isSiegeArea(mapState.current) && _m.race !== '血盟') {
-        _m.hp = Math.floor(_m.hp * 3); _m.curHp = _m.hp;   // HP×3
-        _m.ac = Math.floor((_m.ac || 0) * 1.5);
-        _m.mr = Math.floor((_m.mr || 0) * 1.5);
-        _m.exp = Math.floor((_m.exp || 0) * 5);            // 經驗×5
-        _m.goldMin = Math.floor((_m.goldMin || 0) * 5);    // 金錢×5
-        _m.goldMax = Math.floor((_m.goldMax || 0) * 5);
-        _m.hit = Math.floor((_m.hit || 0) * 1.5);
-        _m.dr = (_m.dr || 0) + Math.floor((_m.lv || 1) / 3);   // 額外減傷：等級/3
-        _m._sherine = true;   // 一般攻擊傷害×2、技能最終傷害×2、掉落×3、掉落附帶席琳詞綴／套裝效果
+        let _mad = sherineMadActive();   // 🔮 瘋狂的席琳世界：更高倍率（值＝[一般/瘋狂]）
+        _m.hp = Math.floor(_m.hp * (_mad ? 5 : 3)); _m.curHp = _m.hp;   // HP×[3/5]
+        _m.ac = Math.floor((_m.ac || 0) * (_mad ? 1.75 : 1.5));         // AC×[1.5/1.75]
+        _m.mr = Math.floor((_m.mr || 0) * (_mad ? 3 : 1.5));            // MR×[1.5/3]
+        _m.exp = Math.floor((_m.exp || 0) * (_mad ? 10 : 5));           // 經驗×[5/10]
+        _m.goldMin = Math.floor((_m.goldMin || 0) * (_mad ? 10 : 5));   // 金錢×[5/10]
+        _m.goldMax = Math.floor((_m.goldMax || 0) * (_mad ? 10 : 5));
+        _m.hit = Math.floor((_m.hit || 0) * (_mad ? 2 : 1.5));          // 命中×[1.5/2]
+        _m.dr = (_m.dr || 0) + Math.floor((_m.lv || 1) / 3);            // 額外減傷：等級/3（兩者相同）
+        _m._sherine = true;   // 一般攻擊傷害×[2/3]、技能最終傷害×[2/3]、掉落×[3/5]、掉落附帶席琳詞綴／套裝效果
+        if (_mad) _m._sherineMad = true;   // 🔮 瘋狂旗標：供傷害/掉落/結晶/套裝效果倍率分流
     }
 }
-// 🔮 席琳的恩賜：席琳的世界中每次刷新 1% 機率讓場上一隻「一般怪物」獲得恩賜（頭目/血盟除外；每 3 分鐘最多一次；場上已有恩賜怪則不觸發）
+// 🔮 席琳的恩賜：席琳的世界中每次刷新 1% 機率讓場上一隻怪（含頭目）獲得恩賜（血盟除外）
+//  ⚠️ 已移除「每 3 分鐘冷卻」與「頭目除外」限制：只要 1% 機率判定到即觸發、可連續觸發、頭目亦可；仍維持「場上同時僅一隻恩賜怪」
 function applySherineGrace(idx) {
     if (sherineWorldActive() && !isSiegeArea(mapState.current)
         && mapState.mobs[idx] && mapState.mobs[idx].race !== '血盟'
-        && state.ticks >= (mapState.graceCdAt || 0)
         && !mapState.mobs.some(m => m && m._grace)
         && Math.random() < 0.01) {
-        let _gc = mapState.mobs.filter(m => m && !m._dead && m.curHp > 0 && !m.boss && m.race !== '血盟');
+        let _gc = mapState.mobs.filter(m => m && !m._dead && m.curHp > 0 && m.race !== '血盟');   // 👑 含頭目（不再排除 boss）
         if (_gc.length) {
             let g = _gc[Math.floor(Math.random() * _gc.length)];
             g._grace = true;
@@ -750,7 +752,6 @@ function applySherineGrace(idx) {
             g.exp = Math.floor((g.exp || 0) * 10);
             g.goldMin = Math.floor((g.goldMin || 0) * 10);
             g.goldMax = Math.floor((g.goldMax || 0) * 10);
-            mapState.graceCdAt = state.ticks + 1800;             // 3 分鐘最多一次
             logSys(`<span class="grace-badge font-bold">✦ 席琳的恩賜降臨！</span><span class="c-sherine font-bold">${g.n}</span><span class="text-red-300"> 獲得了席琳的力量……擊敗它以奪取豐厚的報酬！</span>`);
         }
     }

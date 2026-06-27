@@ -591,7 +591,9 @@ function startGame() {
             gainItem('bk_lightarrow', 1, true, true); // 光箭魔法書
         }
     }
+    if (typeof loadSharedCollections === 'function') loadSharedCollections();   // 🎴🗡️ 創角：載入同模式共用收集圖鑑（新角色即承接同模式既有收集）
     gainItem('item_card_book', 1, true, true);   // 🎴 卡片收集冊（全職業創角預設）
+    if (typeof ensureEquipBook === 'function') ensureEquipBook();   // 🗡️ 裝備收集冊（全職業創角預設＋登錄起始裝備）
 
     calcStats();
     player.hp = player.mhp; player.mp = player.mmp;
@@ -804,7 +806,9 @@ function loadGame() {
         // 🔧 架構#6：集中式預設值合併（放在所有「轉換型」遷移之後，作為缺漏欄位的統一保底）。
         // 日後新增欄位只需登錄於 SAVE_DEFAULTS；上方逐項 if(undefined) 為歷史遷移，不必再增列。
         applySaveDefaults(player);
+        if (typeof loadSharedCollections === 'function') loadSharedCollections();   // 🎴🗡️ 讀檔：載入同模式共用收集圖鑑（卡片/裝備·併入該角色既有資料）
         if (typeof ensureCardBook === 'function') ensureCardBook();   // 🎴 舊存檔保底：道具欄補一本卡片收集冊
+        if (typeof ensureEquipBook === 'function') ensureEquipBook();   // 🗡️ 舊存檔保底：補裝備收集冊＋登錄現有(背包/已裝備)裝備
 
         // 👇 正確的新版起點邏輯
         // 🔧 讀檔回「家」改走 getHomeTown()：血盟成員回盟主村莊（海音/歐瑞），否則回職業起始村，與回村按鈕邏輯一致

@@ -5,7 +5,7 @@ function whKey(p){ let _p = (p !== undefined) ? p : player; return (_p && _p.tra
 const WH_MAX = 500;   // 倉庫格數上限（🔧 100 → 200 → 500）
 const WH_NO_STORE = ['item_dk_insignia','new_item_239','new_item_241','new_item_collar_husky','new_item_238','new_item_184','new_item_185','new_collar_rabbit','new_collar_fox','new_collar_beagle','new_collar_stbernard','item_mastery_proof',
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
-    'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow','item_dragon_egg','item_card_book'];   // 禁止存入倉庫：潘朵拉抽獎卷、王族搜索狀、四種項圈、精通之證、傲慢之塔傳送符(11~91F)、🔥50級試煉任務道具、🎴卡片收集冊
+    'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow','item_dragon_egg','item_card_book','item_equip_book'];   // 禁止存入倉庫：潘朵拉抽獎卷、王族搜索狀、四種項圈、精通之證、傲慢之塔傳送符(11~91F)、🔥50級試煉任務道具、🎴卡片收集冊
 // 倉庫分類過濾（武器 / 防具 / 道具）：存入、取出共用同一個下拉清單
 let _whFilter = 'weapon';
 let _whQtyInput = '';   // 🔧 倉庫存取「數量」共用輸入（取代 prompt()；空字串或 0 ＝整疊全部）。以模組變數保存→面板每次重繪後數值不流失
@@ -24,6 +24,23 @@ function loadWarehouse(){
     return { items: [], gold: 0 };
 }
 function saveWarehouse(w){ localStorage.setItem(whKey(), JSON.stringify({ items: w.items, gold: w.gold })); }
+// ===== 🎴🗡️ 共用收集圖鑑（卡片 cardDex／裝備 equipDex）：同模式角色共用，獨立於存檔位的 localStorage 鍵（概念同共用倉庫）=====
+const CARDDEX_KEY = 'lineage_idle_carddex';
+const EQUIPDEX_KEY = 'lineage_idle_equipdex';
+function _dexKey(base, p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (base + '_trad') : (_p && _p.classicMode) ? (base + '_classic') : base; }   // 🏛️ 傳統／🎮 經典 各自獨立桶（同倉庫規則）
+function _readDex(base){ try { let s = localStorage.getItem(_dexKey(base)); if (s) { let o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch(e){} return {}; }
+function saveCardDex(){ if (player && player.cardDex) { try { localStorage.setItem(_dexKey(CARDDEX_KEY), JSON.stringify(player.cardDex)); } catch(e){} } }
+function saveEquipDex(){ if (player && player.equipDex) { try { localStorage.setItem(_dexKey(EQUIPDEX_KEY), JSON.stringify(player.equipDex)); } catch(e){} } }
+// 讀檔／創角時呼叫：把共用桶併進 player.cardDex/equipDex（卡片取較高階·裝備取聯集·只增不減），並回寫共用桶（種子化＋遷移舊存檔 per-character 資料·不丟失）
+function loadSharedCollections(){
+    if (!player) return;
+    let shCard = _readDex(CARDDEX_KEY), shEquip = _readDex(EQUIPDEX_KEY);
+    let mC = Object.assign({}, shCard), pc = player.cardDex || {};
+    for (let k in pc) if ((pc[k] || 0) > (mC[k] || 0)) mC[k] = pc[k];   // 🎴 卡片：取較高階（普<銀<金）
+    player.cardDex = mC;
+    player.equipDex = Object.assign({}, shEquip, player.equipDex || {});   // 🗡️ 裝備：布林聯集
+    saveCardDex(); saveEquipDex();
+}
 function _whStackFind(arr, it){ return ((it.en||0)===0 && !it.lock) ? arr.find(x => !x.lock && (x.en||0)===0 && sameItemSig(x, it)) : null; }   // 🔧 架構#3：統一簽章比對
 // 物品完整簽章：名字(id)+強化值(en)+詞綴(祝福/遠古/屬性)；一鍵存入用來比對「完全相同」
 function whSig(it){ return itemSig(it); }   // 🔧 架構#3：委派給單一事實來源 itemSig
@@ -577,10 +594,10 @@ function renderYuriaQuest(div) {
     }
     // 👹 第二兌換：黑暗哈汀的日記本 → 隱藏的魔族武器（六選一）
     let have2 = questCountId('item_hatin_diary');
-    html += `<div class="p-4 pt-2 text-slate-300 leading-relaxed border-t border-slate-700/60">尤麗婭：你身上那本<b class="text-purple-300">黑暗哈汀的日記本</b>……裡頭的禁咒，我能據以打造一件<b class="text-purple-300">隱藏的魔族武器</b>。<br>持有黑暗哈汀的日記本：<b class="${have2 >= 1 ? 'text-green-400' : 'text-red-400'}">${have2}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，六選一。</span></div>`;
+    html += `<div class="p-4 pt-2 text-slate-300 leading-relaxed border-t border-slate-700/60">尤麗婭：你身上那本<b class="text-purple-300">黑暗哈汀的日記本</b>……裡頭的禁咒，我能據以打造一件<b class="text-purple-300">隱藏的魔族武器</b>。<br>持有黑暗哈汀的日記本：<b class="${have2 >= 1 ? 'text-green-400' : 'text-red-400'}">${have2}</b><br><span class="text-slate-400 text-sm">每件消耗 1 本，六選一。</span>${!player.classicMode ? `<br><span class="text-xs text-slate-400">🔮 <span class="c-sherine font-bold">席琳兌換</span>：每件額外消耗 1 個 <b class="c-sherine">席琳結晶</b>（持有 ${questCountId('sherine_crystal')}），成品必定附帶一種隨機 <span class="c-sherine">席琳套裝效果</span>。</span>` : ''}</div>`;
     if (have2 >= 1) {
         html += `<div class="grid grid-cols-1 gap-3 p-4 pt-0">`;
-        YURIA_HATIN_REWARDS.forEach(r => { html += `<button class="btn bg-fuchsia-900 hover:bg-fuchsia-800 border-fuchsia-600 py-2 px-4 font-bold" onclick="doYuriaHatinExchange('${r.id}')">兌換：${r.nm}（需 黑暗哈汀的日記本 ×1）</button>`; });
+        YURIA_HATIN_REWARDS.forEach(r => { html += sherineExBtns(r.nm, `doYuriaHatinExchange('${r.id}',false)`, `doYuriaHatinExchange('${r.id}',true)`); });   // 🔮 一般兌換 + 席琳兌換雙鈕（經典自動隱藏席琳鈕）
         html += `</div>`;
     } else {
         html += `<div class="px-4 pb-4 text-red-400 text-sm">你沒有黑暗哈汀的日記本（可由 惡靈／魔物封印室 的 哈汀之影 取得）。</div>`;
@@ -631,15 +648,16 @@ function shimizheEx(rewardId, sherine) {
     let _c = document.getElementById('interaction-content'); if (_c) renderShimizheExchange(_c);
 }
 
-function doYuriaHatinExchange(rewardId) {
+function doYuriaHatinExchange(rewardId, sherine) {   // 🔮 sherine=true：席琳兌換（額外消耗 1 席琳結晶，成品必帶套裝效果）
     if (!YURIA_HATIN_REWARDS.some(r => r.id === rewardId)) return;
     if (questCountId('item_hatin_diary') < 1) { logSys('<span class="text-red-400 font-bold">黑暗哈汀的日記本不足。</span>'); return; }
+    if (!sherineExCheck(sherine)) return;   // 🔮 席琳兌換缺結晶→提示並中止（不扣日記本）
     questConsumeId('item_hatin_diary', 1);   // 背包優先，不足扣倉庫
-    { let _sv = _tradLootCtx; _tradLootCtx = true; try { gainItem(rewardId, 1, false, false); } finally { _tradLootCtx = _sv; } }   // 🏛️ 傳統模式：魔族武器兌換自帶隨機強化值（詞綴機率同一般兌換）
+    sherineExGain(rewardId, sherine);   // 🔮 扣 1 結晶(若席琳)＋_forceSherineSet 必帶套裝效果；🏛️ _tradLootCtx=true→傳統模式自帶隨機強化值
     saveGame();
-    logSys(`<span class="text-fuchsia-200">尤麗婭：成了……這是你的 <b>${DB.items[rewardId].n}</b>，小心別讓它反噬了你。</span>`);
-    closeNpcInteraction();
+    logSys(`<span class="text-fuchsia-200">尤麗婭：成了……這是你的 <b>${sherine ? '<span class="c-sherine">席琳·</span>' : ''}${DB.items[rewardId].n}</b>，小心別讓它反噬了你。</span>`);
     renderTabs();
+    let _c = document.getElementById('interaction-content'); if (_c) renderYuriaQuest(_c);   // 🔮 就地重渲染（更新日記本/結晶持有數，可連續兌換）
 }
 
 // ===== 雷德的復仇（全職業）：集齊魔法寶石×100＋五枚部下證明戒指，兌換召喚控制戒指 =====
@@ -732,17 +750,17 @@ const TRIAL_50_CFG = {
     knight: { npc: '迪嘉勒廷',
         stages: [ {id:'item_dantes_letter', nm:'丹特斯的召書', cnt:1, hint:'擊殺黑暗妖精將軍'},
                   {id:'item_elf_whisper', nm:'精靈的私語', cnt:10, hint:'擊殺精靈墓穴的怪物'} ],
-        exMat:'mat_flame_sword', exMatNm:'炎魔之劍', rewards:[{id:'wpn_blackflame_sword',nm:'黑焰之劍'}] },
+        exMat:'mat_flame_sword', exMatNm:'炎魔之劍', rewards:[{id:'wpn_blackflame_sword',nm:'黑焰之劍'},{id:'bot_courage',nm:'勇氣長靴'}] },
     elf: { npc: '迪嘉勒廷',
         stages: [ {id:'item_ancient_book', nm:'古代黑妖之秘笈', cnt:1, hint:'擊殺巨大兵蟻'},
                   {id:'item_sealed_intel', nm:'密封的情報書', cnt:1, hint:'於大洞穴隱遁者村莊地區擊殺魔族暗殺團'} ],
-        exMat:'mat_flame_claw', exMatNm:'炎魔之爪', rewards:[{id:'wpn_redflame_bow',nm:'赤焰之弓'},{id:'wpn_redflame_sword',nm:'赤焰之劍'}] },
+        exMat:'mat_flame_claw', exMatNm:'炎魔之爪', rewards:[{id:'wpn_redflame_bow',nm:'赤焰之弓'},{id:'wpn_redflame_sword',nm:'赤焰之劍'},{id:'bot_sephia',nm:'賽菲亞長靴'}] },
     mage: { npc: '迪嘉勒廷',
         stages: [ {id:'item_spy_report', nm:'間諜報告書', cnt:1, hint:'於大洞穴隱遁者村莊地區擊殺魔族暗殺團'} ],
-        exMat:'mat_flame_eye', exMatNm:'炎魔之眼', rewards:[{id:'wpn_mana_orb',nm:'瑪那水晶球'}] },
+        exMat:'mat_flame_eye', exMatNm:'炎魔之眼', rewards:[{id:'wpn_mana_orb',nm:'瑪那水晶球'},{id:'bot_mana',nm:'瑪那長靴'}] },
     royal: { npc: '迪嘉勒廷',
         stages: [ {id:'item_royal_order', nm:'調職命令書', cnt:1, hint:'擊殺小惡魔'} ],
-        exMat:'mat_flame_heart', exMatNm:'炎魔之心', rewards:[{id:'wpn_golden_scepter',nm:'黃金權杖'}] },
+        exMat:'mat_flame_heart', exMatNm:'炎魔之心', rewards:[{id:'wpn_golden_scepter',nm:'黃金權杖'},{id:'bot_divine_will',nm:'神意長靴'}] },
     dark: { npc: '布魯迪卡',
         stages: [ {id:'item_chaos_key', nm:'混沌鑰匙', cnt:1, hint:'擊殺黑暗棲林者'} ],
         exMat:'item_fallen_key', exMatNm:'墮落鑰匙', rewards:[{id:'wpn_death_finger',nm:'死亡之指'}] }

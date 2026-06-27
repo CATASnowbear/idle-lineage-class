@@ -1072,6 +1072,7 @@ function changeMap(force) {
 function toggleSherineWorld() {
     if ((player.lv || 1) < 40) { logSys('<span class="text-red-400">等級未達 40，席琳對你的祈禱沒有回應。</span>'); return; }
     player.sherineWorld = !player.sherineWorld;
+    if (player.sherineWorld) player.sherineMad = false;   // 🔮 互斥：開啟一般席琳 → 關閉瘋狂席琳
     applySherineTheme();
     logSys(player.sherineWorld
         ? '<span class="c-sherine font-bold">【席琳的世界】已開啟。</span><span class="text-slate-400">漆黑的濃霧滲入大地……怪物變得更加兇猛，但報酬也更加豐厚。</span>'
@@ -1080,18 +1081,37 @@ function toggleSherineWorld() {
     renderMobs();
     let el = document.getElementById('interaction-content'); if (el) renderSherinePray(el);
 }
+function toggleSherineMad() {
+    if ((player.lv || 1) < 40) { logSys('<span class="text-red-400">等級未達 40，席琳對你的祈禱沒有回應。</span>'); return; }
+    player.sherineMad = !player.sherineMad;
+    if (player.sherineMad) player.sherineWorld = false;   // 🔮 互斥：開啟瘋狂席琳 → 關閉一般席琳
+    applySherineTheme();
+    logSys(player.sherineMad
+        ? '<span class="c-sherine font-bold">【瘋狂的席琳世界】已開啟。</span><span class="text-red-400">大地染上猩紅的瘋狂……怪物的力量達到極致，報酬亦然。慎之。</span>'
+        : '<span class="text-slate-300">【瘋狂的席琳世界】已關閉，世界恢復了平靜。</span>');
+    saveGame();
+    renderMobs();
+    let el = document.getElementById('interaction-content'); if (el) renderSherinePray(el);
+}
 function renderSherinePray(div) {
-    let on = sherineWorldActive();
+    let on = !!(player && player.sherineWorld);
+    let mad = !!(player && player.sherineMad);
     let lvOk = (player.lv || 1) >= 40;
     div.innerHTML = `
         <div class="flex flex-col gap-3 p-1">
-            <div class="text-slate-300 text-sm leading-relaxed">席琳：旅人啊……是否願意凝視這個世界的另一面？（需等級 40 以上，可自由開啟/關閉）</div>
+            <div class="text-slate-300 text-sm leading-relaxed">席琳：旅人啊……是否願意凝視這個世界的另一面？（需等級 40 以上，可自由開啟/關閉；兩種世界互斥）</div>
             <div class="bg-slate-800/60 border ${on ? 'border-red-700' : 'border-slate-600'} rounded p-3 text-sm leading-relaxed">
                 <div class="font-bold mb-1 ${on ? 'c-sherine' : 'text-slate-200'}">席琳的世界：目前 ${on ? '<span class="text-red-300">開啟</span>' : '<span class="text-slate-400">關閉</span>'}</div>
-                <div class="text-slate-200">怪物獲得大幅的強化，戰鬥將更為艱難，但也能獲得更多報酬，還可能出現<span class="c-sherine font-bold">珍稀的套裝裝備</span>。</div>
+                <div class="text-slate-200 text-xs">怪物 HP×3、傷害×2、經驗/金錢×5，掉落×3，可能出現<span class="c-sherine font-bold">珍稀套裝裝備</span>與<span class="c-sherine font-bold">席琳結晶</span>。</div>
             </div>
-            <button class="btn py-3 text-lg font-bold ${!lvOk ? 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed' : (on ? 'bg-slate-700 hover:bg-slate-600 border-slate-500' : 'bg-red-800 hover:bg-red-700 border-red-600')}"
+            <button class="btn py-3 text-base font-bold ${!lvOk ? 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed' : (on ? 'bg-slate-700 hover:bg-slate-600 border-slate-500' : 'bg-red-800 hover:bg-red-700 border-red-600')}"
                 ${!lvOk ? 'disabled' : ''} onclick="toggleSherineWorld()">${!lvOk ? '等級不足（需 Lv40）' : (on ? '🙏 祈禱：關閉席琳的世界' : '🙏 祈禱：開啟席琳的世界')}</button>
+            <div class="bg-slate-900/70 border ${mad ? 'border-rose-600' : 'border-slate-700'} rounded p-3 text-sm leading-relaxed">
+                <div class="font-bold mb-1 ${mad ? 'c-sherine' : 'text-rose-300'}">🔥 瘋狂的席琳世界：目前 ${mad ? '<span class="text-rose-300">開啟</span>' : '<span class="text-slate-400">關閉</span>'}</div>
+                <div class="text-slate-200 text-xs">極致試煉。怪物 HP×5、AC×1.75、MR×3、命中×2、傷害×3、經驗/金錢×10，掉落與詞綴×5；<span class="c-sherine font-bold">套裝效果與席琳結晶掉率為一般席琳的 3 倍</span>。</div>
+            </div>
+            <button class="btn py-3 text-base font-bold ${!lvOk ? 'bg-slate-600 border-slate-500 opacity-60 cursor-not-allowed' : (mad ? 'bg-slate-700 hover:bg-slate-600 border-slate-500' : 'bg-rose-900 hover:bg-rose-800 border-rose-600')}"
+                ${!lvOk ? 'disabled' : ''} onclick="toggleSherineMad()">${!lvOk ? '等級不足（需 Lv40）' : (mad ? '🙏 祈禱：關閉瘋狂的席琳世界' : '🔥 祈禱：開啟瘋狂的席琳世界')}</button>
         </div>`;
 }
 

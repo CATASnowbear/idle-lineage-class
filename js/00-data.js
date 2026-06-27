@@ -131,7 +131,7 @@ const DB = {
         "amr_frost": { n: "寒冰盔甲", legend: true, type: "arm", slot: "armor", ac: 5, req: "royal,dragon", safe: 4, p: 196000, gachaWeight: 0, set: "frost", d: "寒冰套裝之一，盔甲沁出徹骨寒氣，護身如冰封壁壘。<br><span class='text-amber-300'>【寒冰套裝】頭盔＋盔甲＋長靴 同時裝備：AC-5、體質+3、HP+100、HP自然恢復+8、MP自然恢復+4、MR+15、水屬性抗性+20。</span>" },
         "bot_frost": { n: "寒冰長靴", legend: true, type: "arm", slot: "boots", ac: 4, req: "royal,dragon", safe: 4, p: 125000, gachaWeight: 0, set: "frost", d: "千年寒霜凝鑄的長靴，踏處留下不化的冰痕。寒冰套裝之一。<br><span class='text-amber-300'>【寒冰套裝】頭盔＋盔甲＋長靴 同時裝備：AC-5、體質+3、HP+100、HP自然恢復+8、MP自然恢復+4、MR+15、水屬性抗性+20。</span>" },
         "wpn_icequeen_wand": { n: "冰之女王魔杖", type: "wpn", dmgS: 3, dmgL: 4, hit: 5, dmgBonus: 1, spd: 1.0, req: "mage", safe: 6, p: 143340, legend: true, gachaWeight: 1, procSkill: "sk_ice_spike", procRateBase: 8, procRatePerEn: 2, d: "冰之女王御用的魔杖，杖尖凝著永不消融的霜華。攻擊時 8% 機率額外施放冰錐（每強化 +1 機率 +2%，不需學習、不耗MP，效果同法師冰錐）。" },
-        "wpn_demon_scythe":  { n: "惡魔鐮刀", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, mdmg: 5, spd: 1.0, req: "mage", safe: 6, p: 173340, legend: true, gachaWeight: 1 },
+        "wpn_demon_scythe":  { n: "惡魔鐮刀", type: "wpn", dmgS: 1, dmgL: 1, hit: 0, dmgBonus: 0, mdmg: 5, spd: 1.0, req: "mage", safe: 6, p: 173340, legend: true, gachaWeight: 1, isWand: true },   // 🔮 單手魔杖（共鳴·見 WAND_LIGHTARROW_IDS）；isWand→魔劍精通排除、不轉奇古獸
         // ===== 冥法軍訓練場：掉落武器 =====
         "wpn_blood_2hsword":   { n: "血色巨劍", type: "wpn", w2h: true, dmgS: 13, dmgL: 15, hit: 0, dmgBonus: 0, spd: 0.9, req: "knight",      safe: 6, p: 11140, eff: "cleave", gachaWeight: 30 },   // 切割（雙手劍）
         "wpn_dark_sword":      { n: "黑暗之劍", type: "wpn",            dmgS: 15, dmgL: 12, hit: 0, dmgBonus: 1, spd: 0.9, req: "knight,dark", safe: 6, p: 12000, gachaWeight: 10 },   // 反擊（單手劍 tag 自動）
@@ -725,6 +725,11 @@ const DB = {
         "wpn_redflame_bow": { n: "赤焰之弓", type: "wpn", isBow: true, ranged: true, rapidfire: 70, w2h: true, dmgS: 3, dmgL: 3, hit: 2, dmgBonus: 4, spd: 1.0, req: "elf", safe: 6, p: 10000, gachaWeight: 20, d: "灌注炎魔之力的長弓，拉滿弦時箭尖泛起赤紅的熱浪。連射 70%。" },
         "wpn_redflame_sword": { n: "赤焰之劍", type: "wpn", dmgS: 14, dmgL: 6, hit: 4, dmgBonus: 0, spd: 1.1, req: "elf", safe: 6, p: 10000, gachaWeight: 20, unBonus: true, d: "灌注炎魔之力的烈焰之劍，揮砍時帶起灼人的赤光。反擊、居合、對不死 / 狼人加成。" },
         "wpn_mana_orb": { n: "瑪那水晶球", type: "arm", slot: "shield", ac: 2, block: 10, mmp: 100, int: 1, req: "mage", safe: 4, p: 10000, gachaWeight: 20, d: "凝聚瑪那之力的水晶球盾，澄澈的核心中緩緩流轉著無盡魔力。格檔 10%、MP+100、智力+1。" },
+        // 🔥 50 級試煉長靴（迪嘉勒廷·交付炎魔素材兌換；各職業專屬·AC-3·安定4·重量15·席琳可兌換）
+        "bot_divine_will": { n: "神意長靴", type: "arm", slot: "boots", ac: 3, cha: 1, req: "royal", safe: 4, p: 12000, gachaWeight: 10, d: "👑 承載王族神聖意志的長靴，每一步都散發君臨天下的威儀。AC-3、魅力+1。" },
+        "bot_courage":     { n: "勇氣長靴", type: "arm", slot: "boots", ac: 3, meleeHit: 1, req: "knight", safe: 4, p: 12000, gachaWeight: 10, d: "鼓舞騎士勇往直前的長靴，踏出無畏的步伐。AC-3、近距離命中+1。" },
+        "bot_sephia":      { n: "賽菲亞長靴", type: "arm", slot: "boots", ac: 3, rangedHit: 1, req: "elf", safe: 4, p: 12000, gachaWeight: 10, d: "賽菲亞祝福的輕盈長靴，使妖精的步伐如風、箭矢更準。AC-3、遠距離命中+1。" },
+        "bot_mana":        { n: "瑪那長靴", type: "arm", slot: "boots", ac: 3, mpR: 2, req: "mage", safe: 4, p: 12000, gachaWeight: 10, d: "蘊含瑪那之力的長靴，行走間不斷牽引魔力回流。AC-3、MP自然恢復量+2。" },
         "wpn_death_finger": { n: "死亡之指", type: "wpn", w2h: true, dmgS: 17, dmgL: 15, hit: 3, dmgBonus: 2, spd: 0.9, req: "dark", safe: 6, p: 10000, gachaWeight: 20, eff: "combo", comboRate: 20, procPoison: { rate: 2, dur: 15, tick: 3, dmg: [1, 8] }, d: "墮落之力凝成的枯瘦指爪，觸及之物無不沾染腐毒。雙擊；攻擊時 2% 機率對目標觸發毒咒。" },
         // ===== 🌑 暗影神殿：材料 / 鑰匙 =====
         "mat_chaos_head": { n: "混沌首級", type: "etc", p: 1, c: "text-purple-300", noUse: true, gachaWeight: 0, d: "製作材料。" },

@@ -374,6 +374,8 @@ d.mr += (baseMr + bonusMr);
 
     // 🎴 卡片收集：各地區「完成」加成（HP/MP/抗性/負重等；只取該區最高已達階；weight 累積到 d._cardWeightBonus 供下方負重段）
     if (typeof cardCollectionBonus === 'function') cardCollectionBonus(p, d);
+    // 🗡️ 裝備收集冊：各部位「全收集」加成（HP/MP/傷害減免/MR/恢復/ER/AC/負重/夥伴命中；weight→d._equipWeightBonus 供下方負重段、petHit→p._equipPetHit 供 petGearBonus）
+    if (typeof equipCollectionBonus === 'function') equipCollectionBonus(p, d);
 
     // 🏅 生存精通：MR+15（藥水恢復 +25% 於 useItem 套用）
     if (p.mastery === 'k_survive') d.mr += 15;
@@ -480,6 +482,7 @@ d.mr += (baseMr + bonusMr);
         }
         if (p.buffs && p.buffs.sk_load_up > 0) _cap += 50;   // 負重強化增益：負重上限 +50
         if (d._cardWeightBonus) _cap += d._cardWeightBonus;   // 🎴 卡片收集：風木/奇岩完成 → 負重上限加成
+        if (d._equipWeightBonus) _cap += d._equipWeightBonus;   // 🗡️ 裝備收集冊：單手/雙手鈍器/臂甲/腰帶部位全收集 → 負重上限加成
         let _limit = _wbase + _cap;
         let _pct = _limit > 0 ? Math.floor(_cur / _limit * 100) : 999;
         let _tier = _pct <= 49 ? 0 : (_pct <= 81 ? 1 : (_pct <= 99 ? 2 : 3));

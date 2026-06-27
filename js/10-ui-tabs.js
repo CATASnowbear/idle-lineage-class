@@ -1220,6 +1220,10 @@ const invSortCmp = (function () {
     return function (ia, ib) {
         let da = DB.items[ia.id], db = DB.items[ib.id];
         if (!da || !db) return 0;
+        // 🔧 收集冊置頂：卡片收集冊 → 裝備收集冊 永遠排在最前（其餘照常規則）
+        let ba = (ia.id === 'item_card_book' ? 0 : (ia.id === 'item_equip_book' ? 1 : 2));
+        let bb = (ib.id === 'item_card_book' ? 0 : (ib.id === 'item_equip_book' ? 1 : 2));
+        if (ba !== bb) return ba - bb;
         let ca = catRank(da), cb = catRank(db);
         if (ca !== cb) return ca - cb;
 

@@ -98,7 +98,7 @@ const CARD_MOB_MAPS = {};      // mobName -> [mapKey,...]
 
 // ---- 圖鑑狀態助手（player.cardDex：怪名 -> 已開啟最高階 1/2/3）----
 function cardDexTier(name) { return (player.cardDex && player.cardDex[name]) || 0; }
-function cardSetDex(name, tier) { if (!player.cardDex) player.cardDex = {}; if ((player.cardDex[name] || 0) < tier) player.cardDex[name] = tier; }
+function cardSetDex(name, tier) { if (!player.cardDex) player.cardDex = {}; if ((player.cardDex[name] || 0) < tier) { player.cardDex[name] = tier; if (typeof saveCardDex === 'function') saveCardDex(); } }   // 🎴 共用桶：登錄新階即回寫
 function cardRegionTier(key) {   // 該地區「全部怪物皆達」的最高階（0=未完成）
     let names = CARD_REGION_MOBS[key]; if (!names || !names.length) return 0;
     let minT = 3;

@@ -29,7 +29,7 @@
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/style.css?v=dae76ed479">
+    <link rel="stylesheet" href="css/style.css?v=d6538b094d">
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-4">
 
@@ -374,22 +374,34 @@
         </div>
     </div>
 
-<script src="js/00-data.js?v=d5c93d8abb"></script>
-<script src="js/01-drops-config.js?v=105033e4a3"></script>
-<script src="js/02-stats-recompute.js?v=d0d84c0db6"></script>
-<script src="js/03-combat-core.js?v=6ab81395c3"></script>
-<script src="js/04-combat-attack.js?v=78b8271bfa"></script>
-<script src="js/05-kill-progression.js?v=2bcb7ac759"></script>
-<script src="js/06-status-allies.js?v=60d4c5f431"></script>
-<script src="js/07-skills-cast.js?v=25fc75353c"></script>
-<script src="js/08-items-equip.js?v=6a285a03c6"></script>
+    <div id="equip-book" class="hidden fixed inset-0 z-[45] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3" onclick="equipBookBackdrop(event)">
+        <div class="w-full max-w-5xl max-h-[92vh] flex flex-col bg-slate-900/95 rounded-2xl border-2 border-sky-900/60 shadow-[0_0_60px_rgba(0,0,0,0.85)] overflow-hidden">
+            <div class="flex items-center justify-between px-5 py-3 border-b border-slate-700 bg-gradient-to-b from-[#10283a] to-[#0c1c24]">
+                <h2 class="text-2xl font-bold text-sky-300 tracking-wide">🗡️ 裝備收集冊</h2>
+                <button onclick="closeEquipBook()" class="btn px-3 py-1.5 bg-slate-700 hover:bg-slate-600 border-slate-500 text-slate-200 font-bold">✕ 關閉</button>
+            </div>
+            <div id="equip-book-tabs" class="flex flex-wrap gap-1.5 px-4 py-2.5 border-b border-slate-700 bg-slate-900/80"></div>
+            <div id="equip-book-body" class="flex-1 overflow-y-auto p-4"></div>
+        </div>
+    </div>
+
+<script src="js/00-data.js?v=b0786ec371"></script>
+<script src="js/01-drops-config.js?v=ea900d7f3b"></script>
+<script src="js/02-stats-recompute.js?v=f5961f5591"></script>
+<script src="js/03-combat-core.js?v=ed8057f824"></script>
+<script src="js/04-combat-attack.js?v=08cd2941ba"></script>
+<script src="js/05-kill-progression.js?v=bac1360e68"></script>
+<script src="js/06-status-allies.js?v=4f594f29ee"></script>
+<script src="js/07-skills-cast.js?v=78a3958125"></script>
+<script src="js/08-items-equip.js?v=2eaf18edfd"></script>
 <script src="js/09-vfx-render.js?v=0c33516c4e"></script>
-<script src="js/10-ui-tabs.js?v=00a2bdad31"></script>
-<script src="js/11-world-map.js?v=32899dae0e"></script>
-<script src="js/12-npc-quests.js?v=cec6733bae"></script>
-<script src="js/13-shop-save.js?v=42710838db"></script>
-<script src="js/14-craft-pandora.js?v=69df3c8833"></script>
-<script src="js/15-cards.js?v=ecedc41160"></script>
+<script src="js/10-ui-tabs.js?v=a8998ebb6d"></script>
+<script src="js/11-world-map.js?v=e0c28aa6dc"></script>
+<script src="js/12-npc-quests.js?v=292786c3a4"></script>
+<script src="js/13-shop-save.js?v=dfaaf393a8"></script>
+<script src="js/14-craft-pandora.js?v=5a352e1dc0"></script>
+<script src="js/15-cards.js?v=15228dba36"></script>
+<script src="js/16-equip-book.js?v=da7ddfa39f"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260627e"></script>
 <!-- 手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可) -->

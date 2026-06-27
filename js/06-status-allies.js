@@ -691,7 +691,7 @@ function allyProcLightArrow(ally, t) {
     let isCrit = Math.random()*100 < (d.magicCrit||0);
     let tier = sk.tier || 1;
     let spCoef = (1 + 3*(d.magicDmg||0)/16) * (1 + tier/3);
-    let mageMult = (ally.cls === 'mage') ? (1.5 + tier/20) : 1.0;
+    let mageMult = 1.0;   // 🔧 傭兵共鳴(光箭)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + (d.magicCritDmg||0)/100) : 1;
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
     let dmg = Math.max(1, Math.floor((core + (sk.dmgBase||0) + (d.extraMp||0)) * mrFactor) - (t.dr||0));
@@ -717,7 +717,7 @@ function allyWitchIceLance(ally) {
     let isCrit = Math.random() * 100 < (d.magicCrit || 0);
     let tier = sk.tier || 1;
     let spCoef = (1 + 3 * (d.magicDmg || 0) / 16) * (1 + tier / 3);
-    let mageMult = (ally.cls === 'mage') ? (1.5 + tier / 20) : 1.0;
+    let mageMult = 1.0;   // 🔧 傭兵魔女5/5(共鳴觸發)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + (d.magicCritDmg || 0) / 100) : 1;
     let core = roll(sk.dmgDice[0], sk.dmgDice[1]) * spCoef * critMult;
     let fixed = (t.e === 'fire') ? 6 : 0;   // 水剋火
@@ -783,7 +783,7 @@ function allyProcFreeMagicSkill(ally, t, skId, en) {
     let isCrit = Math.random() * 100 < (d.magicCrit || 0);
     let tier = sk.tier || 1;
     let spCoef = (1 + (3 * (d.magicDmg || 0) / 16)) * (1 + (tier / 3));
-    let mageDmgMult = (ally.cls === 'mage') ? (1.5 + tier / 20) : 1.0;
+    let mageDmgMult = 1.0;   // 🔧 傭兵武器免費施法(冰之女王魔杖等)為武器特效，不再吃法師「法術階級加成」(1.5+階/20)
     let critMult = isCrit ? (1 + (d.magicCritDmg || 0) / 100) : 1.0;
     let dmgArray = sk.multiDmg || (sk.dmgDice ? [[sk.dmgDice[0], sk.dmgDice[1]]] : []);
     let total = 0;
@@ -823,7 +823,7 @@ function allyLaiaWandHitProc(ally, t) {
     let fixed = (sp.ele && sp.ele !== 'none' && isElementCounter(sp.ele, t.e)) ? 6 : 0;
     let wasFrozen = !!(t.st && t.st.freeze > 0);
     let dd = Math.floor(core * mrFactor) + fixed - (t.dr || 0);
-    dd = Math.floor(Math.max(1, dd) * (1.5 + _spTier / 20));   // 🔧 法師 8 階法術最終傷害倍率 (=1.9)
+    dd = Math.max(1, dd);   // 🔧 武器 proc 不吃法師「法術階級加成」(1.5+階/20)：原 8 階 ×1.9 已移除（spCoef 階級係數仍保留）
     if (wasFrozen) { dd += (sp.shatter || 0); t.st.freeze = 0; }
     dd = Math.max(1, Math.floor(Math.max(1, dd) * fragileMult(t)));
     dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
@@ -849,11 +849,10 @@ function allyWeaponProcs(ally, target, hitInfo) {
             let t = _allyProcTarget(target);
             if (t) {
                 let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
-                let core = roll(4, 10) * (1 + 3 * (d.magicDmg || 0) / 16);
+                let core = roll(4, 10) * (1 + 3 * (d.magicDmg || 0) / 16) * enhanceWpnFinalMult(_en);   // 🔧 武器強化倍率改在「扣 dr 前」併入核心（原本套在最後→被 dr 壓成 1 後再乘＝白加）
                 let fixed = isElementCounter('water', t.e) ? 6 : 0;
                 let dmg = Math.floor(core * mrMult(effMr)) + fixed - (t.dr || 0);
                 dmg = Math.max(1, Math.floor(Math.max(1, dmg) * fragileMult(t)));
-                dmg = Math.max(1, Math.floor(dmg * enhanceWpnFinalMult(_en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（與其他武器特效一致）
                 if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
                 let _hl = Math.floor(dmg * 0.10);
                 if (ally.hp != null) ally.hp = Math.min(ally.mhp || ally.hp, (ally.hp || 0) + _hl);

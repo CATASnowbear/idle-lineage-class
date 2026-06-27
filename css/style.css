@@ -44,6 +44,10 @@
         body.sherine-world #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; }
         body.sherine-world #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; }   /* 🔴 紅色鎖定光暈改只套怪物圖(見上方 .mob-img-inner 規則)，不再套整卡→不影響名字 */
         body.sherine-world #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
+        /* 🔥 瘋狂的席琳世界：更濃烈的猩紅主題（疊在 sherine-world 之上） */
+        body.sherine-mad, body.game-bg-dim.sherine-mad { background-image: linear-gradient(rgba(36,2,8,0.9), rgba(12,0,2,0.96)), url('../assets/background/background.png'); }
+        body.sherine-mad .mob-target { background: #2a0309; border-color: #b91c1c; }
+        body.sherine-mad .mob-target.active { background: #5b0a12; border-color: #fb7185; box-shadow: 0 0 12px rgba(244,63,94,0.55); }
         /* 🏅 傳說武器：琥珀金（比祝福金更深更橘、帶金屬光澤）名稱與圖示光芒 */
         .c-legend { color: #d98a04 !important; font-weight: bold; text-shadow: 0 0 4px rgba(217,138,4,0.65), 0 0 10px rgba(180,83,9,0.5); }
         .legend-glow { animation: legendGlow 2s ease-in-out infinite; }
