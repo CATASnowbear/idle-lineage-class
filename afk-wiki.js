@@ -602,7 +602,8 @@
     { n: '黑暗妖精套裝', pcs: 3, items: '黑暗妖精頭箍、黑暗妖精鱗甲、黑暗妖精涼鞋', eff: '防禦(AC) -3、力量 -2、敏捷 +2、HP自然恢復 -2、MP自然恢復 -7，並可變身「高等黑暗精靈」（遠距離傷害 +5、遠距離命中 +5、攻擊速度 +30%）；穿滿生效、卸下消失' },
     { n: '歐林西瑪套裝', pcs: 2, items: '歐林的項鍊、西瑪戒指', eff: '防禦(AC) -5、HP上限 +50、力量／敏捷／體質／智力／精神／魅力 各 +1' },
     { n: '冰之女王魅力套裝（公主限定）', pcs: 3, items: '冰之女王魅力頭飾、禮服、涼鞋', eff: '防禦(AC) -5、HP上限 +100、力量 +2、魅力 +2、MP自然恢復 +4、水屬性抗性 +20' },
-    { n: '寒冰套裝（王族／龍騎士）', pcs: 3, items: '寒冰頭盔、盔甲、長靴', eff: '防禦(AC) -5、體質 +3、HP上限 +100、HP自然恢復 +8、MP自然恢復 +4、魔防 +15、水屬性抗性 +20' }
+    { n: '寒冰套裝（王族／龍騎士）', pcs: 3, items: '寒冰頭盔、盔甲、長靴', eff: '防禦(AC) -5、體質 +3、HP上限 +100、HP自然恢復 +8、MP自然恢復 +4、魔防 +15、水屬性抗性 +20' },
+    { n: '藍海賊套裝', pcs: 4, items: '藍海賊頭巾、藍海賊皮盔甲、藍海賊手套、藍海賊長靴', eff: '智力 +1、防禦(AC) -1、HP上限 +10' }
   ];
 
   // ===== 強化機制(本檔維護) ================================================
@@ -899,6 +900,7 @@
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
     { k: 'card', n: '卡片' },
+    { k: 'equipbook', n: '裝備圖鑑' },
     { k: 'equip', n: '裝備' },
     { k: 'enhance', n: '強化' },
     { k: 'craft', n: '製作' },
@@ -1047,6 +1049,7 @@
     if (key === 'ally') return renderAlly();
     if (key === 'set') return renderSet();
     if (key === 'card') return renderCard();
+    if (key === 'equipbook') return renderEquipBook();
     if (key === 'equip') return renderEquip();
     if (key === 'enhance') return renderEnhance();
     if (key === 'craft') return renderCraft();
@@ -1092,6 +1095,7 @@
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
     { key: 'card', cls: false, label: '卡片' },
+    { key: 'equipbook', cls: false, label: '裝備圖鑑' },
     { key: 'equip', cls: false, label: '裝備' },
     { key: 'enhance', cls: false, label: '強化' },
     { key: 'craft', cls: false, label: '製作' },
@@ -1397,6 +1401,27 @@
       wTbl(['地區', '加成', '全普卡', '全銀卡', '全金卡'], rows) +
       wDesc('提醒：<b>之後同地區新增怪物，原本收滿的地區會變成沒收滿</b>（加成跟著消失，要把新怪也收齊才會回來）。')
     );
+    return out;
+  }
+
+  // 裝備收集冊(js/16-equip-book.js):動態讀 EQUIP_CATEGORIES(部位)/EQUIP_CAT_BONUS(全收集加成)。ac 同 buff 慣例(d.ac -= val=變強)→顯示「防禦(AC) −val」。
+  var EB_STAT = { mhp: 'HP', mmp: 'MP', dr: '傷害減免', mr: '魔防', er: '迴避', hpR: 'HP自然恢復', mpR: 'MP自然恢復', weight: '負重上限', petHit: '項圈夥伴命中', extraDmg: '額外傷害', extraHit: '額外命中' };
+  function ebBonusTxt(b) {
+    if (!b) return '—';
+    if (b.stat === 'ac') return '防禦(AC) −' + b.val;
+    return (EB_STAT[b.stat] || b.stat) + ' +' + b.val;
+  }
+  function renderEquipBook() {
+    if (typeof EQUIP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到裝備收集冊資料。</div>';
+    var bonus = (typeof EQUIP_CAT_BONUS !== 'undefined') ? EQUIP_CAT_BONUS : {};
+    var out = '<div class="m-wiki-note">「裝備收集冊」：<b>獲得任何裝備就自動登錄</b>（只增不減，賣掉／丟掉也保留紀錄），依部位分類。把<b>某部位的全部裝備</b>都收集齊，就拿到該部位的<b>永久加成</b>。收集冊是創角自帶、唯一、不能賣也不能存倉，使用即翻開。<br><b>每隻角色各自收集</b>——和倉庫不同，每個存檔位有自己的進度。</div>';
+    var groups = [];
+    EQUIP_CATEGORIES.forEach(function (c) { if (groups.indexOf(c.group) < 0) groups.push(c.group); });
+    groups.forEach(function (g) {
+      var rows = EQUIP_CATEGORIES.filter(function (c) { return c.group === g; }).map(function (c) { return [esc(c.name), ebBonusTxt(bonus[c.key])]; });
+      out += wCard('🗡️ ' + esc(g) + '（全收集加成）', wTbl(['部位', '全部收集齊 → 永久加成'], rows));
+    });
+    out += '<div class="m-wiki-note" style="margin-top:0;">加成不大但永久、各部位獨立；作者之後在某部位加新裝備，原本收滿的部位會變回沒滿（要把新裝備也收齊才再生效）。</div>';
     return out;
   }
 

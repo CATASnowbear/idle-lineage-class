@@ -24,8 +24,13 @@
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
 <<<<<<< HEAD
-const CODE_VERSION = 'code-1ab86673f0e7';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-2415'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+<<<<<<< HEAD
+const CODE_VERSION = 'code-556ec68bc218';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-0018'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+=======
+const CODE_VERSION = 'code-25bd76a2e50e';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-0015'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+>>>>>>> 3ce7315 (小百科:新增「裝備圖鑑」分頁(裝備收集冊 js/16) + 補漏的藍海賊套裝)
 =======
 const CODE_VERSION = 'code-5b85c02549fa';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
 const BUILD_ID     = '0627-1854'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
