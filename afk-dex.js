@@ -93,7 +93,8 @@
   // ----- 名稱查詢 ---------------------------------------------------------
   // CASTLE_EXTRA 類地圖(如風木地監)只有 getCastleAreas() 動態才有中文名、靜態表查不到,在這補上
   // 地圖 id → 中文名：統一委派 afk-extradata 的共用解析(唯一一份,涵蓋隱藏區/攀登/遺忘之島/攻城/村莊…)
-  function mapNameOf(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : id; } catch (e) { return id; } }
+  // 出沒地圖帶「領域」前綴(地圖改版後新人找圖用):「領域·地圖名」;委派共用解析,讀不到 helper 才退回純名
+  function mapNameOf(id) { try { return (window.AFK_EXTRA && AFK_EXTRA.mapNameWithRegion) ? AFK_EXTRA.mapNameWithRegion(id) : ((window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(id) : id); } catch (e) { return id; } }
   function itemNameOf(id) { return (DB.items[id] && DB.items[id].n) ? DB.items[id].n : id; }
   // 職業限定掉落附註:試煉/兌換道具(TRIAL_ITEM_CLASS)僅該職業擊殺才掉,標「🔒僅X」讓所有職業都看得到是誰限定;非限定道具(書板/鎖鏈劍/印記等全職可掉)不在表內→回 null 不附註。
   var _CLS_CN = { knight: '騎士', mage: '法師', elf: '妖精', dark: '黑暗妖精', illusion: '幻術士', dragon: '龍騎士', warrior: '戰士', royal: '王族' };

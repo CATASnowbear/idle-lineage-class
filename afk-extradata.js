@@ -40,6 +40,24 @@
       return id;
     },
 
+    // ── 🗺️ 地圖所屬「領域」(新版地圖選單左側分組;讀 MAP_REGIONS)；查不到(隱藏區/攻城等)回 '' ──
+    mapRegion: function (id) {
+      try {
+        if (id && typeof MAP_REGIONS !== 'undefined') {
+          for (var i = 0; i < MAP_REGIONS.length; i++) {
+            var r = MAP_REGIONS[i], ms = r.maps || [];
+            for (var j = 0; j < ms.length; j++) if (ms[j].v === id) return r.label;
+          }
+        }
+      } catch (e) {}
+      return '';
+    },
+    // ── 地圖名前面帶「領域」(地圖改版後給新人找圖用):「領域·地圖名」；無領域就只回名 ──
+    mapNameWithRegion: function (id) {
+      var nm = this.mapName(id), reg = this.mapRegion(id);
+      return (reg && reg !== nm) ? (reg + '·' + nm) : nm;   // 領域名與地圖名相同(如領域主圖)就不重複疊字
+    },
+
     // ── 物品取得方式(特殊、可控的取得鏈;一般抽獎/掉落不放這,交給掉落查詢動態呈現)──
     //   key   = 物品 id
     //   short = 掉落查詢物品卡用的簡短一行

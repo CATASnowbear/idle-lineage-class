@@ -644,7 +644,7 @@
       '「席琳的世界」與一般狀態<b>各記一份</b>（排名途中無法切換席琳，以結算當下的狀態歸類）。'
     ]},
     { t: '樓層區間（要「停在同一段刷」就用這個）', lines: [
-      '在右側地圖選單的「傲慢之塔」分類裡，除了攀登，還能直接選「2~10 樓」「11~20 樓」…「91~100 樓」這種<b>整段 10 層的區間</b>。',
+      '在地圖選單的「傲慢之塔」領域裡，除了攀登，還能直接選「2~10 樓」「11~20 樓」…「91~100 樓」這種<b>整段 10 層的區間</b>。',
       '選進去就<b>待在那一段一直刷</b>，<b>打贏頭目也不會被往上帶</b>——這就是「想固定練」要用的模式（固定在「一段 10 層」，不是單一某一層）。',
       '進入條件：「2~10 樓」要先打贏過潔尼斯女王；「11 樓以上」每一段都要持有對應的<b>傳送符／支配符／移動卷軸</b>（見下）。'
     ]},
@@ -1091,16 +1091,7 @@
   // 統一搜尋:跨「所有分頁 + 所有職業」收集符合的小區塊,依來源分組列出。
   //   搜尋時不再切換/隱藏分頁(避免切職業整頁消失的怪現象),一次看到全部命中的結果。
   // ===== 地圖一覽(讀 MAP_CATEGORIES + DB.maps/DB.mobs;作者新增地圖自動出現) ==============
-  var MAP_CAT_ORDER = ['village', 'wild', 'dungeon', 'special', 'tower', 'rift'];
-  var MAP_CAT_NAME = {
-    village: '🏘️ 村莊 / 安全區', wild: '🌳 野外', dungeon: '🏚️ 地監',
-    special: '✨ 特殊', tower: '🗼 傲慢之塔', rift: '🌀 時空裂痕'
-  };
-  // 進入路徑用的分類純名(無 emoji);遊戲移動方式=地圖選單選分類再選圖直接傳送,故路徑即「在哪個分類」
-  var MAP_CAT_PATH = {
-    village: '村莊／安全區', wild: '野外', dungeon: '地監',
-    special: '特殊', tower: '傲慢之塔', rift: '時空裂痕'
-  };
+  // (地圖頁已改依「領域」MAP_REGIONS 分組,原本依 MAP_CATEGORIES 分類的 MAP_CAT_ORDER/NAME/PATH 已不再使用,移除。)
   // 地圖等級範圍:讀該圖的怪(DB.maps[v]=怪 id 清單)取最低～最高等級;無怪(安全區/未列)回 null
   function mapLvRange(v) {
     try {
@@ -1127,17 +1118,18 @@
   }
   function mapTitleOf(v) { return (window.AFK_EXTRA && AFK_EXTRA.mapName) ? AFK_EXTRA.mapName(v) : v; }   // 統一委派 afk-extradata 共用地圖名解析
   function renderMap() {
-    if (typeof MAP_CATEGORIES === 'undefined') return '<div class="m-wiki-note">讀不到地圖資料。</div>';
-    var h = '<div class="m-wiki-note">遊戲移動方式：打開<b>地圖選單</b>→ 選分類 → 選地圖直接傳送（受進入條件擋）。下面每張地圖都標出<b>📍進入路徑（在哪個分類）</b>、<b>等級範圍</b>（看該圖怪物等級）與<b>進入條件</b>。所以即使用搜尋（例 <b>底比斯</b>）也看得到它在「時空裂痕」分類底下。</div>';
-    MAP_CAT_ORDER.forEach(function (cat) {
-      var list = MAP_CATEGORIES[cat]; if (!list || !list.length) return;
-      h += '<div class="m-wiki-sub">' + MAP_CAT_NAME[cat] + '</div>';
-      list.forEach(function (e) {
-        var lv = mapLvRange(e.v), unlock = mapUnlock(e), bits = [];
-        bits.push('<span class="c-mappath">📍 地圖選單「' + MAP_CAT_PATH[cat] + '」分類</span>');
+    if (typeof MAP_REGIONS === 'undefined') return '<div class="m-wiki-note">讀不到地圖資料。</div>';
+    var h = '<div class="m-wiki-note">遊戲移動方式：打開<b>地圖選單</b>→ 左邊選<b>領域</b> → 右邊選該領域的<b>地圖</b>直接傳送（受進入條件擋）。下面依<b>領域</b>分組，每張圖標出<b>等級範圍</b>與<b>進入條件</b>；用搜尋（例 <b>底比斯</b>）也找得到它在哪個領域。</div>';
+    var entryOf = (typeof mapEntryOf === 'function') ? mapEntryOf : function () { return null; };   // 由地圖 v 取 MAP_CATEGORIES 原定義(進入條件)
+    MAP_REGIONS.forEach(function (reg) {
+      if (!reg.maps || !reg.maps.length) return;
+      h += '<div class="m-wiki-sub">🗺️ ' + esc(reg.label) + '</div>';
+      reg.maps.forEach(function (m) {
+        var lv = mapLvRange(m.v), e = entryOf(m.v), unlock = e ? mapUnlock(e) : '', bits = [];
+        bits.push('<span class="c-mappath">📍 領域「' + esc(reg.label) + '」</span>');
         bits.push(lv ? ('<b style="color:#86efac;margin:0;">' + lv + '</b>') : '安全區（無怪物）');
         if (unlock) bits.push('<span class="c-mapunlock">' + unlock + '</span>');
-        h += '<div class="m-wiki-kv"><b>' + esc(e.t) + '</b>' + bits.join('　') + '</div>';
+        h += '<div class="m-wiki-kv"><b>' + esc(m.t) + '</b>' + bits.join('　') + '</div>';
       });
     });
     // 🔒 隱藏狩獵區域：不在地圖選單，要在母樓層手動傳送進入（動態讀遊戲 HIDDEN_AREA_PARENT/NAMES，作者新增自動跟上）
