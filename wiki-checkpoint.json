@@ -1,6 +1,6 @@
 {
-  "reconciledIndexCommit": "2ea101a694e75c231a280010b539ab8ff247f5fe",
-  "reconciledIndexBlob": "e271475bdb442c9ecbb8f2cb144f17087459559b",
-  "reconciledAt": "2026-06-27 00:53 (UTC+8)",
-  "note": "⚠️ 原作者 2026-06-27 已把遊戲從單一 index.html 重構成 index.html(殼)＋js/*.js(遊戲邏輯)＋css/style.css。遊戲資料(DB/技能/掉落/任務)現在都在 js/*.js,不在 index.html 裡。更新小百科的 diff 起點仍以本 commit 為錨,但要改看 js/:`git diff <reconciledIndexCommit> HEAD -- js/`(不是 index.html)才看得到作者改了什麼。本次只做定點修補(希米哲/藍海賊任務、耳環裝備欄、釋放元素/骷髏毀壞技能說明、掉落查詢接希米哲+雷德兌換來源),並非對新 js/ 結構做完整逐項 reconcile——日後有空建議對 js/ 全量重對一次。補完小百科後把本檔 commit/blob/時間更新成新 HEAD 一起 commit。"
+  "reconciledIndexCommit": "2a926aa507230a3ebf366e54644e1fd512edb501",
+  "reconciledIndexBlob": "60a5fc71f0cc313ed3ff3f630c9556bc60f990c8",
+  "reconciledAt": "2026-06-28 00:24 (UTC+8)",
+  "note": "錨點前進到 2a926aa(2026-06-28 那輪「更新小百科」)。本輪做的：① 作者新增 js/16-equip-book.js(裝備收集冊)→新增「裝備圖鑑」分頁(data-driven 讀 EQUIP_CATEGORIES/EQUIP_CAT_BONUS)；② 比對遊戲 18 套裝 vs 小百科 SETS→補漏的『藍海賊套裝』；③ 裝備分頁武器部位改照裝備圖鑑細分(重用 equipCatKey/EQUIP_ITEM_CAT)。先前 V2.32 期間已陸續做卡片/地圖領域分組/製作/技能效果稽核/聖地遺物。⚠ 仍非對 js/ 全量逐行重對(沿用前一錨點的定點修補模式)，日後有空建議對 js/ 全量再對一次(尤其 QUEST_BY_CLASS/MASTERY_DATA/WEAPON_TRAITS 這些手動維護清單)。下次 diff：git diff <reconciledIndexCommit> HEAD -- js/。"
 }
