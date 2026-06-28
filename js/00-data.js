@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.4.0';
+const GAME_VERSION = 'v2.4.1';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -1839,7 +1839,7 @@ const DB = {
 				{ id: "npc_falin", n: "法林", title: "製作", type: "craft", d: "法林手藝獨到，能製作銀釘皮裝備。" },
                 { id: "npc_ryan", n: "萊恩", title: "製作", type: "craft", d: "萊恩在爐火旁默默打磨成品，提供物品製作服務。" },
 				{ id: "npc_james", n: "詹姆", title: "試煉", type: "quest", d: "法師的試煉：傳說唯有獻上足夠的祭品，才能讀懂封印其中的奧義。收集祭品可換取魔法能量之書。" },
-				{ id: "npc_gunter", n: "甘特", title: "試煉", type: "quest", d: "騎士的試煉：榮耀從不輕易賜予。收集特定材料可換取專屬裝備。" },
+				{ id: "npc_gunter", n: "甘特", title: "試煉", type: "quest", d: "騎士與王族的試煉：榮耀從不輕易賜予。收集特定材料可換取專屬裝備。" },
                 { id: "npc_yuria", n: "尤麗婭", title: "兌換", type: "quest", d: "據說歐林曾將自己的鍛甲心得寫進日記。以歐林的日記本兌換臂甲（裝於副手，可與雙手武器並用；三選一）。" },
                 { id: "npc_rabiani", n: "拉比安尼", title: "製作", type: "craft", d: "宮廷御用的鍛書師，能將四顆心臟之力封入書頁。以四種心之材料為王族鍛造特殊魔法書（灼熱武器／勇猛意志／閃亮之盾／王者加護）。" }
             ]
@@ -1936,14 +1936,14 @@ const DB = {
                 { id: "npc_bayes", n: "巴耶斯", title: "魔法商人", type: "shop", d: "博覽群書的巴耶斯，書架上盡是深奧的咒文。販售各種高階魔法書。" },
                 { id: "npc_krista", n: "克里斯特", title: "交換物品", type: "exchange", classicHide: true, d: "克里斯特掌管著祝福的奧秘。以施法卷軸與金幣交換『賦予祝福卷軸』。" },
                 { id: "npc_bian", n: "碧恩", title: "祝福裝備", type: "bless", classicHide: true, d: "祝福匠碧恩，能將神聖之力銘刻於裝備之上。用賦予祝福卷軸為身上裝備附加詞綴。" },
-                { id: "npc_digallatin", n: "迪嘉勒廷", title: "試煉", type: "quest", d: "嚴苛的試煉主持者迪嘉勒廷，只認可真正的強者。騎士、妖精、法師的 50 級試煉（需等級 50）。" },
+                { id: "npc_digallatin", n: "迪嘉勒廷", title: "試煉", type: "quest", d: "嚴苛的試煉主持者迪嘉勒廷，只認可真正的強者。騎士、妖精、法師與王族的 50 級試煉（需等級 50）。" },
                 { id: "npc_dytite", n: "迪泰特", title: "解除封印", type: "craft", d: "通曉古法的迪泰特，能讀懂被歲月遺忘的封印。以古代的卷軸解除被遺忘裝備的封印，還原成古老的武器與防具。" }
             ]
         },
         "town_witon": {
             n: "威頓村",
             npcs: [
-                { id: "npc_masha", n: "馬沙", title: "試煉", type: "quest", d: "沉默寡言的試煉者馬沙，靜候挑戰者前來。妖精與騎士的試煉。" },
+                { id: "npc_masha", n: "馬沙", title: "試煉", type: "quest", d: "沉默寡言的試煉者馬沙，靜候挑戰者前來。妖精、騎士與王族的試煉。" },
                 { id: "npc_han", n: "漢", title: "精通", type: "mastery", classicHide: true, d: "威頓村的傳奇人物漢，早已超越凡人的極限。等級 50 以上的強者，可在此接受超越自我的精通任務。" },   // 🏅
                 { id: "npc_keluya", n: "客盧亞", title: "製作", type: "craft", d: "客盧亞傳承著上古鍛造的失落技藝。以古代材料打造古代臂甲與傳說武器（古代神之槍／古代神之斧）。" },
                 { id: "npc_zeus_golem", n: "宙斯之熔岩高崙", title: "製作", type: "craft", d: "由熔岩鑄成的宙斯之熔岩高崙，爐心燃著遠古之火，專為戰士鍛兵。以惡魔斧頭與黑色米索莉金屬板為戰士鍛造「魔物的斧頭」。" },
