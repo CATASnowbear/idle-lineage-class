@@ -1342,8 +1342,8 @@ function toggleAlly(slotN) {
         }
         let sum = slotSummary(slotN);
         if (!sum) { logSys(`<span class="text-red-400">存檔 ${slotN} 沒有可用的角色。</span>`); }
-        else if ((sum.traditional ? 'trad' : (sum.classic ? 'classic' : 'normal')) !== (player.traditionalMode ? 'trad' : (player.classicMode ? 'classic' : 'normal'))) {   // 🎮🏛️ 一般／經典／傳統 不可跨模式招募
-            logSys(`<span class="text-red-400">只能招募與本角色「相同模式（一般／經典／傳統）」的存檔傭兵。</span>`);
+        else if (modeSuffix(!!sum.classic, !!sum.traditional) !== modeSuffix(!!player.classicMode, !!player.traditionalMode)) {   // 🎮🏛️ 一般／經典／傳統／經典＋傳統 不可跨模式組合招募
+            logSys(`<span class="text-red-400">只能招募與本角色「相同模式組合（一般／經典／傳統／經典＋傳統）」的存檔傭兵。</span>`);
         }
         else {
             let cost = (sum.lv || 1) * 10000;
@@ -1365,10 +1365,8 @@ function renderAllyNPC(div) {
         if (!sum) return `<div class="w-full text-left py-2 px-3 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-60">存檔 ${n}：<span class="text-slate-500">（空）</span></div>`;
         let _classic = !!sum.classic;                                  // 🎮 經典模式存檔
         let _trad = !!sum.traditional;                                 // 🏛️ 傳統模式存檔
-        let _sumMode = _trad ? 'trad' : (_classic ? 'classic' : 'normal');
-        let _myMode = player.traditionalMode ? 'trad' : (player.classicMode ? 'classic' : 'normal');
-        let _modeMatch = (_sumMode === _myMode);                       // 🎮🏛️ 只能招募與自己同模式（一般/經典/傳統）的存檔
-        let _tag = _trad ? '<span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_classic ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> ' : '');
+        let _modeMatch = (modeSuffix(_classic, _trad) === modeSuffix(!!player.classicMode, !!player.traditionalMode));   // 🎮🏛️ 只能招募與自己同模式組合（一般/經典/傳統/經典＋傳統）的存檔
+        let _tag = (_classic && _trad) ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> <span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_trad ? '<span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_classic ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> ' : ''));
         let _nameStyle = _trad ? 'style="color:#c4b5fd;"' : (_classic ? 'style="color:#fbbf24;"' : 'class="text-amber-300"');
         let _btn = active
             ? `<button onclick="toggleAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-red-900 border-red-700 text-red-200">解除</button>`

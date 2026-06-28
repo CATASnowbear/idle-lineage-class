@@ -237,6 +237,7 @@ function useItem(u, silent = false) {
     if (d.eff === 'equipbook') { if (silent) return; if (typeof openEquipBook === 'function') openEquipBook(); return; }   // 🗡️ 裝備收集冊
     if (d.eff === 'card') { if (silent) return; if (typeof useCardItem === 'function') useCardItem(item); return; }
     if (d.eff === 'doll_bag') { if (silent) return; if (typeof openDollBag === 'function') openDollBag(item, false); return; }   // 🪆 開啟魔法娃娃的袋子
+    if (d.eff === 'doll_box_high') { if (silent) return; if (typeof openDollBox === 'function') openDollBox(item, false); return; }   // 🎁 開啟高級魔法娃娃的盒子
 
     // 🗼 封印的傲慢之塔傳送符：使用後解封，獲得對應的 傲慢之塔傳送符（消耗 1 個）
     if (d.eff === 'pride_unseal') {
@@ -1065,7 +1066,7 @@ function _updateUIImpl() {
       // ⚠️ 用「狀態改變才寫 DOM」的守衛：避免每個 tick 重複 toggle class / 設 display 造成按鈕閃爍。
       { let tpb = document.getElementById('btn-teleport'); if (tpb) { let _hideTp = !!(KING_ROOMS[mapState.current] || (typeof prideTeleportBlocked === 'function' && prideTeleportBlocked()) || state.oblivion); if (tpb.classList.contains('hidden') !== _hideTp) { tpb.classList.toggle('hidden', _hideTp); tpb.style.display = _hideTp ? 'none' : ''; } } } }   // ⚠️ _hideTp 必須 !! 強轉布林：否則 (undefined||false||undefined)===undefined → 守衛 (boolean!==undefined) 恆真 → toggle('hidden', undefined) 變成「無參數 bare toggle」每幀翻轉 → 按鈕閃爍
     { let vb = document.getElementById('victory-badge'); if (vb) { let _va = siegeVictoryActive(); vb.style.display = _va ? 'inline-flex' : 'none'; if (_va) vb.title = `攻城獲勝期間：全商店8折、開放${victoryCityCfg().castleName}`; } }   // 攻城獲勝淡金黃標記（inline-flex 讓👑與文字水平置中；🔧 tooltip 依實際獲勝城池動態，不再固定肯特）
-    { let cb = document.getElementById('classic-badge'); if (cb) cb.style.display = (player.classicMode && !player.traditionalMode) ? 'inline' : 'none'; let tb = document.getElementById('traditional-badge'); if (tb) tb.style.display = player.traditionalMode ? 'inline' : 'none'; }   // 🎮 經典／🏛️ 傳統模式標記（傳統角色顯示傳統徽章、不重複顯示經典）
+    { let cb = document.getElementById('classic-badge'); if (cb) cb.style.display = player.classicMode ? 'inline' : 'none'; let tb = document.getElementById('traditional-badge'); if (tb) tb.style.display = player.traditionalMode ? 'inline' : 'none'; }   // 🎮 經典／🏛️ 傳統模式標記（兩者獨立：經典+傳統 兩個徽章都顯示；一般+傳統 只顯示傳統）
     applyAreaBackground();   // 區域背景：地監/攻城→戰鬥區、城堡→村莊畫面
     
     // 處理顯示文字：只顯示 騎士、法師、妖精、黑暗妖精

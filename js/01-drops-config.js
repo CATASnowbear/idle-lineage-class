@@ -1352,10 +1352,10 @@ function enhanceArmAc(en) {
     return base + over;
 }
 
-// ===== 🏛️ 傳統模式（傳統＝「經典之上」的子模式：創角須先勾經典才能再勾傳統）=====
+// ===== 🏛️ 傳統模式（可單獨開啟，或與經典模式並用：創角的傳統勾選與經典互相獨立）=====
 //  傳統模式：所有裝備無強化選項（隱藏強化／快速強化），怪物不掉落＋黑市不販售施法卷軸；
 //  取而代之——怪物掉落／潘朵拉黑市／製作 的武器/防具/飾品會「隨機自帶已強化值」（商店購買恆 +0）。
-function traditionalActive(){ return !!(player && player.classicMode && player.traditionalMode); }
+function traditionalActive(){ return !!(player && player.traditionalMode); }   // 🏛️ 傳統機制只看 traditionalMode（與 classicMode 獨立）；經典懲罰另由 classicMode 各自把關
 // 施法卷軸家族（武器/盔甲/飾品＋祝福_b/詛咒_c 變體）：傳統模式不掉落、黑市不上架
 const TRAD_NO_SCROLLS = { scroll_weapon:1, scroll_armor:1, scroll_acc:1, scroll_weapon_b:1, scroll_armor_b:1, scroll_weapon_c:1, scroll_armor_c:1 };
 // 掉落自帶強化值權重表：每筆 [強化值, 權重]；依「物品類型＋安定值 safe」選表

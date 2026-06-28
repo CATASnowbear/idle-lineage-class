@@ -272,7 +272,7 @@ function slotBackupSummary(n){ return _summaryFromRaw(_lzGet('lineage_idle_save_
 let _slotMode = 'new';
 function openSlotSelect(mode){
     _slotMode = mode;
-    { let _ct = document.getElementById('create-classic-toggle'); if (_ct && mode === 'new') _ct.checked = false; if (mode === 'new' && typeof _setTraditionalToggle === 'function') _setTraditionalToggle(false); }   // 🎮 創角流程重置經典＋傳統模式開關（預設關閉，傳統鎖定）
+    { let _ct = document.getElementById('create-classic-toggle'); if (_ct && mode === 'new') _ct.checked = false; let _tt = document.getElementById('create-traditional-toggle'); if (_tt && mode === 'new') _tt.checked = false; }   // 🎮🏛️ 創角流程重置經典＋傳統模式開關（預設皆關閉，兩者獨立）
     document.getElementById('main-menu').classList.add('hidden');
     document.getElementById('creation-panel').classList.add('hidden');
     document.getElementById('slot-select-panel').classList.remove('hidden');
@@ -282,8 +282,8 @@ function openSlotSelect(mode){
         let sum = slotSummary(n);
         let _classic = !!(sum && sum.classic);   // 🎮 經典模式存檔：以琥珀金顯示
         let _trad = !!(sum && sum.traditional);  // 🏛️ 傳統模式存檔：以淡紫顯示（傳統角色 classic 亦為 true，故先判 traditional）
-        let _tag = _trad ? '🏛️ ' : (_classic ? '⚔ ' : '');
-        let _modeName = _trad ? '（傳統）' : (_classic ? '（經典）' : '');
+        let _tag = (_classic && _trad) ? '⚔🏛️ ' : (_trad ? '🏛️ ' : (_classic ? '⚔ ' : ''));
+        let _modeName = (_classic && _trad) ? '（經典＋傳統）' : (_trad ? '（傳統）' : (_classic ? '（經典）' : ''));
         let label = sum ? `${_tag}存檔 ${n}　${sum.cls} Lv.${sum.lv}${sum.name ? '　' + sum.name : ''}${_modeName}` : `存檔 ${n}　（空）`;   // 未命名時不顯示名稱（連同前置全形空白一併省略）
         let _classicStyle = _trad ? 'color:#c4b5fd;border-color:#7c3aed;' : (_classic ? 'color:#fbbf24;border-color:#d97706;' : '');   // 🏛️ 傳統＝淡紫文字＋紫邊框；🎮 經典＝琥珀金文字＋琥珀邊框
         let disabled = (mode === 'load' && !sum);
@@ -508,23 +508,18 @@ function updateCreateUI() {
     document.getElementById('btn-start').disabled = left <= 0 ? false : true;
 }
 
-function _setTraditionalToggle(enabled){   // 同步傳統模式勾選框可用狀態（經典關閉→鎖定並取消傳統）
+function _setTraditionalToggle(enabled){   // 創角流程重置用：取消傳統勾選（傳統已可獨立勾選、不再受經典鎖定）
     let _tt = document.getElementById('create-traditional-toggle');
-    let _tl = document.getElementById('lbl-create-traditional');
-    if (_tt) { _tt.disabled = !enabled; if (!enabled) _tt.checked = false; }
-    if (_tl) _tl.classList.toggle('opacity-40', !enabled);
+    if (_tt && !enabled) _tt.checked = false;
 }
 function onToggleClassic(el) {
-    if (!el.checked) { _setTraditionalToggle(false); return; }   // 取消經典：連帶鎖定＋取消傳統（傳統須建立在經典之上）
-    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩一般模式的 1/2\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n確定要以「經典模式」創建此角色嗎？');
-    if (!ok) { el.checked = false; _setTraditionalToggle(false); return; }   // 取消 → 還原為未勾選並鎖定傳統
-    _setTraditionalToggle(true);   // 經典確認開啟 → 解鎖傳統模式選項
+    if (!el.checked) return;   // 取消勾選不需確認（經典與傳統已獨立、互不連動）
+    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 物品掉落機率 → 原本的 1/10\n‧ 經驗值取得 → 減半\n‧ 怪物金幣 → 僅剩一般模式的 1/2\n‧ 死亡 → 損失該等級 10% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n（可單獨開啟，或與「傳統模式」並用）\n\n確定要以「經典模式」創建此角色嗎？');
+    if (!ok) { el.checked = false; return; }
 }
 function onToggleTraditional(el) {
     if (!el.checked) return;   // 取消勾選不需確認
-    let _ct = document.getElementById('create-classic-toggle');
-    if (!_ct || !_ct.checked) { el.checked = false; alert('傳統模式須先勾選「經典模式」才能啟用。'); return; }   // 防呆：未開經典不可開傳統
-    let ok = confirm('🏛️ 傳統模式（建立在「經典模式」之上）\n\n開啟後，此角色將在經典規則之上「永久」再套用下列規則：\n\n‧ 所有武器/防具/飾品 → 沒有強化選項（隱藏快速強化）\n‧ 怪物不掉落、黑市不販售「對武器/盔甲/飾品施法的卷軸」\n‧ 隱藏肯特城的兌換 NPC（伊賽馬利）\n‧ 取而代之 → 怪物掉落／潘朵拉黑市／製作 的裝備會「隨機自帶已強化值」（商店購買仍為 +0）\n‧ 倉庫與角色 與「經典模式」「一般模式」皆不共通\n\n確定要以「傳統模式」創建此角色嗎？');
+    let ok = confirm('🏛️ 傳統模式（可單獨開啟，或與「經典模式」並用）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 所有武器/防具/飾品 → 沒有強化選項（隱藏快速強化）\n‧ 怪物不掉落、黑市不販售「對武器/盔甲/飾品施法的卷軸」\n‧ 隱藏肯特城的兌換 NPC（伊賽馬利）\n‧ 取而代之 → 怪物掉落／潘朵拉黑市／製作 的裝備會「隨機自帶已強化值」（商店購買仍為 +0）\n‧ 倉庫與角色 與其他模式組合（一般／經典／經典＋傳統）皆不共通\n\n確定要以「傳統模式」創建此角色嗎？');
     if (!ok) el.checked = false;   // 取消 → 還原為未勾選
 }
 function startGame() {
@@ -547,7 +542,7 @@ function startGame() {
     // 👑 王族：依性別自動入盟、不可選擇／退出（王子→特羅斯 tros、公主→依詩蒂 esti）
     if (player.cls === 'royal') player.bloodPledge = (curCreate.rawCls && curCreate.rawCls.startsWith('f_')) ? 'esti' : 'tros';
     player.classicMode = !!(document.getElementById('create-classic-toggle') && document.getElementById('create-classic-toggle').checked);   // 🎮 經典模式：依創角開關決定（此角色永久生效）
-    player.traditionalMode = player.classicMode && !!(document.getElementById('create-traditional-toggle') && document.getElementById('create-traditional-toggle').checked);   // 🏛️ 傳統模式：經典之上的子模式（須經典亦開啟才生效・永久）
+    player.traditionalMode = !!(document.getElementById('create-traditional-toggle') && document.getElementById('create-traditional-toggle').checked);   // 🏛️ 傳統模式：依創角開關決定（與經典獨立·可單開或＋經典·此角色永久生效）
     player.name = null;   // 預設未取名，狀態欄顯示「點擊取名」，玩家可點擊命名
     player.enSeed = 'es' + uid() + uid();   // 🎲 強化決定論種子（創角產生一次、存進存檔永久固定）：讓強化成敗由種子決定、不可用 save/load 刷
 

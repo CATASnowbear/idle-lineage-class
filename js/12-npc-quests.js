@@ -1,7 +1,10 @@
 // ===== 共用倉庫（存檔角色共用，獨立於存檔位的 localStorage 鍵）=====
 // 🎮 經典模式與非經典模式角色的倉庫不共通：依 player.classicMode 切換 localStorage 鍵（傭兵走存檔位、與倉庫無關，仍共通）。
 const WH_KEY = 'lineage_idle_warehouse';
-function whKey(p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (WH_KEY + '_trad') : (_p && _p.classicMode) ? (WH_KEY + '_classic') : WH_KEY; }   // 🏛️ 傳統倉庫獨立桶（須先判 traditional，因傳統角色 classicMode 亦為 true）
+// 🎮🏛️ 四種模式組合各自獨立的 localStorage 鍵後綴（倉庫桶／圖鑑桶／傭兵同模式招募共用·單一真相）：
+//   經典+傳統→'_trad'(沿用舊鍵·向後相容既有經典傳統角色)、一般+傳統→'_tradonly'、經典→'_classic'、一般→''。
+function modeSuffix(c, t){ return (c && t) ? '_trad' : t ? '_tradonly' : c ? '_classic' : ''; }
+function whKey(p){ let _p = (p !== undefined) ? p : player; return WH_KEY + modeSuffix(!!(_p && _p.classicMode), !!(_p && _p.traditionalMode)); }   // 🏛️🎮 依模式組合取對應倉庫桶
 const WH_MAX = 500;   // 倉庫格數上限（🔧 100 → 200 → 500）
 const WH_NO_STORE = ['item_dk_insignia','new_item_239','new_item_241','new_item_collar_husky','new_item_238','new_item_184','new_item_185','new_collar_rabbit','new_collar_fox','new_collar_beagle','new_collar_stbernard','item_mastery_proof',
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
@@ -65,7 +68,7 @@ function saveWarehouse(w){
 // ===== 🎴🗡️ 共用收集圖鑑（卡片 cardDex／裝備 equipDex）：同模式角色共用，獨立於存檔位的 localStorage 鍵（概念同共用倉庫）=====
 const CARDDEX_KEY = 'lineage_idle_carddex';
 const EQUIPDEX_KEY = 'lineage_idle_equipdex';
-function _dexKey(base, p){ let _p = (p !== undefined) ? p : player; return (_p && _p.traditionalMode) ? (base + '_trad') : (_p && _p.classicMode) ? (base + '_classic') : base; }   // 🏛️ 傳統／🎮 經典 各自獨立桶（同倉庫規則）
+function _dexKey(base, p){ let _p = (p !== undefined) ? p : player; return base + modeSuffix(!!(_p && _p.classicMode), !!(_p && _p.traditionalMode)); }   // 🏛️🎮 四模式各自獨立桶（同 whKey 規則·見 modeSuffix）
 function _readDex(base){ try { let s = _lzGet(_dexKey(base)); if (s) { let o = JSON.parse(s); if (o && typeof o === 'object') return o; } } catch(e){} return {}; }
 // 🔄 多開同步：回寫前先讀桶現值並合併（卡片取較高分、_v:2＝積分制；裝備布林聯集），避免用本分頁快照覆蓋其他分頁的進度（lost-update）
 function saveCardDex(){

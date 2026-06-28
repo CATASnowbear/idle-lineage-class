@@ -251,6 +251,14 @@ const DOLL_BY_TIER = { 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
 const DOLL_SYNTH_RATES = { 1:{2:8,3:23,4:45}, 2:{2:7,3:20,4:40}, 3:{2:4,3:12,4:23}, 4:{2:2,3:6,4:12}, 5:{2:1,3:3,4:6} };
 function _dollRng(tag, seq) { return _seededFloat(((player && player.enSeed) || 'x') + '|doll' + tag + '|' + seq); }   // 決定論 [0,1)
 function _dollBagOutcome(seq) { let r = _dollRng('bag', seq) * 10000, acc = 0; for (let p of DOLL_BAG_POOL) { acc += p[1]; if (r < acc) return p[0]; } return DOLL_BAG_POOL[0][0]; }
+// 🎁 高級魔法娃娃的盒子：80% 二階 / 18% 三階 / 2% 四階（總權重 10000）；選定階後該階娃娃「平均」抽一隻。committed RNG（dollSeq·save/load 不變）。
+const DOLL_BOX_TIER_POOL = [[2, 8000], [3, 1800], [4, 200]];
+function _dollBoxOutcome(seq) {
+    let r = _dollRng('boxT', seq) * 10000, acc = 0, tier = 2;
+    for (let p of DOLL_BOX_TIER_POOL) { acc += p[1]; if (r < acc) { tier = p[0]; break; } }
+    let pool = (DOLL_BY_TIER[tier] && DOLL_BY_TIER[tier].length) ? DOLL_BY_TIER[tier] : (DOLL_BY_TIER[2] || []);   // 防呆：該階無娃娃→退二階
+    return pool[Math.floor(_dollRng('boxR', seq) * pool.length)] || pool[0];
+}
 
 // 開啟魔法娃娃的袋子（all=true 一次開完所有）：每袋消耗 1 個 dollSeq → save/load 後 seq 已存、結果固定不可重抽
 function openDollBag(item, all) {
@@ -276,23 +284,62 @@ function openDollBag(item, all) {
     let _c = document.getElementById('interaction-content'); if (_c) renderCardSynth(_c);
 }
 
-// 多餘金卡 = 背包內金卡(card_g_*) 且該怪圖鑑已達金階(score>=100)
-function dollExcessGoldCards() { return player.inv.filter(it => { let d = DB.items[it.id]; return d && d.eff === 'card' && d.cardTier === 3 && cardDexTier(d.cardMob) >= 3; }); }
-function dollExcessGoldCount() { return dollExcessGoldCards().reduce((s, it) => s + (it.cnt || 1), 0); }
-// 用多餘金卡兌換娃娃袋子（1 金卡 = 1 袋；all=true 全換）
-function exchangeGoldForBags(all) {
-    let pool = dollExcessGoldCards();
-    let total = pool.reduce((s, it) => s + (it.cnt || 1), 0);
-    if (total <= 0) { logSys('<span class="text-slate-400">沒有可兌換的多餘金卡（需「圖鑑已開金階」的重複金卡）。</span>'); return; }
-    let n = all ? total : 1, need = n, rm = [];
-    for (let it of pool) { if (need <= 0) break; let c = it.cnt || 1; if (c <= need) { need -= c; rm.push(it.uid); } else { it.cnt = c - need; need = 0; } }
-    if (rm.length) player.inv = player.inv.filter(i => rm.indexOf(i.uid) === -1);
-    gainItem('doll_bag', n, true, true);
-    logSys(`🎴 → 🪆 用 <span class="c-card-gold font-bold">${n} 張多餘金卡</span> 兌換了 <span class="text-pink-300 font-bold">${n} 個魔法娃娃的袋子</span>。`);
+// 🎁 開啟高級魔法娃娃的盒子（all=true 一次開完）：committed RNG（dollSeq），save/load 後結果固定不可重抽
+function openDollBox(item, all) {
+    let box = player.inv.find(i => i.id === 'doll_box_high');
+    if (!box) { logSys('<span class="text-slate-400">沒有高級魔法娃娃的盒子可開。</span>'); return; }
+    box.cnt = box.cnt || 1;
+    if (box.cnt <= 0) { logSys('<span class="text-slate-400">沒有高級魔法娃娃的盒子可開。</span>'); return; }
+    if (player.dollSeq == null) player.dollSeq = 0;
+    let n = all ? box.cnt : 1, got = {};
+    for (let i = 0; i < n && box.cnt > 0; i++) {
+        let id = _dollBoxOutcome(player.dollSeq);
+        player.dollSeq++; box.cnt--;
+        gainItem(id, 1, true, true);   // silent + forceNormal（娃娃不附詞綴）
+        got[id] = (got[id] || 0) + 1;
+    }
+    if (box.cnt <= 0) player.inv = player.inv.filter(i => i.id !== 'doll_box_high');
+    let parts = Object.keys(got).map(id => `<span class="${DB.items[id].c || 'text-pink-300'} font-bold">${DB.items[id].n}</span> ×${got[id]}`);
+    logSys(`🎁 打開高級魔法娃娃的盒子，獲得：${parts.join('、')}。`);
+    if (typeof calcStats === 'function') calcStats();
     if (typeof renderTabs === 'function') renderTabs(true);
     if (typeof updateUI === 'function') updateUI();
     if (typeof saveGame === 'function') saveGame();
     let _c = document.getElementById('interaction-content'); if (_c) renderCardSynth(_c);
+}
+// 多餘卡片＝背包內該階卡片 且 該怪圖鑑「已開金階」(score>=100)：⚠️維持「需圖鑑開通金卡」才可兌換（銀卡/金卡皆 gate on 金階·只動用已收滿該怪的重複卡）
+function dollExcessSilverCards() { return player.inv.filter(it => { let d = DB.items[it.id]; return d && d.eff === 'card' && d.cardTier === 2 && cardDexTier(d.cardMob) >= 3; }); }
+function dollExcessSilverCount() { return dollExcessSilverCards().reduce((s, it) => s + (it.cnt || 1), 0); }
+function dollExcessGoldCards() { return player.inv.filter(it => { let d = DB.items[it.id]; return d && d.eff === 'card' && d.cardTier === 3 && cardDexTier(d.cardMob) >= 3; }); }
+function dollExcessGoldCount() { return dollExcessGoldCards().reduce((s, it) => s + (it.cnt || 1), 0); }
+// 通用兌換：把多餘卡片(pool)依數量扣除 n 張，發 n 個 rewardId（不足整疊則部分扣）
+function _dollCardExchange(pool, n, rewardId) {
+    let need = n, rm = [];
+    for (let it of pool) { if (need <= 0) break; let c = it.cnt || 1; if (c <= need) { need -= c; rm.push(it.uid); } else { it.cnt = c - need; need = 0; } }
+    if (rm.length) player.inv = player.inv.filter(i => rm.indexOf(i.uid) === -1);
+    gainItem(rewardId, n, true, true);
+    if (typeof renderTabs === 'function') renderTabs(true);
+    if (typeof updateUI === 'function') updateUI();
+    if (typeof saveGame === 'function') saveGame();
+    let _c = document.getElementById('interaction-content'); if (_c) renderCardSynth(_c);
+}
+// 用多餘銀卡兌換娃娃袋子（1 銀卡 = 1 袋；all=true 全換）
+function exchangeSilverForBags(all) {
+    let pool = dollExcessSilverCards();
+    let total = pool.reduce((s, it) => s + (it.cnt || 1), 0);
+    if (total <= 0) { logSys('<span class="text-slate-400">沒有可兌換的多餘銀卡（需「圖鑑已開金階」的重複銀卡）。</span>'); return; }
+    let n = all ? total : 1;
+    _dollCardExchange(pool, n, 'doll_bag');
+    logSys(`🎴 → 🪆 用 <span class="c-card-silver font-bold">${n} 張多餘銀卡</span> 兌換了 <span class="text-pink-300 font-bold">${n} 個魔法娃娃的袋子</span>。`);
+}
+// 用多餘金卡兌換高級魔法娃娃的盒子（1 金卡 = 1 盒；all=true 全換）
+function exchangeGoldForBoxes(all) {
+    let pool = dollExcessGoldCards();
+    let total = pool.reduce((s, it) => s + (it.cnt || 1), 0);
+    if (total <= 0) { logSys('<span class="text-slate-400">沒有可兌換的多餘金卡（需「圖鑑已開金階」的重複金卡）。</span>'); return; }
+    let n = all ? total : 1;
+    _dollCardExchange(pool, n, 'doll_box_high');
+    logSys(`🎴 → 🎁 用 <span class="c-card-gold font-bold">${n} 張多餘金卡</span> 兌換了 <span class="text-amber-300 font-bold">${n} 個高級魔法娃娃的盒子</span>。`);
 }
 
 // 背包內某階娃娃總數
@@ -357,13 +404,17 @@ function renderCardSynth(div) {
     </div></div>`;
     h += `<div class="p-4 pt-2"><button class="btn w-full ${can ? 'bg-purple-800 hover:bg-purple-700 border-purple-500' : 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed'} py-3 text-lg font-bold" ${can ? '' : 'disabled'} onclick="magicDollSynth()">一鍵合成</button></div>`;
     if (!can) h += `<div class="px-4 pb-2 text-slate-500 text-xs text-center">需要同名同階卡片滿 10 張才能合成。</div>`;
-    // 🪆 多餘金卡兌換娃娃袋子（1 金卡 = 1 袋）
-    let _gc = dollExcessGoldCount();
-    h += `<div class="px-4 pb-2 pt-2 border-t border-slate-700/60">
-        <div class="text-sm text-slate-300 mb-1">🎴 <b>多餘金卡兌換娃娃袋子</b> <span class="text-xs text-slate-400">（圖鑑已開金階的重複金卡，1 張＝1 袋）</span></div>
+    // 🪆 多餘卡片兌換（維持需「圖鑑已開金階」的重複卡片）：銀卡→娃娃袋子；金卡→高級盒子
+    let _sc = dollExcessSilverCount(), _gc = dollExcessGoldCount();
+    h += `<div class="px-4 pb-2 pt-2 border-t border-slate-700/60 space-y-2">
+        <div class="text-sm text-slate-300">🎴 <b>多餘卡片兌換</b> <span class="text-xs text-slate-400">（圖鑑已開金階的重複卡片）</span></div>
         <div class="flex items-center justify-between bg-slate-900/50 border border-slate-700 rounded px-3 py-2">
-            <span class="text-sm">可兌換金卡：<span class="${_gc ? 'c-card-gold' : 'text-slate-500'} font-bold">${_gc} 張</span></span>
-            <button class="btn px-3 py-1 text-xs font-bold ${_gc ? 'bg-amber-800 hover:bg-amber-700 border-amber-600' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_gc ? '' : 'disabled'} onclick="exchangeGoldForBags(true)">全部兌換</button>
+            <span class="text-sm">🪆 <span class="c-card-silver font-bold">銀卡</span> → 娃娃袋子（1:1）　可兌換：<span class="${_sc ? 'c-card-silver' : 'text-slate-500'} font-bold">${_sc} 張</span></span>
+            <button class="btn px-3 py-1 text-xs font-bold ${_sc ? 'bg-slate-600 hover:bg-slate-500 border-slate-400' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_sc ? '' : 'disabled'} onclick="exchangeSilverForBags(true)">全部兌換</button>
+        </div>
+        <div class="flex items-center justify-between bg-slate-900/50 border border-slate-700 rounded px-3 py-2">
+            <span class="text-sm">🎁 <span class="c-card-gold font-bold">金卡</span> → 高級盒子（1:1）　可兌換：<span class="${_gc ? 'c-card-gold' : 'text-slate-500'} font-bold">${_gc} 張</span></span>
+            <button class="btn px-3 py-1 text-xs font-bold ${_gc ? 'bg-amber-800 hover:bg-amber-700 border-amber-600' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_gc ? '' : 'disabled'} onclick="exchangeGoldForBoxes(true)">全部兌換</button>
         </div></div>`;
     // 🎁 開啟袋子
     let _bag = player.inv.find(i => i.id === 'doll_bag'); let _bagN = _bag ? (_bag.cnt || 1) : 0;
@@ -373,6 +424,16 @@ function renderCardSynth(div) {
             <div class="flex gap-2">
               <button class="btn px-3 py-1 text-xs font-bold ${_bagN ? 'bg-pink-800 hover:bg-pink-700 border-pink-600' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_bagN ? '' : 'disabled'} onclick="openDollBag(null,false)">開 1 個</button>
               <button class="btn px-3 py-1 text-xs font-bold ${_bagN ? 'bg-pink-900 hover:bg-pink-800 border-pink-600' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_bagN ? '' : 'disabled'} onclick="openDollBag(null,true)">全部開啟</button>
+            </div>
+        </div></div>`;
+    // 🎁 開啟高級盒子
+    let _box = player.inv.find(i => i.id === 'doll_box_high'); let _boxN = _box ? (_box.cnt || 1) : 0;
+    h += `<div class="px-4 pb-2">
+        <div class="flex items-center justify-between bg-slate-900/50 border border-slate-700 rounded px-3 py-2">
+            <span class="text-sm">🎁 高級魔法娃娃的盒子：<span class="${_boxN ? 'text-amber-300' : 'text-slate-500'} font-bold">${_boxN} 個</span></span>
+            <div class="flex gap-2">
+              <button class="btn px-3 py-1 text-xs font-bold ${_boxN ? 'bg-amber-800 hover:bg-amber-700 border-amber-600' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_boxN ? '' : 'disabled'} onclick="openDollBox(null,false)">開 1 個</button>
+              <button class="btn px-3 py-1 text-xs font-bold ${_boxN ? 'bg-amber-900 hover:bg-amber-800 border-amber-600' : 'bg-slate-700 border-slate-600 opacity-50 cursor-not-allowed'}" ${_boxN ? '' : 'disabled'} onclick="openDollBox(null,true)">全部開啟</button>
             </div>
         </div></div>`;
     // 🪆 魔法娃娃合成（2~4 同階 → 下一階）

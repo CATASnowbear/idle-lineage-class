@@ -107,10 +107,10 @@
                     <span class="text-amber-300 font-bold shrink-0">經典模式</span>
                     <span class="text-slate-400 text-xs">經驗/金錢砍半、掉寶率 1/10、死亡噴經驗（永久）</span>
                 </label>
-                <label id="lbl-create-traditional" class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none opacity-40" title="須先勾選「經典模式」才能選擇；傳統模式為經典之上的子模式，永久生效">
-                    <input type="checkbox" id="create-traditional-toggle" onchange="onToggleTraditional(this)" disabled class="w-5 h-5 accent-purple-600 shrink-0">
+                <label id="lbl-create-traditional" class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none" title="傳統模式可單獨開啟、或與經典模式並用，永久生效">
+                    <input type="checkbox" id="create-traditional-toggle" onchange="onToggleTraditional(this)" class="w-5 h-5 accent-purple-600 shrink-0">
                     <span class="text-purple-300 font-bold shrink-0">傳統模式</span>
-                    <span class="text-slate-400 text-xs">經典之上：裝備不可強化、無施法卷軸，改由掉落/製作裝備自帶隨機強化值（永久）</span>
+                    <span class="text-slate-400 text-xs">裝備不可強化、無施法卷軸，改由掉落/製作裝備自帶隨機強化值（永久；可單開或＋經典）</span>
                 </label>
                 <div class="flex gap-4 shrink-0 mt-3">
                     <button onclick="backToMenu()" class="btn w-1/4 py-2.5 text-base">返回</button>
@@ -388,22 +388,22 @@
         </div>
     </div>
 
-<script src="js/00-data.js?v=e215a0c604"></script>
-<script src="js/01-drops-config.js?v=f9617a7b84"></script>
+<script src="js/00-data.js?v=5cbee9dcb9"></script>
+<script src="js/01-drops-config.js?v=ab98e2b4fd"></script>
 <script src="js/02-stats-recompute.js?v=5b174ac97b"></script>
 <script src="js/03-combat-core.js?v=c65fa29292"></script>
 <script src="js/04-combat-attack.js?v=69229901bb"></script>
 <script src="js/05-kill-progression.js?v=3313e145f7"></script>
-<script src="js/06-status-allies.js?v=d20a3bbe37"></script>
+<script src="js/06-status-allies.js?v=1739259890"></script>
 <script src="js/07-skills-cast.js?v=6c45782eb1"></script>
-<script src="js/08-items-equip.js?v=ee327edbe0"></script>
+<script src="js/08-items-equip.js?v=2e8aad65f6"></script>
 <script src="js/09-vfx-render.js?v=0c33516c4e"></script>
 <script src="js/10-ui-tabs.js?v=44d160a473"></script>
 <script src="js/11-world-map.js?v=86378b5389"></script>
-<script src="js/12-npc-quests.js?v=41f74d7f4c"></script>
-<script src="js/13-shop-save.js?v=7a904bcf13"></script>
+<script src="js/12-npc-quests.js?v=3cf65fed71"></script>
+<script src="js/13-shop-save.js?v=c938ef6c20"></script>
 <script src="js/14-craft-pandora.js?v=9f11a72c2e"></script>
-<script src="js/15-cards.js?v=36e2d83b2a"></script>
+<script src="js/15-cards.js?v=271c480c08"></script>
 <script src="js/16-equip-book.js?v=c8709ddc9b"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260628a"></script>

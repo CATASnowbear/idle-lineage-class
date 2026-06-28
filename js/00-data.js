@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.4.1';
+const GAME_VERSION = 'v2.4.3';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -672,7 +672,8 @@ const DB = {
         "doll_法利昂":     { n: "魔法娃娃：法利昂", type: "acc", slot: "doll", req: "all", safe: 0, p: 0, doll: true, dollTier: 6, noEnhance: true, gachaWeight: 0, c: "text-red-400", hpR: 20, mpR: 10, resWater: 20, mdmg: 5, int: 2, wis: 2, freezeResist: 100, d: "六階魔法娃娃。HP自然恢復+20、MP自然恢復+10、水屬性抗性+20、魔法傷害+5、智力+2、精神+2；免疫冰凍。裝於魔法娃娃欄，游標變其模樣。" },
         "doll_林德拜爾":   { n: "魔法娃娃：林德拜爾", type: "acc", slot: "doll", req: "all", safe: 0, p: 0, doll: true, dollTier: 6, noEnhance: true, gachaWeight: 0, c: "text-red-400", hpR: 20, mpR: 10, resWind: 20, rangedDmg: 4, rangedHit: 8, er: 5, immSlow: true, d: "六階魔法娃娃。HP自然恢復+20、MP自然恢復+10、風屬性抗性+20、遠距離傷害+4、遠距離命中+8、ER+5；免疫緩速。裝於魔法娃娃欄，游標變其模樣。" },
         "doll_巴拉卡斯":   { n: "魔法娃娃：巴拉卡斯", type: "acc", slot: "doll", req: "all", safe: 0, p: 0, doll: true, dollTier: 6, noEnhance: true, gachaWeight: 0, c: "text-red-400", hpR: 20, mpR: 10, resFire: 20, meleeDmg: 4, meleeHit: 8, dr: 5, stunResist: 100, d: "六階魔法娃娃。HP自然恢復+20、MP自然恢復+10、火屬性抗性+20、近距離傷害+4、近距離命中+8、傷害減免+5；免疫暈眩。裝於魔法娃娃欄，游標變其模樣。" },
-        "doll_bag":        { n: "魔法娃娃的袋子", type: "misc", p: 0, c: "text-pink-300", eff: "doll_bag", noSell: true, gachaWeight: 0, d: "打開可隨機獲得一隻魔法娃娃。於威頓村魔法娃娃商人用多餘金卡兌換取得。" },
+        "doll_bag":        { n: "魔法娃娃的袋子", type: "misc", p: 0, c: "text-pink-300", eff: "doll_bag", noSell: true, gachaWeight: 0, d: "打開可隨機獲得一隻魔法娃娃。於威頓村魔法娃娃商人用多餘銀卡兌換取得。" },
+        "doll_box_high":   { n: "高級魔法娃娃的盒子", type: "misc", p: 0, c: "text-amber-300", eff: "doll_box_high", noSell: true, gachaWeight: 0, d: "打開可隨機獲得一隻較高階（二～四階）的魔法娃娃。於威頓村魔法娃娃商人用多餘金卡兌換取得。" },
         "scroll_weapon": { n: "對武器施法的卷軸", p: 22500, c: "text-white", d: "強化武器 (安定值6)", gachaWeight: 50 },
         "scroll_armor": { n: "對盔甲施法的卷軸", p: 9000, c: "text-white", d: "強化防具 (安定值4/0)", gachaWeight: 100 },
         "scroll_weapon_b": { n: "祝福的 對武器施法的卷軸", p: 22500, c: "text-yellow-300", d: "祝福的：成功時隨機提升 +1~+3 (強化武器，安定值6)", isB: true, gachaWeight: 0 },
