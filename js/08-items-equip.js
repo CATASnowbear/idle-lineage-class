@@ -287,11 +287,13 @@ function useItem(u, silent = false) {
             let _seteff = _wand.seteff || false;
             item.cnt--; if (item.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== item.uid);   // 消耗靈魂之球 ×1
             _wand.cnt--; if (_wand.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== _wand.uid);   // 消耗失去魔力魔杖 ×1
-            let _probe = { id:resultId, en:0, bless:false, anc:false, attr:false, seteff:_seteff };
-            let _ex = player.inv.find(i => (i.en||0)===0 && sameItemSig(i, _probe));
+            // 🏛️ 傳統模式：解封印時才為「重獲魔力的魔杖」附加隨機強化值（封印狀態 noEnhance 恆 +0）；一般/經典模式維持 +0（沿用手動強化）。committed RNG（rollTraditionalEnhance 內走 lootRng）防 SL 重抽
+            let _tEn = traditionalActive() ? rollTraditionalEnhance(DB.items[resultId]) : 0;
+            let _probe = { id:resultId, en:_tEn, bless:false, anc:false, attr:false, seteff:_seteff };
+            let _ex = _tEn > 0 ? null : player.inv.find(i => (i.en||0)===0 && sameItemSig(i, _probe));   // 🏛️ 自帶強化(en>0)獨立成堆、不併入 +0（比照 gainItem）
             if (_ex) _ex.cnt += 1;
-            else player.inv.push({ id:resultId, uid:uid(), cnt:1, en:0, bless:false, anc:false, attr:false, seteff:_seteff, lock:false, junk:false });
-            logSys(`<span class="c-legend font-bold">靈魂之球與${powerlessName}發出強烈的銀色光芒！</span><span class="text-amber-200">你獲得了 ${resultName}${_seteff ? `（<span class="c-sherine font-bold">${_seteff}</span>）` : ''}！</span>`);
+            else player.inv.push({ id:resultId, uid:uid(), cnt:1, en:_tEn, bless:false, anc:false, attr:false, seteff:_seteff, lock:false, junk:false });
+            logSys(`<span class="c-legend font-bold">靈魂之球與${powerlessName}發出強烈的銀色光芒！</span><span class="text-amber-200">你獲得了 ${_tEn>0?('+'+_tEn+' '):''}${resultName}${_seteff ? `（<span class="c-sherine font-bold">${_seteff}</span>）` : ''}！</span>`);
             renderTabs(); updateUI(); saveGame();
             if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal();
             return true;

@@ -1020,18 +1020,23 @@ function _qeEligibleItems(type) {
 
 // 模擬單一件裝備從 startEn 強化到 goal：每階消耗對應卷軸，安定值前必成功、安定值起依機率，失敗即爆裝。
 // scrollStacks 為 {scrollId:{cnt}} 的可變計數器（多件共用同一池），回傳 {en, destroyed, used}
-function _quickEnhanceUnit(d, startEn, goal, scrollStacks, keyBase) {
+function _quickEnhanceUnit(d, startEn, goal, scrollStacks, keyBase, useBless) {
     let en = startEn, used = 0, destroyed = false;
     let safe = d.safe || 0;
-    goal = Math.min(goal, enhanceCap(d));   // 🔧 批次強化亦不超過各裝備的強化上限（淬鍊）
-    let scrollId = d.type === 'wpn' ? 'scroll_weapon' : (d.type === 'acc' ? 'scroll_acc' : 'scroll_armor');
+    let cap = enhanceCap(d);
+    goal = Math.min(goal, cap);   // 🔧 批次強化亦不超過各裝備的強化上限（淬鍊）
+    let normalId = d.type === 'wpn' ? 'scroll_weapon' : (d.type === 'acc' ? 'scroll_acc' : 'scroll_armor');
+    let blessId = d.type === 'wpn' ? 'scroll_weapon_b' : (d.type === 'arm' ? 'scroll_armor_b' : null);   // 🌟 飾品無祝福卷（scroll_acc_b 不存在）
+    let bless = !!(useBless && blessId && DB.items[blessId]);   // 此類型有祝福卷才套用；飾品恆走一般卷
+    let scrollId = bless ? blessId : normalId;
     while (en < goal) {
         let st = scrollStacks[scrollId];
         if (!st || st.cnt <= 0) break;   // 卷軸用盡：停在目前等級（不爆裝）
         st.cnt -= 1; used += 1;
-        if (en < safe) { en += 1; continue; }   // 安定值前必定成功
-        if (enRandomUid(keyBase, en, '') < _enhanceRate(d, en, safe)) en += 1;   // 🎲 決定論：keyBase=堆疊uid:副本序，每副本獨立且跨 re-import 穩定（不可 save/load 刷）
-        else { destroyed = true; break; }                         // 失敗即爆裝
+        let ok = (en < safe) || (enRandomUid(keyBase, en, '') < _enhanceRate(d, en, safe));   // 安定值前必成功；之後依機率（🎲 決定論 keyBase=堆疊uid:副本序，與一般卷同一擲、不可 save/load 刷）
+        if (!ok) { destroyed = true; break; }   // 失敗即爆裝
+        let add = bless ? (1 + Math.floor(enRandomUid(keyBase, en, 'amt') * 3)) : 1;   // 🌟 祝福卷成功時隨機 +1~+3（決定論 'amt' 標籤，比照 doEnhance）；一般卷 +1
+        en = Math.min(cap, en + add);   // 跳級不超過淬鍊上限
     }
     return { en, destroyed, used };
 }
@@ -1040,6 +1045,8 @@ function buildQuickEnhanceHeader(type) {
     let st = quickEnh[type];
     let hdr = document.createElement('div');
     hdr.className = 'sticky top-0 z-10 bg-slate-900 pb-2';   // 🔧 移除 mb-1 透明間隙、pb 加大為不透明：滾動時物品不會從按鈕底部下方透出
+    // 🔧 表頭上緣亦覆蓋容器的 12px 上內距(p-3)：往上拉時 sticky 黏在裁切邊(top/margin-top:-12)、paddingTop:12 維持按鈕原位 → 物品也不會從按鈕「上方」透出（滾動後＝滾動前）。用 inline style（Tailwind CDN JIT 不保證新 class 即時生成）
+    hdr.style.top = '-12px'; hdr.style.marginTop = '-12px'; hdr.style.paddingTop = '12px';
     if (!st.active) {
         hdr.innerHTML = `<button onclick="toggleQuickEnhance('${type}')" class="w-full btn border-blue-700 bg-blue-900/70 hover:bg-blue-800 py-1.5 text-sm font-bold text-blue-200 rounded shadow">⚡ 快速強化</button>`;
         return hdr;
@@ -1050,13 +1057,16 @@ function buildQuickEnhanceHeader(type) {
     let target = st.target || 6;
     let opts = '';
     for (let t = 1; t <= 12; t++) opts += `<option value="${t}" ${t === target ? 'selected' : ''}>+${t}</option>`;
+    let _blessId = type === 'wpn' ? 'scroll_weapon_b' : 'scroll_armor_b';   // 🌟 祝福卷（飾品無祝福卷，仍以防具祝福卷數量顯示）
+    let _blessCnt = (player.inv.find(i => i.id === _blessId) || {}).cnt || 0;
     hdr.innerHTML = `<div class="flex items-center gap-1 bg-slate-900/80 border border-slate-700 rounded p-1">
         <button onclick="cancelQuickEnhance('${type}')" class="btn border-slate-600 bg-slate-700 hover:bg-slate-600 px-2 py-1 text-xs font-bold text-white rounded">取消</button>
         <button onclick="runQuickEnhance('${type}')" class="btn border-blue-600 bg-blue-800 hover:bg-blue-700 px-2 py-1 text-xs font-bold text-blue-200 rounded">強化</button>
+        <label class="flex items-center gap-1 text-xs ${_blessCnt > 0 ? 'text-yellow-300' : 'text-slate-500'} cursor-pointer select-none whitespace-nowrap" title="勾選＝使用『祝福的卷軸』強化（成功時隨機 +1~+3）；不勾＝一般卷軸（+1）。飾品無祝福卷，恆以一般卷強化。"><input type="checkbox" ${st.useBless ? 'checked' : ''} onchange="quickEnh['${type}'].useBless=this.checked"> 祝福卷(${_blessCnt})</label>
         <select id="qe-target-${type}" onchange="quickEnh['${type}'].target=Number(this.value)" class="bg-slate-800 border border-slate-600 text-blue-200 text-xs font-bold rounded px-1 py-1 ml-auto">${opts}</select>
         <label class="flex items-center gap-1 text-xs text-slate-300 cursor-pointer select-none whitespace-nowrap"><input type="checkbox" ${allSel ? 'checked' : ''} onchange="quickEnhanceSelectAll('${type}', this.checked)"> 全選</label>
     </div>`;
-    let cb = hdr.querySelector('label input'); if (cb) cb.indeterminate = someSel && !allSel;   // 部分勾選顯示半選
+    let cb = hdr.querySelector('input[onchange*="quickEnhanceSelectAll"]'); if (cb) cb.indeterminate = someSel && !allSel;   // 部分勾選顯示半選（精準選取全選框，避免被新增的祝福卷框搶到）
     return hdr;
 }
 
@@ -1076,7 +1086,7 @@ function runQuickEnhance(type) {
 
     // 三種卷軸共用計數池（武器/防具/飾品各自扣自己的卷軸）
     let scrollStacks = {};
-    ['scroll_weapon', 'scroll_armor', 'scroll_acc'].forEach(sid => {
+    ['scroll_weapon', 'scroll_armor', 'scroll_acc', 'scroll_weapon_b', 'scroll_armor_b'].forEach(sid => {   // 🌟 含祝福卷（武器/防具）
         let it = player.inv.find(i => i.id === sid);
         scrollStacks[sid] = { cnt: it ? (it.cnt || 0) : 0 };
     });
@@ -1091,7 +1101,7 @@ function runQuickEnhance(type) {
         removeUids.add(entry.uid);
         for (let u = 0; u < cnt; u++) {
             if ((entry.en || 0) >= Math.min(goal, enhanceCap(d))) { skipped++; survivors.push({ ...entry, cnt: 1, uid: uid() }); continue; }   // 已達/超過目標（或已達淬鍊上限）：原樣保留
-            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks, enIdUid(entry) + ':' + u);   // 🎲 keyBase=強化身份(含詛咒退階重骰):副本序 → 決定論、每副本獨立
+            let r = _quickEnhanceUnit(d, entry.en || 0, goal, scrollStacks, enIdUid(entry) + ':' + u, st.useBless);   // 🎲 keyBase=強化身份(含詛咒退階重骰):副本序 → 決定論、每副本獨立；🌟 st.useBless＝使用祝福卷
             usedTotal += r.used;
             if (r.destroyed) { destroyed++; continue; }   // 爆裝：不保留
             if (r.en >= goal) reached++; else partial++;  // 抵達 or 卷軸不足停在中途
@@ -1101,7 +1111,7 @@ function runQuickEnhance(type) {
 
     // 套用結果：移除原件 → 回寫卷軸 → 加入存活件（同簽章疊加）
     player.inv = player.inv.filter(i => !removeUids.has(i.uid));
-    ['scroll_weapon', 'scroll_armor', 'scroll_acc'].forEach(sid => {
+    ['scroll_weapon', 'scroll_armor', 'scroll_acc', 'scroll_weapon_b', 'scroll_armor_b'].forEach(sid => {   // 🌟 含祝福卷回寫
         let it = player.inv.find(i => i.id === sid);
         if (it) { it.cnt = scrollStacks[sid].cnt; if (it.cnt <= 0) player.inv = player.inv.filter(x => x.uid !== it.uid); }
     });
@@ -1112,7 +1122,7 @@ function runQuickEnhance(type) {
     if (partial) parts.push(`卷軸不足停 ${partial} 件`);
     if (skipped) parts.push(`已達標 ${skipped} 件`);
     parts.push(`<span class="text-red-400">爆裝 ${destroyed} 件</span>`);
-    logSys(`<span class="text-blue-300 font-bold">快速強化完成（目標 +${goal}）：</span>${parts.join('、')}，消耗 ${usedTotal} 張卷軸。`);
+    logSys(`<span class="text-blue-300 font-bold">快速強化完成（目標 +${goal}${st.useBless ? '·祝福卷' : ''}）：</span>${parts.join('、')}，消耗 ${usedTotal} 張${st.useBless ? '祝福' : ''}卷軸。`);
     calcStats();
     renderTabs(true);
     saveGame();
@@ -1136,6 +1146,8 @@ function buildQuickHeader(type) {
     if (jnk.active) _qjSync(type);   // 🔧 渲染前先同步新掉落物品到面板狀態（新廢品預先勾選），確認時才不會誤取消其標記
     let hdr = document.createElement('div');
     hdr.className = 'sticky top-0 z-10 bg-slate-900 pb-2';   // 🔧 移除 mb-1 透明間隙、pb 加大為不透明：滾動時物品不會從按鈕底部下方透出
+    // 🔧 表頭上緣亦覆蓋容器的 12px 上內距(p-3)：往上拉時 sticky 黏在裁切邊(top/margin-top:-12)、paddingTop:12 維持按鈕原位 → 物品也不會從按鈕「上方」透出（滾動後＝滾動前）。用 inline style（Tailwind CDN JIT 不保證新 class 即時生成）
+    hdr.style.top = '-12px'; hdr.style.marginTop = '-12px'; hdr.style.paddingTop = '12px';
     if (jnk.active) {   // 快速廢品進行中：取消／確認／全選（無數值選擇）
         let eligible = _qjEligibleItems(type);
         let allSel = eligible.length > 0 && eligible.every(i => jnk.sel[i.uid]);
