@@ -627,6 +627,12 @@
       console.info('[AFK] 上次在時空裂痕(時間排名挑戰)中：依設計不自動續、不結算離線收益。');
       return;
     }
+    if (savedMap === 'afk_dummy') {
+      // 🥊 木人場(afk-training 外掛):打不死的木人、純測 DPS,沒有經驗/掉落/金錢。關在木人場時 afk_map 戳成 afk_dummy
+      //   → 離線一律不結算(本來就沒收益可算);重開後 loadGame 強制回村(setMapSelectors+changeMap(true)),假地圖/假怪都被覆蓋。
+      console.info('[AFK] 上次在木人場(測 DPS)中：不結算離線收益。');
+      return;
+    }
     if (!last) {
       // 沒有舊時間戳(外掛剛裝 / 全新角色)→ 不結算離線收益;但若上次在攀登/遺忘之島,仍要把人帶回原地(零補跑)
       if (isClimb || isObl) runCatchup(0, false, savedMap, prePride, preObl);
