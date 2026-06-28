@@ -280,6 +280,13 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 - commit / push 時**不要**帶上 Claude 作者資訊或 `Co-Authored-By` 標記(沿用全域規則)。
 
+### 🔴 push 被擋→`git pull --rebase` 出現衝突時:不可盲目 `git add -A && rebase --continue`(會把衝突標記 commit 進去)
+
+每次 push 都在跟「每小時自動同步」搶——被擋→pull --rebase 很常見。衝突分兩種,處理不同:
+- **只有 `sw.js` / `version.json`(產生檔)衝突**:重跑 `node scripts/stamp-sw-version.mjs` 重新產生 → `git add -A` → `git rebase --continue`。這兩個是 stamp 產出的,重跑即正解。
+- **`index.html` 也衝突**(我 bump 了某外掛 `?v=`、自動同步也重產了 index.html → 撞在同一段 `<script>`):**stamp 不會碰 index.html**,所以這時盲目 `git add -A` 會把 `<<<<<<< / ======= / >>>>>>>` 標記原封不動 commit 進 index.html → 推上去**整頁壞掉**(踩過 2026-06-28:木人場 script 出現 a/b 兩個版本+衝突標記)。**正解:先 `git diff --name-only --diff-filter=U` 看有哪些衝突檔;index.html 要手動開來解**(保留「我這次 bump 的版本」那行、刪掉另一份與三個標記),再 stamp、`git add -A`、`rebase --continue`。
+- **收尾自我檢查(push 前)**:`grep -nE "^<<<<<<<|^=======|^>>>>>>>" index.html` 必須是空的;`grep -c afk-<某外掛>.js index.html` 每支應為 1(沒有重複 script)。smoke 可能照過(瀏覽器把標記當文字、script 照載)→**不能只靠 smoke,一定要 grep 衝突標記**。
+
 ### push 後要等 GitHub Pages 重建完成才算交付,並主動通知使用者
 
 每次 push 到此 repo 後,**不要 push 完就回報「上線了」**——GitHub Pages 要重建(通常 push 後約 40 秒~1 分鐘)才會真的生效。流程:
