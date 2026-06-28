@@ -285,7 +285,7 @@ function openSlotSelect(mode){
         let _tag = (_classic && _trad) ? '⚔🏛️ ' : (_trad ? '🏛️ ' : (_classic ? '⚔ ' : ''));
         let _modeName = (_classic && _trad) ? '（經典＋傳統）' : (_trad ? '（傳統）' : (_classic ? '（經典）' : ''));
         let label = sum ? `${_tag}存檔 ${n}　${sum.cls} Lv.${sum.lv}${sum.name ? '　' + sum.name : ''}${_modeName}` : `存檔 ${n}　（空）`;   // 未命名時不顯示名稱（連同前置全形空白一併省略）
-        let _classicStyle = _trad ? 'color:#c4b5fd;border-color:#7c3aed;' : (_classic ? 'color:#fbbf24;border-color:#d97706;' : '');   // 🏛️ 傳統＝淡紫文字＋紫邊框；🎮 經典＝琥珀金文字＋琥珀邊框
+        let _classicStyle = (_classic && _trad) ? 'color:#2dd4bf;border-color:#0d9488;' : (_trad ? 'color:#c4b5fd;border-color:#7c3aed;' : (_classic ? 'color:#fbbf24;border-color:#d97706;' : ''));   // 經典＋傳統＝青綠；🏛️ 傳統＝淡紫；🎮 經典＝琥珀金
         let disabled = (mode === 'load' && !sum);
         let bak = (mode === 'load') ? slotBackupSummary(n) : null;
         // 動作區固定寬度：匯入(+復原)鈕各 flex-1。無備份時匯入鈕獨佔整個動作區

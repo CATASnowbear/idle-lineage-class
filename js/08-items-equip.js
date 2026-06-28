@@ -1,6 +1,6 @@
 function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
-    // 🏛️ 傳統模式：任何來源都不產生施法卷軸（武器/盔甲/飾品＋祝福/詛咒變體）——掉落／黑市／歐西里斯寶箱／血盟入盟禮／兌換等全擋
-    if (TRAD_NO_SCROLLS[id] && traditionalActive()) return null;
+    // 🏛️ 僅「經典+傳統」任何來源都不產生施法卷軸（武器/盔甲/飾品＋祝福/詛咒變體）——掉落／黑市／歐西里斯寶箱／血盟入盟禮／兌換等全擋；一般+傳統照常產生（供克里斯特→賦予祝福）
+    if (TRAD_NO_SCROLLS[id] && tradNoScrolls()) return null;
     // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
         let _r = lootRng('scrollvar');   // 🎲 committed RNG（防 SL 重抽卷軸祝福/詛咒變體）

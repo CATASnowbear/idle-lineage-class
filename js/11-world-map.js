@@ -727,6 +727,7 @@ function renderIsmaelExchange(el) {
                 <div class="text-sm text-slate-200 leading-relaxed">100 張 <span class="text-sky-300">對盔甲施法的卷軸</span> → 1 張 <span class="text-amber-300 font-bold">祝福的 對盔甲施法的卷軸</span><br><span class="text-xs text-slate-400">持有：${sa} 張（無次數限制）</span></div>
                 <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-4 font-bold shrink-0" onclick="ismaelExchange('armor')">兌換</button>
             </div>
+            ${traditionalActive() ? '' : `
             <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
                 <div class="text-sm text-slate-200 leading-relaxed">100 張 <span class="text-sky-300">對武器施法的卷軸</span> → 1 張 <span class="c-cursed">詛咒的 對武器施法的卷軸</span><br><span class="text-xs text-slate-400">持有：${sw} 張（無次數限制）</span></div>
                 <button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-2 px-4 font-bold shrink-0" onclick="ismaelMakeCursed('weapon')">兌換</button>
@@ -734,7 +735,7 @@ function renderIsmaelExchange(el) {
             <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
                 <div class="text-sm text-slate-200 leading-relaxed">100 張 <span class="text-sky-300">對盔甲施法的卷軸</span> → 1 張 <span class="c-cursed">詛咒的 對盔甲施法的卷軸</span><br><span class="text-xs text-slate-400">持有：${sa} 張（無次數限制）</span></div>
                 <button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-2 px-4 font-bold shrink-0" onclick="ismaelMakeCursed('armor')">兌換</button>
-            </div>
+            </div>`}
             <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
                 <div class="text-sm text-slate-200 leading-relaxed">3 張 <span class="c-cursed">詛咒的 對武器施法的卷軸</span> → 1 張 <span class="text-amber-300 font-bold">祝福的 對武器施法的卷軸</span><br><span class="text-xs text-slate-400">持有：${swc} 張（無次數限制）</span></div>
                 <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-4 font-bold shrink-0" onclick="ismaelCursedExchange('weapon')">兌換</button>
@@ -1264,7 +1265,7 @@ function renderTownNPCs(townId) {
         }
         if (npc.darkOnly && player.cls !== 'dark') return;   // 🔧 黑暗妖精限定試煉：其他職業看不到
         if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：隱藏克里斯特/碧恩/漢（無法賦予祝福與精通）
-        if (npc.traditionalHide && player.traditionalMode) return;   // 🏛️ 傳統模式：隱藏肯特城兌換 NPC（伊賽馬利）
+        if (npc.traditionalHide && tradNoScrolls()) return;   // 🏛️ 僅經典+傳統：隱藏肯特城兌換 NPC（伊賽馬利）；一般+傳統照常可兌換（卷軸有用·供賦予祝福/飾品卷軸）
         let el = document.createElement('div');
         el.className = 'bg-slate-800 border border-slate-600 rounded-lg p-3 hover:bg-slate-700 transition-colors cursor-pointer flex flex-col justify-between';
         
@@ -1341,7 +1342,7 @@ function interactNPC(npcId, townId) {
     let npc = DB.towns[townId].npcs.find(n => n.id === npcId);
     if(!npc) return;
     if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：克里斯特/碧恩/漢 不可互動（縱深防護，正常情況卡片已不渲染）
-    if (npc.traditionalHide && player.traditionalMode) return;   // 🏛️ 傳統模式：肯特城兌換 NPC（伊賽馬利）不可互動（縱深防護）
+    if (npc.traditionalHide && tradNoScrolls()) return;   // 🏛️ 僅經典+傳統：肯特城兌換 NPC（伊賽馬利）不可互動（縱深防護）；一般+傳統照常
     _activePanel = null;   // 開啟新面板：先清除自動刷新標記，由對應 render 視需要重新設定
 
     document.getElementById('town-npc-container').classList.add('hidden');

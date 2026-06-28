@@ -1269,21 +1269,21 @@ const invSortCmp = (function () {
         let ca = catRank(da), cb = catRank(db);
         if (ca !== cb) return ca - cb;
 
-        if (ca === 0) { // 武器：詞綴數量 → 屬性>遠古>祝福 → 強化值 → 攻擊力 → 名稱
-            let c = affCount(ib) - affCount(ia); if (c) return c;
-            let t = affixTypeCmp(ia, ib); if (t) return t;
-            if ((ib.en || 0) !== (ia.en || 0)) return (ib.en || 0) - (ia.en || 0);   // 強化值高→上
+        if (ca === 0) { // 武器：🔧 強化值高→上；相同再依 詞綴數量 → 屬性>遠古>祝福 → 攻擊力 → 名稱
+            if ((ib.en || 0) !== (ia.en || 0)) return (ib.en || 0) - (ia.en || 0);   // 強化值高優先
+            let c = affCount(ib) - affCount(ia); if (c) return c;                     // 強化值相同→詞綴數量
+            let t = affixTypeCmp(ia, ib); if (t) return t;                            // →詞綴類型(屬性>遠古>祝福)
             let pa = (da.dmgS || 0) + (da.dmgL || 0), pb = (db.dmgS || 0) + (db.dmgL || 0);
-            if (pa !== pb) return pb - pa;                                            // 其次攻擊力高→上
+            if (pa !== pb) return pb - pa;                                            // →攻擊力高→上
             return nameCmp(da, db);
         }
-        if (ca === 1) { // 防具/飾品：詞綴數量 → 屬性>遠古>祝福 → 有特效 → AC高 → 強化值 → 名稱
-            let c = affCount(ib) - affCount(ia); if (c) return c;
-            let t = affixTypeCmp(ia, ib); if (t) return t;
+        if (ca === 1) { // 防具/飾品：🔧 強化值高→上；相同再依 詞綴數量 → 屬性>遠古>祝福 → 有特效 → AC高 → 名稱
+            if ((ib.en || 0) !== (ia.en || 0)) return (ib.en || 0) - (ia.en || 0);   // 強化值高優先
+            let c = affCount(ib) - affCount(ia); if (c) return c;                     // 強化值相同→詞綴數量
+            let t = affixTypeCmp(ia, ib); if (t) return t;                            // →詞綴類型
             let ea = hasArmEffect(da) ? 1 : 0, eb = hasArmEffect(db) ? 1 : 0;
             if (ea !== eb) return eb - ea;
             if ((da.ac || 0) !== (db.ac || 0)) return (db.ac || 0) - (da.ac || 0);
-            if ((ib.en || 0) !== (ia.en || 0)) return (ib.en || 0) - (ia.en || 0);
             return nameCmp(da, db);
         }
         // 道具：可點選 → 不可點選；可點選內 消耗道具→魔法書→精靈水晶→技術書，書籍依階級高→低；不可點選依名稱

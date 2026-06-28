@@ -1367,7 +1367,7 @@ function renderAllyNPC(div) {
         let _trad = !!sum.traditional;                                 // 🏛️ 傳統模式存檔
         let _modeMatch = (modeSuffix(_classic, _trad) === modeSuffix(!!player.classicMode, !!player.traditionalMode));   // 🎮🏛️ 只能招募與自己同模式組合（一般/經典/傳統/經典＋傳統）的存檔
         let _tag = (_classic && _trad) ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> <span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_trad ? '<span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_classic ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> ' : ''));
-        let _nameStyle = _trad ? 'style="color:#c4b5fd;"' : (_classic ? 'style="color:#fbbf24;"' : 'class="text-amber-300"');
+        let _nameStyle = (_classic && _trad) ? 'style="color:#2dd4bf;"' : (_trad ? 'style="color:#c4b5fd;"' : (_classic ? 'style="color:#fbbf24;"' : 'class="text-amber-300"'));   // 經典＋傳統＝青綠
         let _btn = active
             ? `<button onclick="toggleAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-red-900 border-red-700 text-red-200">解除</button>`
             : (_modeMatch
