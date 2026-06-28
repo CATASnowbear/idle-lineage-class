@@ -849,9 +849,9 @@ function autoCastSpells() {
 //    🔮 席琳的世界擊殺掉落仍套用 ×3（祝福機率 3%）。
 function rollAffixesNew() {
     let m = _sherineLootCtx ? (_sherineLootCtx.mad ? 5 : 3) : 1;   // 🔮 席琳的世界 祝福機率 ×3（瘋狂×5）
-    return { attr: false, bless: (Math.random() < 0.01 * m), anc: false };
+    return { attr: false, bless: (lootRng('affixb') < 0.01 * m), anc: false };   // 🎲 committed RNG（防 SL 重抽祝福詞綴）
 }
 function rollAffixesOld() {
     let m = _sherineLootCtx ? (_sherineLootCtx.mad ? 5 : 3) : 1;   // 🔮 席琳的世界 祝福機率 ×3（瘋狂×5）
-    return { attr: false, bless: (Math.random() < 0.01 * m), anc: false };
+    return { attr: false, bless: (lootRng('affixb') < 0.01 * m), anc: false };   // 🎲 committed RNG（防 SL 重抽祝福詞綴）
 }

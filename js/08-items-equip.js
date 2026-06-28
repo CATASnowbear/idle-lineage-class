@@ -3,7 +3,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     if (TRAD_NO_SCROLLS[id] && traditionalActive()) return null;
     // 卷軸變祝福／詛咒機率：各 1%（互斥）
     if (!forceNormal && (id === 'scroll_weapon' || id === 'scroll_armor')) {
-        let _r = Math.random();
+        let _r = lootRng('scrollvar');   // 🎲 committed RNG（防 SL 重抽卷軸祝福/詛咒變體）
         if (_r < 0.01) id = id + '_b';        // 1% 變成祝福的
         else if (_r < 0.02) id = id + '_c';   // 1% 變成詛咒的
     }
@@ -42,12 +42,12 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     let seteff = false;
     if (d) {
         let _slotOk = sherineSetEligible(d);
-        if (_slotOk && _sherineLootCtx && Math.random() < (_sherineLootCtx.boss ? 0.05 : (_sherineLootCtx.grace ? 0.005 : 0.001)) * (_sherineLootCtx.mad ? 3 : 1)) {
-            seteff = SHERINE_EFFECTS[Math.floor(Math.random() * SHERINE_EFFECTS.length)];
+        if (_slotOk && _sherineLootCtx && lootRng('setdrop') < (_sherineLootCtx.boss ? 0.05 : (_sherineLootCtx.grace ? 0.005 : 0.001)) * (_sherineLootCtx.mad ? 3 : 1)) {   // 🎲 committed RNG
+            seteff = SHERINE_EFFECTS[Math.floor(lootRng('setpick') * SHERINE_EFFECTS.length)];
             logSys(`<span class="c-sherine font-bold">✦ 掉落的裝備蘊含著席琳的祝福：【${seteff}】！</span>`);
         }
         if (_slotOk && !seteff && _forceSherineSet) {
-            seteff = SHERINE_EFFECTS[Math.floor(Math.random() * SHERINE_EFFECTS.length)];
+            seteff = SHERINE_EFFECTS[Math.floor(lootRng('setpick') * SHERINE_EFFECTS.length)];
             logSys(`<span class="c-sherine font-bold">✦ 席琳結晶引導出套裝效果：【${seteff}】！</span>`);
         }
     }
@@ -92,9 +92,9 @@ const ATTR_AFFIX = {
 };
 // 隨機產生一個屬性詞綴代碼：之60% / 中階30% / 靈10%，四元素均分
 function rollAttrAffix() {
-    let r = Math.random();
+    let r = lootRng('attrtier');   // 🎲 committed RNG（防 SL 重抽屬性詞綴階）
     let tier = r < 0.60 ? 1 : (r < 0.90 ? 3 : 5);
-    let ele = ['fire', 'water', 'wind', 'earth'][Math.floor(Math.random() * 4)];
+    let ele = ['fire', 'water', 'wind', 'earth'][Math.floor(lootRng('attrele') * 4)];
     return ele + tier;
 }
 // 取得詞綴定義（相容舊存檔：attr 為非法值/true 時回傳 null）

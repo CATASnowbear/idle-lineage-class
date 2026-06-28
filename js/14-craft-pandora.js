@@ -1116,8 +1116,8 @@ function getWeightedGachaResult(doubleNonRare) {
         }
     }
 
-    // 抽出隨機數
-    let rand = Math.random() * totalWeight;
+    // 抽出隨機數（🎲 committed RNG：防 SL 重抽潘朵拉抽到哪一件）
+    let rand = lootRng('gacha') * totalWeight;
     let currentWeight = 0;
 
     // 找出對應的物品

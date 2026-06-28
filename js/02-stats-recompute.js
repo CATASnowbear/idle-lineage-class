@@ -791,7 +791,7 @@ const OSIRIS_BOX_HIGH = [
 function osirisBoxRoll(table) {
     if (traditionalActive()) table = table.filter(e => !TRAD_NO_SCROLLS[e[0]]);   // 🏛️ 傳統模式：寶箱不開出施法卷軸（改抽其餘獎品，不浪費龜裂之核）
     let total = 0; for (let e of table) total += e[1];   // 過濾後重算總權重（一般情況=100）
-    let r = Math.random() * total, acc = 0;
+    let r = lootRng('osiris') * total, acc = 0;   // 🎲 committed RNG（防 SL 重抽歐西里斯寶箱開到哪件）
     for (let e of table) { acc += e[1]; if (r < acc) return e[0]; }
     return table[table.length - 1][0];
 }

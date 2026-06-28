@@ -1174,7 +1174,7 @@ function applyMobMagic(mob, sk) {
 // 野外+血盟掉寶的強化等級機率：安定值+1/+2/+3/+4 = 0.1%/0.01%/0.001%/0.0001%，其餘平分 +0~+安定值
 function rollPledgeDropEnhance(safe) {
     safe = safe || 0;
-    let r = Math.random();
+    let r = lootRng('pledgeen');   // 🎲 committed RNG（防 SL 重抽血盟/攻城掉落預附強化）
     if (r < 0.000001) return safe + 4;   // 0.0001%
     if (r < 0.000011) return safe + 3;   // 0.001%
     if (r < 0.000111) return safe + 2;   // 0.01%

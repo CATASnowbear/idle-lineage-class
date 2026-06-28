@@ -856,10 +856,10 @@ function doBianBless(slotKey) {
     let sc = player.inv.find(i => i.id === scrollId);
     if (!sc || sc.cnt < 1) { logSys(`<span class="text-red-400">缺少 ${scrollNm}。</span>`); return; }
     sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid);
-    let pick = Math.floor(Math.random() * 3);
+    let pick = Math.floor(lootRng('bianpick') * 3);   // 🎲 committed RNG（防 SL 重抽碧恩賦予結果）
     let msg = '';
     if (pick === 2) {
-        let rolled = (Math.random() < 0.5) ? true : 'cursed';   // 祝福的 / 詛咒的 各半
+        let rolled = (lootRng('bianbless') < 0.5) ? true : 'cursed';   // 祝福的 / 詛咒的 各半
         let curB = item.bless || false;
         let curN = (curB === true) ? 'blessed' : (curB || false);
         let rolN = (rolled === true) ? 'blessed' : rolled;

@@ -19,11 +19,49 @@ function whCategory(id){
     return 'item';                                              // 其餘皆道具
 }
 function whSetFilter(v){ _whFilter = v; renderWarehouseNPC(document.getElementById('interaction-content')); }
+// 🛡️ 倉庫資料安全網（防「不匯出匯入也會清空」）：
+//   _whLoadOk＝最近一次 loadWarehouse 是否成功解碼（桶存在卻解不開＝false → saveWarehouse 拒絕用空覆蓋，先把原始位元組備份）。
+//   _whLoadUids＝最近一次載入到的 uid 集合（多分頁加寫合併：寫入前比對，保留其他分頁在本快照之後新存入、而本次沒有的堆疊；本快照原有的 uid 不併→不會復活本次刻意取出的物品）。
+//   兩者由 loadWarehouse 設定、saveWarehouse 讀取；所有寫入者皆「同步 loadWarehouse→…→saveWarehouse」相鄰成對（saveGame 不碰倉庫），故旗標必對應同一次操作。
+let _whLoadOk = true;
+let _whLoadUids = null;
 function loadWarehouse(){
-    try { let s = _lzGet(whKey()); if(s){ let w = JSON.parse(s); return { items: w.items || [], gold: w.gold || 0 }; } } catch(e){}
-    return { items: [], gold: 0 };
+    _whLoadOk = true; _whLoadUids = null;
+    let key = whKey();
+    let raw;
+    try { raw = localStorage.getItem(key); } catch(e){ _whLoadOk = false; return { items: [], gold: 0 }; }
+    if(raw == null){ _whLoadUids = new Set(); return { items: [], gold: 0 }; }   // 真正不存在＝空倉庫（正常·非失敗）
+    try {
+        let s = _lzGet(key);
+        if(s == null || s === ''){ _whLoadOk = false; return { items: [], gold: 0 }; }   // 桶存在但解壓失敗→不可當成空倉庫
+        let w = JSON.parse(s);
+        let items = w.items || [];
+        _whLoadUids = new Set(items.map(it => it && it.uid).filter(u => u != null));
+        return { items: items, gold: w.gold || 0 };
+    } catch(e){ _whLoadOk = false; return { items: [], gold: 0 }; }   // JSON 毀損→不可當成空倉庫
 }
-function saveWarehouse(w){ _lzSet(whKey(), JSON.stringify({ items: w.items, gold: w.gold })); }
+function saveWarehouse(w){
+    let key = whKey();
+    // 安全網 A：上一次讀取失敗（桶存在卻解不開）→ 絕不用可能是空的資料覆蓋還救得回的位元組；先一次性備份原始值再拒寫並警告。
+    if(_whLoadOk === false){
+        try { let raw = localStorage.getItem(key); if(raw != null && localStorage.getItem(key + '_bak') == null) localStorage.setItem(key + '_bak', raw); } catch(e){}
+        if(typeof logSys === 'function') logSys('<span class="text-red-400 font-bold">⚠ 倉庫資料讀取失敗，已暫停寫入以免覆蓋遺失（原始資料已備份至 ' + key + '_bak）。請重新整理頁面後再操作倉庫。</span>');
+        return false;
+    }
+    let items = (w && w.items) || [];
+    // 安全網 B（多分頁）：寫入前重讀桶現值，併入「其他分頁在本快照之後新存入、本快照沒見過且本次也沒寫」的堆疊（以 uid 比對·只增不減·偏向重複而非遺失）。
+    try {
+        if(_whLoadUids){
+            let cs = _lzGet(key);
+            if(cs != null && cs !== ''){
+                let cur = JSON.parse(cs);
+                let haveUid = new Set(items.map(it => it && it.uid).filter(u => u != null));
+                (cur.items || []).forEach(it => { if(it && it.uid != null && !_whLoadUids.has(it.uid) && !haveUid.has(it.uid)) items.push(it); });
+            }
+        }
+    } catch(e){}
+    return _lzSet(key, JSON.stringify({ items: items, gold: (w && w.gold) || 0 }));
+}
 // ===== 🎴🗡️ 共用收集圖鑑（卡片 cardDex／裝備 equipDex）：同模式角色共用，獨立於存檔位的 localStorage 鍵（概念同共用倉庫）=====
 const CARDDEX_KEY = 'lineage_idle_carddex';
 const EQUIPDEX_KEY = 'lineage_idle_equipdex';

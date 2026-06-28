@@ -126,6 +126,16 @@ function enRandomUid(itUid, en, tag) {
 }
 function enRandom(item, tag) { return enRandomUid(item && item.uid, item && item.en, tag); }
 
+// 🎲 「獲得/抽取瞬間」決定論亂數（committed RNG·防 SL 存讀檔重抽）：把掉落/製作/兌換/潘朵拉/開箱/裂痕領取/碧恩賦予 等
+//   在行動當下擲出、且會 baked 進存檔的隨機（自帶強化值／詞綴／席琳套裝效果／抽到哪一件…）改由「存檔內遞增序號 player.lootSeq」決定。
+//   序號入存檔且受 SIG1 簽章 → 讀檔或重匯入舊檔回到行動前 → 相同序號 → 算出完全相同結果 → 重抽無效。比照娃娃 dollSeq、強化 enRandom。
+//   ⚠️標題/載入畫面（尚無 player）退回 Math.random（該情境無存檔可 SL，不影響玩家）。每呼叫一次消耗一個序號。
+function lootRng(tag) {
+    if (typeof player === 'undefined' || !player) return Math.random();
+    if (player.lootSeq == null) player.lootSeq = 0;
+    return _seededFloat((player.enSeed || 'nseed') + '|loot|' + (player.lootSeq++) + '|' + (tag || ''));
+}
+
 // 🛡️ 存檔簽章（防隨手竄改）：在 LZ 壓縮層外再包一層 'SIG1:'+簽章+':'+payload。
 //    注意：鹽值內嵌於客戶端原始碼，故僅能擋「解壓→改數值→重壓」這類隨手竄改；擋不了讀原始碼後自行重算簽章的人（純前端無法做到，與整體限制一致）。
 const _SAVE_SALT = 'fb5#9c3a7e1d-save-integrity-salt-do-not-edit#a1b2c3';
