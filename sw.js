@@ -26,8 +26,8 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
-const CODE_VERSION = 'code-a03f4c408c76';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0628-1155'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-3f4a287b9a96';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0628-1215'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 =======
 const CODE_VERSION = 'code-1e1a7ae6cd45';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
 const BUILD_ID     = '0628-0353'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
