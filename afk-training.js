@@ -176,7 +176,7 @@
       mapState.mobs[slot] = inst;
       slot++;
     }
-    mapState.targetIdx = 0;
+    mapState.targetIdx = -1;   // 不硬鎖最左:設 -1 讓遊戲 getTarget() 自動瞄(優先序中央→左→右,同一般地圖)→ 木人場也是一開始瞄中間
     if (typeof window.renderMobs === 'function') window.renderMobs();
   }
 
