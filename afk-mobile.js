@@ -687,6 +687,12 @@
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap{position:absolute !important;inset:0 !important;z-index:0 !important;margin:0 !important;padding:48px 2px 24px !important;box-sizing:border-box !important;align-items:center !important;overflow:hidden !important;}',   /* overflow:hidden:把怪物圖裁在卡範圍內(原本靠卡片裁,卡改 visible 後改這裡裁) */
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap .mob-img-inner{height:100% !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-img-wrap img{height:100% !important;width:auto !important;max-width:100% !important;padding:0 !important;}',
+      /* 👑 一般頭目(boss-zoom)圖被原作放大 1.78×→比手機卡寬,上面的 .mob-img-wrap{overflow:hidden} 會把頭目左右裁掉。
+         這裡讓 boss-zoom 的圖 wrap 改 overflow:visible(放大圖往左右溢出卡邊,改由戰鬥框 overflow:hidden 收邊,與桌機行為一致);
+         圖 wrap z-index:0 在名稱/徽章(z3/z2)之下,溢出不會蓋住文字。max-width:none 解除「不可比卡寬」限制,放大才完整。
+         原作改掉 boss-zoom 的 1.78× 放大時此段失效、無害。 */
+      'body.m-mobile #battle-view.area-fit .mob-target.boss-zoom > .mob-img-wrap{overflow:visible !important;}',
+      'body.m-mobile #battle-view.area-fit .mob-target.boss-zoom > .mob-img-wrap img{max-width:none !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-name{position:relative !important;z-index:3 !important;margin:0 !important;overflow:visible !important;justify-content:center !important;}',
       'body.m-mobile #battle-view.area-fit .mob-target > .mob-name span{font-size:12px !important;line-height:1.1 !important;white-space:nowrap !important;overflow:visible !important;max-width:none !important;}',   /* 只顯示選取目標:單行不截斷;名字比卡寬時靠 flex 置中往左右等量溢出(卡 overflow:visible 讓它露出) */
       'body.m-mobile #battle-view.area-fit .mob-target > div[style*="height:18px"]{position:relative !important;z-index:2 !important;margin:0 !important;}',
