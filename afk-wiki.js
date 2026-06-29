@@ -923,6 +923,7 @@
     { k: 'mastery', n: '職業專精' },
     { k: 'weapon', n: '武器特性' },
     { k: 'combat', n: '戰鬥機制' },
+    { k: 'poly', n: '變形' },
     { k: 'mode', n: '遊戲模式' },
     { k: 'map', n: '地圖' },
     { k: 'stats', n: '能力值' },
@@ -1073,6 +1074,7 @@
     if (key === 'mastery') return renderMastery(cls);
     if (key === 'weapon') return renderWeapon();
     if (key === 'combat') return renderCombat();
+    if (key === 'poly') return renderPoly();
     if (key === 'mode') return renderMode();
     if (key === 'map') return renderMap();
     if (key === 'stats') return renderStats();
@@ -1120,6 +1122,7 @@
     { key: 'mastery', cls: true, label: '職業專精' },
     { key: 'weapon', cls: false, label: '武器特性' },
     { key: 'combat', cls: false, label: '戰鬥機制' },
+    { key: 'poly', cls: false, label: '變形' },
     { key: 'mode', cls: false, label: '遊戲模式' },
     { key: 'map', cls: false, label: '地圖' },
     { key: 'stats', cls: false, label: '能力值' },
@@ -1711,6 +1714,59 @@
   }
   function wCard(title, inner) { return '<div class="m-wiki-card"><div class="m-wiki-name">' + title + '</div>' + inner + '</div>'; }
   function wDesc(t) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + t + '</div>'; }
+
+  // ===== 變形(變形卷軸 / 變形控制戒指 / 套裝專屬變身) =========================
+  //   型態與數值全讀遊戲全域 POLY_TIERS / SET_POLY_FORMS(js/02-stats-recompute),作者改數值/新增型態自動跟上。
+  //   欄位:md/mh 近距離傷害/命中、rd/rh 遠距離傷害/命中、ed/eh 額外傷害/命中、mgd 魔法傷害、
+  //        sp 額外魔法點數、mpr MP自然恢復、ac 防禦(AC,負值=越強)、er 迴避、mr 魔防、spd 攻速%。
+  //   AC/ER/MR 一律照小百科鐵則翻成 防禦(AC)/迴避/魔防(不沿用遊戲 polyFormDesc 的英文縮寫)。
+  function polyEff(f) {
+    var p = [];
+    if (f.md)  p.push('近距離傷害+' + f.md);
+    if (f.mh)  p.push('近距離命中+' + f.mh);
+    if (f.rd)  p.push('遠距離傷害+' + f.rd);
+    if (f.rh)  p.push('遠距離命中+' + f.rh);
+    if (f.ed)  p.push('額外傷害+' + f.ed);
+    if (f.eh)  p.push('額外命中+' + f.eh);
+    if (f.mgd) p.push('魔法傷害+' + f.mgd);
+    if (f.sp)  p.push('額外魔法點數+' + f.sp);
+    if (f.mpr) p.push('MP自然恢復+' + f.mpr);
+    if (f.ac)  p.push('防禦(AC) ' + f.ac);   // f.ac 為負(AC 越低越強),照原號顯示,與裝備欄一致
+    if (f.er)  p.push('迴避+' + f.er);
+    if (f.mr)  p.push('魔防+' + f.mr);
+    if (f.spd) p.push('攻速+' + f.spd + '%');
+    return p.join('、') || '—';
+  }
+  var SET_POLY_LABEL = { dk: '死亡騎士套裝（4 件）', kurt: '克特套裝（4 件）', demon: '惡魔套裝（4 件）', darkelf: '黑暗妖精套裝（3 件）' };
+  function renderPoly() {
+    if (typeof POLY_TIERS === 'undefined') return '<div class="m-wiki-note">讀不到變形資料。</div>';
+    var dur = (typeof DB !== 'undefined' && DB.items && DB.items.scroll_poly && DB.items.scroll_poly.dur) || 1800;
+    var durMin = Math.round(dur / 60);
+    var h = '<div class="m-wiki-note">變形＝用<b>' + wDexLink('變形卷軸') + '</b>暫時把自己變成某種型態，獲得一組<b>額外戰鬥加成</b>（疊在你原本數值上、不佔裝備欄），持續 <b>' + durMin + ' 分鐘</b>，到時自動解除。</div>';
+    h += '<div class="m-wiki-sub">🌀 怎麼變形</div>';
+    h += '<div class="m-wiki-kv"><b>' + wDexLink('變形卷軸') + '（隨機，也叫變形術）</b>使用後依你<b>目前等級</b>，從該等級對應的型態池中<b>隨機</b>變成一種（見下表），持續 ' + durMin + ' 分鐘。可在設定開「自動使用／自動購買」自動維持。</div>';
+    h += '<div class="m-wiki-kv"><b>' + wDexLink('變形控制戒指') + '（指定型態）</b>只要<b>背包帶著就生效</b>（不必佔戒指欄）。手動使用變形卷軸時會跳選單讓你<b>指定</b>要變哪一種；自動使用時則<b>維持上次選的型態</b>、不再隨機重抽。</div>';
+    h += '<div class="m-wiki-kv"><b>套裝專屬變身</b>穿滿對應套裝會<b>強制</b>變成專屬型態（見最下方），<b>優先於卷軸變身</b>、不進隨機池，<b>卸下套裝立即消失</b>。</div>';
+    h += '<div class="m-wiki-sub">📊 各等級的變形型態與加成</div>';
+    h += '<div class="m-wiki-note" style="margin-top:0;">用變形卷軸時依你<b>當下等級</b>落在哪一段，就從那段裡隨機抽一種（持變形控制戒指可指定）。<b>名稱顏色</b>：Lv49 以下白、Lv50~51 淡黃、Lv52 以上金，與遊戲內一致。</div>';
+    POLY_TIERS.forEach(function (t) {
+      var range = (t.min <= 0) ? ('Lv' + t.max + ' 以下') : (t.max >= 9999 ? ('Lv' + t.min + ' 以上') : ('Lv' + t.min + '～' + t.max));
+      h += '<div class="m-wiki-sub" style="font-size:13px;">' + range + '</div>';
+      h += wTbl(['型態', '加成'], t.forms.map(function (f) {
+        return ['<span class="' + (t.color || '') + '">' + esc(f.n) + '</span>', polyEff(f)];
+      }));
+    });
+    if (typeof SET_POLY_FORMS !== 'undefined') {
+      h += '<div class="m-wiki-sub">🛡️ 套裝專屬變身</div>';
+      var rows = Object.keys(SET_POLY_FORMS).map(function (k) {
+        var f = SET_POLY_FORMS[k];
+        return [SET_POLY_LABEL[k] || k, '<span class="' + (f.c || '') + '">' + esc(f.n) + '</span>', polyEff(f)];
+      });
+      h += wTbl(['套裝（件數）', '變身', '加成'], rows);
+      h += wDesc('這些型態<b>不會被變形卷軸隨機抽到</b>，只在穿著套裝時出現。套裝本身另有 防禦(AC)、HP/MP 恢復 等加成，詳見「套裝」分頁。');
+    }
+    return h;
+  }
 
   function renderSherine() {
     var out = '<div class="m-wiki-note">「席琳」是一整套困難模式：開啟世界 → 怪變強但報酬翻倍 → 掉席琳結晶 → 做／換席琳套裝。</div>';
