@@ -147,6 +147,7 @@ function killMob(idx) {
     if (!mob || mob._dead) return;        // 冪等保護：同一隻怪只結算一次獎勵
     mob._dead = true;
     try { vfxKill(mob); } catch(e){}   // ✨ VFX：擊殺粒子爆裂（趁格子 DOM 仍在、重繪前）
+    try { playMobKill(mob); } catch(e){}   // 🔊 音效：怪物死亡（依怪名對應專屬死亡音，查無→通用擊殺音）
     if (mob.curHp > 0) mob.curHp = 0;     // 待清算期間不可被當成活目標
     let _kbRoom = !!KING_ROOMS[mapState.current];   // 🔧 軍王之室
     let _kbNoReward = _kbRoom && !mob.boss;                     // 除頭目外（地獄束縛犬）：不給金錢/掉落
@@ -840,6 +841,7 @@ function checkLvUp() {
         calcStats();
         player.hp = player.mhp; player.mp = player.mmp;
         try { vfxLevelUp(); } catch(e){}   // ✨ VFX：升級慶祝
+        try { playSfx('levelup'); } catch(e){}   // 🔊 音效：升級
     }
 }
 

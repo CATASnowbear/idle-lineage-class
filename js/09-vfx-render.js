@@ -115,7 +115,51 @@ function vfxKill(mob) {
           }
         }
         let color = mob.boss ? '#ffd54f' : '#ff8a5c';
-        let n = mob.boss ? 22 : 13;
+        // ✨ 強化死亡表現（讓「怪物被消滅」更明顯）：白閃殘影 + 衝擊波環 + 核心爆閃。場上特效過多(>150)時略過較重的殘影/環，只留粒子，避免大量 AoE 連殺洗版。
+        if (layer.childElementCount < 150) {
+            // 1) 死亡殘影：複製怪物圖像 → 白化＋放大＋淡出（強烈的「被抹除」感）
+            try {
+                let _img = box.querySelector('img');
+                if (_img && _img.src && _img.naturalWidth !== 0) {
+                    let gh = document.createElement('img');
+                    gh.className = 'vfx-ghost'; gh.src = _img.src;
+                    gh.style.left = cx + 'px'; gh.style.top = (r.top + r.height / 2) + 'px';
+                    gh.style.width = r.width + 'px'; gh.style.height = r.height + 'px';
+                    layer.appendChild(gh);
+                    gh.animate(
+                        [ { transform: 'translate(-50%,-50%) scale(1)', opacity: .85, filter: 'brightness(2.6) saturate(.25)' },
+                          { transform: 'translate(-50%,-50%) scale(' + (mob.boss ? 1.62 : 1.42) + ')', opacity: 0, filter: 'brightness(3.4) saturate(0)' } ],
+                        { duration: mob.boss ? 520 : 400, easing: 'cubic-bezier(.2,.6,.2,1)' }
+                    ).onfinish = () => gh.remove();
+                }
+            } catch (e) {}
+            // 2) 衝擊波環：自死亡點擴張的圓環
+            let ring = document.createElement('div'); ring.className = 'vfx-killring';
+            let _rsz = mob.boss ? 64 : 44;
+            ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
+            ring.style.width = _rsz + 'px'; ring.style.height = _rsz + 'px';
+            ring.style.borderColor = color; ring.style.boxShadow = '0 0 12px ' + color + ', inset 0 0 12px ' + color;
+            layer.appendChild(ring);
+            ring.animate(
+                [ { transform: 'translate(-50%,-50%) scale(.3)', opacity: .95 },
+                  { transform: 'translate(-50%,-50%) scale(' + (mob.boss ? 2.0 : 1.7) + ')', opacity: 0 } ],
+                { duration: mob.boss ? 520 : 420, easing: 'cubic-bezier(.15,.7,.3,1)' }
+            ).onfinish = () => ring.remove();
+            // 3) 核心爆閃：死亡點一團白熱光迅速擴散消失
+            let core = document.createElement('div'); core.className = 'vfx-particle';
+            let _csz = mob.boss ? 40 : 26;
+            core.style.width = _csz + 'px'; core.style.height = _csz + 'px';
+            core.style.left = cx + 'px'; core.style.top = cy + 'px';
+            core.style.background = 'radial-gradient(circle, #fff 18%, ' + color + ' 55%, rgba(0,0,0,0) 76%)';
+            core.style.boxShadow = '0 0 20px ' + color;
+            layer.appendChild(core);
+            core.animate(
+                [ { transform: 'translate(-50%,-50%) scale(.35)', opacity: 1 },
+                  { transform: 'translate(-50%,-50%) scale(1.45)', opacity: 0 } ],
+                { duration: 280, easing: 'ease-out' }
+            ).onfinish = () => core.remove();
+        }
+        let n = mob.boss ? 28 : 18;   // ✨ 爆裂粒子數提高（原 22/13）→ 死亡更顯眼
         for (let i = 0; i < n; i++) {
             let pt = document.createElement('div');
             pt.className = 'vfx-particle';

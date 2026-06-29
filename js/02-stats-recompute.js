@@ -72,6 +72,9 @@ function recomputeStats() {
           if (_eqHas('acc_curse_green')) { d.dex += 2; d.cha -= 2; }
       }
     }
+    // 🪆 魔法娃娃全收集：裝備收集冊 doll 部位全收集(50 隻) → 六維各 +1（提前套用→吃進 AC/HP/MP/近遠魔傷害/命中/爆擊等衍生值；受下方 80 上限夾擠）。
+    //    收集判定走 player.equipDex(共用桶)；recomputeStats 只對玩家執行(p 恆＝player)，傭兵不走此路徑故不吃。label 由 js/16 EQUIP_CAT_BONUS.doll 顯示。
+    if (typeof equipCatComplete === 'function' && equipCatComplete('doll')) { d.str += 1; d.dex += 1; d.con += 1; d.int += 1; d.wis += 1; d.cha += 1; }
 
     // 🎯 六維屬性效果上限 80：效果表(getStr/Dex/Int/Con/Wis... 系列)最高只設定到 80，超過 80 無對應能力。
     //    故在此(Phase 1 加總完、Phase 2 換算前)把最終屬性夾擠至 ≤80：
@@ -195,11 +198,13 @@ function recomputeStats() {
     if (p.eq.wpn) {
         let w = DB.items[p.eq.wpn.id];
         let isRanged = !!w.ranged;
-        let _enW = enhanceWpnBonus(p.eq.wpn.en);   // 🔧 武器強化加成（+0~+10 線性、+11~+20 分段表）
-        let wBonus = (w.dmgBonus||0) + _enW.dmg;
-        let wHit = (w.hit||0) + _enW.hit;
-        if (isRanged) { d.rangedDmg += wBonus; d.rangedHit += wHit; }
-        else { d.meleeDmg += wBonus; d.meleeHit += wHit; }
+        let _enW = enhanceWpnBonus(p.eq.wpn.en);   // 🔧 武器強化固定加成（傷害每階+1延伸到+20、命中+1~+10後依表續加）
+        // 武器自身固定傷害/命中：只加武器本身的攻擊類型（近戰武器→近距離、遠程武器→遠距離）
+        if (isRanged) { d.rangedDmg += (w.dmgBonus||0); d.rangedHit += (w.hit||0); }
+        else { d.meleeDmg += (w.dmgBonus||0); d.meleeHit += (w.hit||0); }
+        // 🔧 武器「強化」固定加成：近距離與遠距離 傷害＋命中 同時各加（每強化+1→四者各+1）。⚠️ 與「最終傷害倍率」wpnEnFinalMult 各自獨立疊加（依使用者指定·+20 武器明顯變強）
+        d.meleeDmg += _enW.dmg; d.rangedDmg += _enW.dmg;
+        d.meleeHit += _enW.hit; d.rangedHit += _enW.hit;
         d.aspd = w.spd;
         if(w.mdmg) d.magicDmg += w.mdmg;
         if(w.mpR) d.mpR += w.mpR;
@@ -362,27 +367,38 @@ d.mr += (baseMr + bonusMr);
     if (_shN('白鳥') >= 3) { d.cha += 10; }   // 白鳥3件：魅力+10（可突破 60 上限）
     p._setWhiteBird5 = _shN('白鳥') >= 5;        // 一般攻擊命中附加「脆弱」3 秒
     if (_shN('鐵衛') >= 2) { d.ac -= 3; d.dr += 5; }
-    p._setIron3 = _shN('鐵衛') >= 3;             // 受到傷害 −20%（受擊時套用）
-    p._setIron5 = _shN('鐵衛') >= 5;             // 反擊/居合時橫掃全體敵人
+    p._setIron3 = _shN('鐵衛') >= 3;             // 受到傷害 −20%（受擊時·乘算）
+    p._setIron5 = _shN('鐵衛') >= 5;             // 🔧 受到傷害時，額外對全體敵人造成一次必中的一般攻擊（受擊處觸發）
     if (_shN('麗人') >= 2) { d.meleeDmg += 3; d.meleeHit += 3; }
-    if (_shN('麗人') >= 3) { d.meleeCrit += 2; }
-    p._setBeauty5 = _shN('麗人') >= 5;           // 重擊後下一次一般攻擊 100% 命中
+    if (_shN('麗人') >= 3) { d.meleeCrit += 3; }
+    p._setBeauty5 = _shN('麗人') >= 5;           // 🔧 每次攻擊未命中→額外命中+10可堆疊，直到一次物理命中歸零（getPhysicalDmg）
+    if (!p._setBeauty5) p._beautyMissStack = 0;  // 卸下套裝即清未命中堆疊
     if (_shN('疾風') >= 2) { d.rangedDmg += 3; d.rangedHit += 3; }
-    if (_shN('疾風') >= 3) { d.rangedCrit += 2; }
+    if (_shN('疾風') >= 3) { d.rangedCrit += 3; }
     p._setGale5 = _shN('疾風') >= 5;             // 連射傷害 30%→80%
-    if (_shN('月光') >= 2) { d.extraDmg += 2; d.extraHit += 2; }
+    if (_shN('月光') >= 2) { d.extraDmg += 2; d.extraHit += 3; }
     if (_shN('月光') >= 3) { d.er += 5; d.mr += 10; }
     p._setMoon5 = _shN('月光') >= 5;             // ER 可迴避魔法（applyMobMagic 套用）
     if (_shN('學徒') >= 2) { d.mpR += 5; d.extraMp += 6; }
-    if (_shN('學徒') >= 3) { d.magicCrit += 2; }
+    if (_shN('學徒') >= 3) { d.magicCrit += 3; }
     p._setApprentice5 = _shN('學徒') >= 5;       // MP<30% 時技能耗魔減半（getMpCost 套用）
-    if (_shN('魔女') >= 2) { d.magicDmg += 2; }
+    if (_shN('魔女') >= 2) { d.magicDmg += 3; }
     if (_shN('魔女') >= 3) { d.resWater += 10; d.extraMp += 5; }
-    p._setWitch5 = _shN('魔女') >= 5;            // 每 5 次共鳴 → 免費冰矛圍籬
+    p._setWitch5 = _shN('魔女') >= 5;            // 🔧 每 5 次共鳴 → 免費冰雪暴（冰雪颶風風暴傷害·不受法師階級加成）
     if (!p._setWitch5) p._witchResCnt = 0;       // 卸下套裝即重置共鳴計數
     if (_shN('暗影') >= 2) { d.extraDmg += 7; }   // 🔧 暗影 2/5：額外傷害+7
-    p._setShadow3 = _shN('暗影') >= 3;            // 🔧 暗影 3/5：觸發迴避時恢復 20 HP（迴避處套用）
-    p._setShadow5 = _shN('暗影') >= 5;            // 🔧 暗影 5/5：雙擊額外攻擊傷害再 +50%（×1.5·procCombo/allyComboAttack 套用）
+    p._setShadow3 = _shN('暗影') >= 3;            // 🔧 暗影 3/5：觸發迴避時恢復 2% HP（迴避處套用）
+    p._setShadow5 = _shN('暗影') >= 5;            // 🔧 暗影 5/5：雙擊額外攻擊傷害加倍（×2·procCombo/allyComboAttack 套用）
+    // 🔮 幻覺：2件 魔傷命中回「Lv/10」MP；3件 輔助技耗MP-50%；5件 敵人受非自動攻擊魔法傷害再受一次同傷（不再觸發套裝效果）
+    p._setIllusion2 = _shN('幻覺') >= 2;
+    p._setIllusion3 = _shN('幻覺') >= 3;
+    p._setIllusion5 = _shN('幻覺') >= 5;
+    // 🐉 龍血：2件 造物理傷害吸血1%(自身HP<50%→5%)；3件 放HP消耗技得「龍裔」10秒受傷-15%；5件 HP消耗技傷害+20%
+    p._setDragonblood2 = _shN('龍血') >= 2;
+    p._setDragonblood3 = _shN('龍血') >= 3;
+    p._setDragonblood5 = _shN('龍血') >= 5;
+    // 😡 狂怒：2件 負重+500（負重段）、3件 最大HP+20%（HP段）皆於下方以 _shN('狂怒') 套用；5件 血量每少10%造傷+4%/受傷-4%(最多±20%)
+    p._setFury5 = _shN('狂怒') >= 5;
 
     // 🎴 卡片收集：各地區「完成」加成（HP/MP/抗性/負重等；只取該區最高已達階；weight 累積到 d._cardWeightBonus 供下方負重段）
     if (typeof cardCollectionBonus === 'function') cardCollectionBonus(p, d);
@@ -459,6 +475,7 @@ d.mr += (baseMr + bonusMr);
     if(p.buffs.sk_soul_up > 0) { p.mhp = Math.floor(p.mhp * 1.2); p.mmp = Math.floor(p.mmp * 1.2); }
     if (player.skills.includes('sk_warrior_armorbody')) d.dr += Math.floor((10 - d.ac) / (hasMastery('k_tough') ? 5 : 10));   // ⚔️ 護甲身軀：傷害減免 +[(10-AC)/10]；🏅 堅韌精通改 /5
     if (p.buffs.sk_warrior_endurance > 0) p.mhp = Math.floor(p.mhp * (1 + (p.lv / 2) / 100));   // ⚔️ 體能強化：HP上限 +(等級/2)%
+    if (_shN('狂怒') >= 3) p.mhp = Math.floor(p.mhp * 1.2);   // 😡 狂怒 3/5：最大HP +20%（於各 flat HP 加成後套用）
     if(p.mastery === 'i_mana') p.mmp = Math.floor(p.mmp * 2);   // 🔮 魔力精通：MP 上限加倍（耗魔亦加倍，見 getMpCost）
     // 盟主的祝福（8 小時，存檔保留、死亡清空）：依到期時間判斷是否生效
     if(p.blessings) {
@@ -495,6 +512,7 @@ d.mr += (baseMr + bonusMr);
         if (p.buffs && p.buffs.sk_load_up > 0) _cap += 50;   // 負重強化增益：負重上限 +50
         if (d._cardWeightBonus) _cap += d._cardWeightBonus;   // 🎴 卡片收集：風木/奇岩完成 → 負重上限加成
         if (d._equipWeightBonus) _cap += d._equipWeightBonus;   // 🗡️ 裝備收集冊：單手/雙手鈍器/臂甲/腰帶部位全收集 → 負重上限加成
+        if (_shN('狂怒') >= 2) _cap += 500;   // 😡 狂怒 2/5：負重上限 +500
         let _limit = _wbase + _cap;
         let _pct = _limit > 0 ? Math.floor(_cur / _limit * 100) : 999;
         let _tier = _pct <= 49 ? 0 : (_pct <= 81 ? 1 : (_pct <= 99 ? 2 : 3));

@@ -255,10 +255,10 @@ function renderShopItems() {
 
 function migrateSaves(){
     // 舊單一存檔 → 第1格（既有玩家預設落在存檔1）
-    let oldS = localStorage.getItem('lineage_idle_save');
-    if(oldS && !localStorage.getItem('lineage_idle_save_1')) localStorage.setItem('lineage_idle_save_1', oldS);
+    let oldS = _lsGet('lineage_idle_save');
+    if(oldS && !_lsGet('lineage_idle_save_1')) _lsSet('lineage_idle_save_1', oldS);
 }
-function anySaveExists(){ return ['1','2','3','4','5','6','7','8'].some(n => localStorage.getItem('lineage_idle_save_' + n)); }
+function anySaveExists(){ return ['1','2','3','4','5','6','7','8'].some(n => _lsGet('lineage_idle_save_' + n)); }
 function _summaryFromRaw(s){
     if(!s) return null;
     s = _saveUnwrap(s).payload;   // 🛡️ 先解存檔簽章（摘要顯示不驗章、僅取 payload；舊明文檔原樣回傳）
@@ -387,8 +387,8 @@ function importSave(n){
             let whData = d.wh;
             let saveText = text;
             if(whData !== undefined){ let _c = {}; for(let k in d){ if(k !== 'wh') _c[k] = d[k]; } saveText = JSON.stringify(_c); }
-            let cur = localStorage.getItem('lineage_idle_save_' + n);
-            if(cur) localStorage.setItem('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
+            let cur = _lsGet('lineage_idle_save_' + n);
+            if(cur) _lsSet('lineage_idle_save_' + n + '_bak', cur);   // 匯入前自動備份原存檔
             _lzSet('lineage_idle_save_' + n, _saveWrap(saveText));   // 💾 匯入 → 以本機簽章重新封裝後壓縮存入（之後讀檔即可驗章）
             // 🔧 詢問是否一併還原共用倉庫（會覆蓋現有倉庫，四個存檔位共用）
             let whMsg = '';
@@ -412,11 +412,11 @@ function importSave(n){
 }
 // 復原匯入前自動建立的備份：把備份寫回該存檔位（取代目前內容）。
 function restoreBackup(n){
-    let bak = localStorage.getItem('lineage_idle_save_' + n + '_bak');
+    let bak = _lsGet('lineage_idle_save_' + n + '_bak');
     if(!bak){ alert('沒有可復原的備份。'); return; }
     let b = slotBackupSummary(n);
     if(!confirm(`確定要將存檔 ${n} 復原為匯入前的備份${b ? `（${b.cls} Lv.${b.lv}　${b.name}）` : ''}嗎？\n目前存檔 ${n} 的內容將被取代。`)) return;
-    localStorage.setItem('lineage_idle_save_' + n, bak);
+    _lsSet('lineage_idle_save_' + n, bak);
     openSlotSelect(_slotMode);   // 刷新清單
     alert(`存檔 ${n} 已復原為匯入前的備份。`);
 }

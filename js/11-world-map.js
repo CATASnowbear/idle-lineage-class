@@ -390,6 +390,67 @@ function setMapSelectors(mapKey) {
     updatePrideFloorIndicator();
 }
 function syncMapSelectors() { setMapSelectors(mapState.current); }
+// ===== 🖥️ 打包版自訂下拉選單（僅 pkg-build）=====
+//   Electron 原生 <select> 彈出選單間距太擠且 padding/行高不可調。改法：保留原生 <select> 承載 value/狀態/onchange
+//   與「關閉時顯示的選中值」(自動同步·零成本)，只攔截 mousedown 阻止原生彈出、改顯示自訂彈出層(.cdd-pop)。
+//   作用於打包版「所有」單選 <select>（地圖／藥水／自動技能…全部一致）；網頁版(無 pkg-build)維持原生。
+var _cddSel = null;
+function _cddClose() {
+    var p = document.getElementById('cdd-pop'); if (p) p.remove();
+    _cddSel = null;
+    document.removeEventListener('click', _cddOutside, true);
+    document.removeEventListener('keydown', _cddKey, true);
+    document.removeEventListener('scroll', _cddClose, true);
+}
+function _cddOutside(e) {
+    var p = document.getElementById('cdd-pop'); if (!p) return;
+    if (p.contains(e.target)) return;                                       // 點在彈出層內 → 由選項自己處理，不關
+    if (_cddSel && (e.target === _cddSel || _cddSel.contains(e.target))) return;   // 🔧 點在觸發的 <select> 上 → 忽略（否則「開啟手勢」的 click 會立刻把剛開的選單關掉）；再次開合由 mousedown 委派的 toggle 處理
+    _cddClose();
+}
+function _cddKey(e) { if (e.key === 'Escape') _cddClose(); }
+function openCustomSelectPopup(sel) {
+    if (_cddSel === sel) { _cddClose(); return; }   // 再點同一個 → 收合
+    _cddClose();
+    if (!sel.options || !sel.options.length) return;
+    _cddSel = sel;
+    var r = sel.getBoundingClientRect();
+    var pop = document.createElement('div');
+    pop.id = 'cdd-pop'; pop.className = 'cdd-pop';
+    pop.style.left = r.left + 'px'; pop.style.top = (r.bottom + 2) + 'px'; pop.style.minWidth = r.width + 'px';
+    Array.prototype.forEach.call(sel.options, function (o, idx) {
+        var row = document.createElement('div');
+        row.className = 'cdd-opt' + (o.disabled ? ' cdd-disabled' : '') + (idx === sel.selectedIndex ? ' cdd-sel' : '');
+        row.textContent = o.textContent;
+        if (o.style && o.style.color) row.style.color = o.style.color;
+        if (!o.disabled) row.addEventListener('click', function () {
+            if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+            _cddClose();
+        });
+        pop.appendChild(row);
+    });
+    document.body.appendChild(pop);
+    // 視窗邊界夾擠：下方空間不足 → 往上開；右側超出 → 靠右
+    var pr = pop.getBoundingClientRect();
+    if (pr.bottom > window.innerHeight - 4) pop.style.top = Math.max(4, r.top - pr.height - 2) + 'px';
+    if (pr.right > window.innerWidth - 4) pop.style.left = Math.max(4, window.innerWidth - pr.width - 4) + 'px';
+    setTimeout(function () {
+        document.addEventListener('click', _cddOutside, true);
+        document.addEventListener('keydown', _cddKey, true);
+        document.addEventListener('scroll', _cddClose, true);
+    }, 0);
+}
+document.addEventListener('mousedown', function (e) {
+    if (e.button !== 0) return;
+    if (!document.documentElement.classList.contains('pkg-build')) return;   // 僅打包版啟用，網頁版維持原生選單
+    var s = e.target;
+    if (s && s.tagName === 'SELECT' && !s.multiple && !s.disabled) {   // 🔧 整個打包版所有單選下拉一致（地圖／藥水／自動技能…）
+        e.preventDefault();   // 阻止原生彈出選單
+        openCustomSelectPopup(s);
+    }
+}, true);
+window.addEventListener('resize', _cddClose);
+window.addEventListener('blur', _cddClose);
 // 🗼 攀登/排名模式：右上角原本空白的地圖選單改顯示「傲慢之塔 X 樓」（與系統日誌的樓層資訊同色 text-rose-200）
 function updatePrideFloorIndicator() {
     let ind = document.getElementById('pride-floor-indicator');

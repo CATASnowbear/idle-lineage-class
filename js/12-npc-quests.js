@@ -5,7 +5,7 @@ const WH_KEY = 'lineage_idle_warehouse';
 //   經典+傳統→'_trad'(沿用舊鍵·向後相容既有經典傳統角色)、一般+傳統→'_tradonly'、經典→'_classic'、一般→''。
 function modeSuffix(c, t){ return (c && t) ? '_trad' : t ? '_tradonly' : c ? '_classic' : ''; }
 function whKey(p){ let _p = (p !== undefined) ? p : player; return WH_KEY + modeSuffix(!!(_p && _p.classicMode), !!(_p && _p.traditionalMode)); }   // 🏛️🎮 依模式組合取對應倉庫桶
-const WH_MAX = 500;   // 倉庫格數上限（🔧 100 → 200 → 500）
+const WH_MAX = 5000;   // 倉庫格數上限（🔧 100 → 200 → 500 → 5000）
 const WH_NO_STORE = ['item_dk_insignia','new_item_239','new_item_241','new_item_collar_husky','new_item_238','new_item_184','new_item_185','new_collar_rabbit','new_collar_fox','new_collar_beagle','new_collar_stbernard','item_mastery_proof',
     'item_pride_pass_11','item_pride_pass_21','item_pride_pass_31','item_pride_pass_41','item_pride_pass_51','item_pride_pass_61','item_pride_pass_71','item_pride_pass_81','item_pride_pass_91',
     'item_dantes_letter','item_elf_whisper','item_ancient_book','item_sealed_intel','item_spy_report','item_chaos_key','item_royal_order','wpn_shaha_arrow','item_dragon_egg','item_card_book','item_equip_book'];   // 禁止存入倉庫：潘朵拉抽獎卷、王族搜索狀、四種項圈、精通之證、傲慢之塔傳送符(11~91F)、🔥50級試煉任務道具、🎴卡片收集冊
@@ -21,7 +21,47 @@ function whCategory(id){
     if(d.type === 'arm' || d.type === 'acc') return 'armor';    // 防具（含飾品）
     return 'item';                                              // 其餘皆道具
 }
-function whSetFilter(v){ _whFilter = v; renderWarehouseNPC(document.getElementById('interaction-content')); }
+function whSetFilter(v){ _whFilter = v; _whSubFilter = ''; renderWarehouseNPC(document.getElementById('interaction-content')); }   // 切主分類→重置子分類為「全部」
+// 🗄️ 倉庫「子分類」：武器/防具沿用裝備收集冊的圖鑑類型(equipCatKey/EQUIP_CATEGORIES)細分；道具分 卡片/技能/製作/任務/卷軸/其他。空字串 ''＝全部。
+let _whSubFilter = '';
+function whSetSubFilter(v){ _whSubFilter = v || ''; renderWarehouseNPC(document.getElementById('interaction-content')); }
+// 製作材料 id 集合（掃所有配方的 req/mats·排除金幣）：用來把倉庫道具歸入「製作」子分類。延後到首次呼叫才建（確保 js/14 配方已載入）。
+let _whCraftMatIds = null;
+function _whBuildCraftMatIds(){
+    _whCraftMatIds = {};
+    let _scan = coll => { if(!coll) return; let groups = Array.isArray(coll) ? [coll] : Object.values(coll);
+        for(let g of groups){ if(!Array.isArray(g)) continue; for(let r of g){ let ings = (r && (r.req || r.mats)) || []; for(let m of ings){ if(m && m.id && m.id !== 'gold') _whCraftMatIds[m.id] = true; } } } };
+    try { _scan(typeof CRAFT_RECIPES !== 'undefined' && CRAFT_RECIPES); } catch(e){}
+    try { _scan(typeof DEMONKING_RECIPES !== 'undefined' && DEMONKING_RECIPES); } catch(e){}
+    try { _scan(typeof LUMIEL_RECIPES !== 'undefined' && LUMIEL_RECIPES); } catch(e){}
+}
+// 道具子分類判定：卡片(eff:'card')／技能書(skillbk)／卷軸(scroll)／任務(type:'quest' 或 quest_ 前綴)／製作(配方原料∪mat_前綴∪type:'etc' 材料)／其他(藥水/misc 消耗品等)
+function whItemSubCat(id){
+    let d = DB.items[id]; if(!d) return 'other';
+    if(d.eff === 'card') return 'card';
+    if(d.type === 'skillbk') return 'skill';
+    if(d.type === 'scroll') return 'scroll';
+    if(d.type === 'quest' || /^quest_/.test(id)) return 'quest';
+    if(!_whCraftMatIds) _whBuildCraftMatIds();
+    if(_whCraftMatIds[id] || /^mat_/.test(id) || d.type === 'etc') return 'craft';   // type:'etc' 幾乎全為製作材料(聖地遺物/黑血痕/黑魔法粉等)
+    return 'other';
+}
+// 子分類下拉選項（依主分類動態給）：武器/防具用圖鑑類型；道具用自訂六類
+function whSubCatOptions(){
+    if(_whFilter === 'item') return [
+        { key:'card', name:'卡片' }, { key:'skill', name:'技能' }, { key:'craft', name:'製作' },
+        { key:'quest', name:'任務' }, { key:'scroll', name:'卷軸' }, { key:'other', name:'其他' }
+    ];
+    let grp = (_whFilter === 'weapon') ? ['武器'] : ['防具','飾品'];   // 防具主分類涵蓋圖鑑的「防具」+「飾品」部位
+    return (typeof EQUIP_CATEGORIES !== 'undefined' ? EQUIP_CATEGORIES : []).filter(c => grp.indexOf(c.group) >= 0).map(c => ({ key:c.key, name:c.name }));
+}
+// 倉庫物品是否符合「主分類＋子分類」：子分類空＝只看主分類
+function whMatchFilter(id){
+    if(whCategory(id) !== _whFilter) return false;
+    if(!_whSubFilter) return true;
+    if(_whFilter === 'item') return whItemSubCat(id) === _whSubFilter;
+    return (typeof equipCatKey === 'function') ? (equipCatKey(id, DB.items[id]) === _whSubFilter) : true;
+}
 // 🛡️ 倉庫資料安全網（防「不匯出匯入也會清空」）：
 //   _whLoadOk＝最近一次 loadWarehouse 是否成功解碼（桶存在卻解不開＝false → saveWarehouse 拒絕用空覆蓋，先把原始位元組備份）。
 //   _whLoadUids＝最近一次載入到的 uid 集合（多分頁加寫合併：寫入前比對，保留其他分頁在本快照之後新存入、而本次沒有的堆疊；本快照原有的 uid 不併→不會復活本次刻意取出的物品）。
@@ -236,8 +276,8 @@ function renderWarehouseNPC(div){
     _activePanel = null;   // 倉庫不需自動刷新
     let w = loadWarehouse();
     let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;
-    let _invItems = player.inv.filter(it => whCategory(it.id) === _whFilter);
-    let _whItems  = w.items.filter(it => whCategory(it.id) === _whFilter);
+    let _invItems = player.inv.filter(it => whMatchFilter(it.id));
+    let _whItems  = w.items.filter(it => whMatchFilter(it.id));
     let invHtml = _invItems.length ? _invItems.map(it => (WH_NO_STORE.includes(it.id) || it.lock)
         ? `<div data-tip-uid="${it.uid}" data-tip-src="inv" class="tip-host w-full text-left py-1.5 px-2 text-sm bg-slate-900/60 border border-slate-700 rounded opacity-50 cursor-not-allowed">${getItemFullName(it)} <span class="text-xs text-red-400">（${(it.lock && !WH_NO_STORE.includes(it.id)) ? '鎖定，需解鎖' : '不可存'}）</span></div>`
         : mkBtn(it, 'whDeposit')).join('') : '<div class="text-slate-500 text-sm text-center py-4">此分類背包沒有物品</div>';
@@ -253,12 +293,16 @@ function renderWarehouseNPC(div){
             <button onclick="whGold('in')" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;">存入 ▶</button>
             <button onclick="whGold('out')" class="btn px-4 text-sm font-bold h-8 inline-flex items-center justify-center" style="background: linear-gradient(135deg, #6b2a10 0%, #b3490e 28%, #5a230e 52%, #9a3e0c 76%, #4a1d0c 100%); color: #fed7aa; border-color: #c2410c;">◀ 取出</button>
         </div>
-        <div class="flex items-center gap-2 text-sm">
+        <div class="flex items-center gap-2 text-sm flex-wrap">
             <span class="text-slate-300 font-bold">物品分類：</span>
             <select onchange="whSetFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm">
                 <option value="weapon" ${_whFilter==='weapon'?'selected':''}>武器</option>
                 <option value="armor" ${_whFilter==='armor'?'selected':''}>防具</option>
                 <option value="item" ${_whFilter==='item'?'selected':''}>道具</option>
+            </select>
+            <select onchange="whSetSubFilter(this.value)" class="bg-slate-900 border border-slate-600 text-white rounded py-1 px-2 text-sm" title="細分類：武器/防具依圖鑑類型，道具分卡片/技能/製作/任務/卷軸/其他">
+                <option value="">全部</option>
+                ${whSubCatOptions().map(o => `<option value="${o.key}" ${_whSubFilter===o.key?'selected':''}>${o.name}</option>`).join('')}
             </select>
             <span class="text-slate-500 text-xs">（存入／取出共用此分類）</span>
             <span class="text-slate-300 font-bold ms-2">數量：</span>

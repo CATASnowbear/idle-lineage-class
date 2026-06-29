@@ -28,8 +28,8 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="css/style.css?v=5b51ed0ede">
+    <link rel="stylesheet" href="css/style.css?v=d79d0a4b43">
+    <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
 <body class="h-screen w-screen flex items-center justify-center p-4">
 
@@ -157,6 +157,16 @@
             <div id="automation-panel" class="panel flex-1 overflow-hidden flex flex-col">
                 <div class="panel-header text-center">自動化設定</div>
                 <div class="p-4 text-base flex flex-col gap-4 overflow-y-auto">
+                    <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
+                        <div class="flex items-center justify-between gap-3">
+                            <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-sfx-on" class="w-4 h-4" onchange="try{setSfxOn(this.checked)}catch(e){}"><span class="text-sm text-amber-200 font-bold">🔊 戰鬥音效</span></label>
+                            <input type="range" id="set-sfx-vol" min="0" max="100" value="50" step="5" class="flex-1 max-w-[150px]" oninput="try{setSfxVol(this.value)}catch(e){}" title="音效音量">
+                        </div>
+                        <div class="flex items-center justify-between gap-3 border-t border-slate-700 pt-2">
+                            <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-bgm-on" class="w-4 h-4" onchange="try{setBgmOn(this.checked)}catch(e){}"><span class="text-sm text-sky-200 font-bold">🎵 背景音樂</span></label>
+                            <input type="range" id="set-bgm-vol" min="0" max="100" value="35" step="5" class="flex-1 max-w-[150px]" oninput="try{setBgmVol(this.value)}catch(e){}" title="音樂音量">
+                        </div>
+                    </div>
                     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700">
                         <div class="flex flex-col gap-2">
                             <div class="flex justify-between items-center">
@@ -388,23 +398,24 @@
         </div>
     </div>
 
-<script src="js/00-data.js?v=f30d793868"></script>
-<script src="js/01-drops-config.js?v=e9e16573c5"></script>
-<script src="js/02-stats-recompute.js?v=540567bd79"></script>
-<script src="js/03-combat-core.js?v=c65fa29292"></script>
-<script src="js/04-combat-attack.js?v=c057a1e51e"></script>
-<script src="js/05-kill-progression.js?v=3313e145f7"></script>
-<script src="js/06-status-allies.js?v=304bb13e03"></script>
-<script src="js/07-skills-cast.js?v=1e6e750cf4"></script>
-<script src="js/08-items-equip.js?v=201d3a4a9a"></script>
-<script src="js/09-vfx-render.js?v=0c33516c4e"></script>
-<script src="js/10-ui-tabs.js?v=8dfd46724f"></script>
-<script src="js/11-world-map.js?v=836d232088"></script>
-<script src="js/12-npc-quests.js?v=3cf65fed71"></script>
-<script src="js/13-shop-save.js?v=35bfd20023"></script>
+<script src="js/00-data.js?v=19fc010204"></script>
+<script src="js/01-drops-config.js?v=9735aaa849"></script>
+<script src="js/02-stats-recompute.js?v=564f8d5a57"></script>
+<script src="js/03-combat-core.js?v=0afb9f3e11"></script>
+<script src="js/04-combat-attack.js?v=7f9644e826"></script>
+<script src="js/05-kill-progression.js?v=50ba2fc15a"></script>
+<script src="js/06-status-allies.js?v=7adf27183e"></script>
+<script src="js/07-skills-cast.js?v=7ec4861e8f"></script>
+<script src="js/08-items-equip.js?v=d095d80410"></script>
+<script src="js/09-vfx-render.js?v=7e60e8d6e6"></script>
+<script src="js/10-ui-tabs.js?v=61bfa76fc4"></script>
+<script src="js/11-world-map.js?v=ba4b54eb26"></script>
+<script src="js/12-npc-quests.js?v=ce3ce519b8"></script>
+<script src="js/13-shop-save.js?v=922242fb37"></script>
 <script src="js/14-craft-pandora.js?v=259e9f7a9b"></script>
-<script src="js/15-cards.js?v=3e1cb5c9bd"></script>
-<script src="js/16-equip-book.js?v=c8709ddc9b"></script>
+<script src="js/15-cards.js?v=b86c2cb923"></script>
+<script src="js/16-equip-book.js?v=9924f3ff6d"></script>
+<script src="js/17-audio.js?v=458112877a"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260628a"></script>
 <!-- 手機版介面外掛(可獨立維護;原作者更新後重新加回此行即可) -->

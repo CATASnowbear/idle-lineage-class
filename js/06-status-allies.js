@@ -31,7 +31,8 @@ function applyMobStatus(m, st, skillName) {
     if(!m.st) m.st = newMobStatus();
     if(BOSS_IMMUNE.includes(st.kind) && m.boss) return;
     // 異常狀態魔法命中（玩家對怪物）：見 abnormalMagicHit；st.hitOff＝命中加值（🏛️ 真．冥皇執行劍 衝擊之暈 +4≈命中率+20%）
-    if(!abnormalMagicHit(m, undefined, st.hitOff)) {
+    // ⚡ st.force：跳過魔抗命中判定，由呼叫端自行擲固定機率（雷神之鎚電光衝擊／伊娃的責罵水之矛的 5% 固定附加）；BOSS 免疫仍上方先擋
+    if(!st.force && !abnormalMagicHit(m, undefined, st.hitOff)) {
         logCombat(`<span class="${getMobColor(m.lv)}">${m.n}</span> 抵抗了${skillName || '異常狀態'}。`, 'miss');
         return;
     }
@@ -398,7 +399,7 @@ function allyComboAttack(ally, t, fullDmg) {
     if (!t || t.curHp <= 0 || t._dead) return;
     let r = allyStrikeRoll(ally, t, {});   // 獨立命中判定
     if (!r.hit) { logCombat(`<span class="font-bold" style="color:#c4b5fd;">【協力·${ally._allyName}·雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
-    let dmg = Math.max(1, Math.floor(r.dmg * (fullDmg ? (ally._setShadow5 ? 1.5 : 1.0) : (ally._setShadow5 ? 1.0 : 0.5))));   // 🔧 雙擊(fullDmg)：完整一般攻擊·暗影5/5再×1.5；爆擊精通(legacy)×0.5
+    let dmg = Math.max(1, Math.floor(r.dmg * (fullDmg ? (ally._setShadow5 ? 2.0 : 1.0) : (ally._setShadow5 ? 1.0 : 0.5))));   // 🔧 雙擊(fullDmg)：完整一般攻擊·暗影5/5傷害加倍(×2)；爆擊精通(legacy)×0.5
     if (t.curHp > 0) wearHardSkin(t, ally.eq && ally.eq.wpn ? ally.eq.wpn.id : null, r.heavy, false, true, ally.classicMode);
     logCombat(`<span class="font-bold" style="color:#c4b5fd;text-shadow:0 0 6px #8b5cf6;">【協力·${ally._allyName}·雙擊】</span>追擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害。`, 'player');
     _allyDamageMob(ally, t, dmg, getWpnEle(ally.eq.wpn, DB.items[ally.eq.wpn.id]));
@@ -704,7 +705,7 @@ function allyProcLightArrow(ally, t) {
     logCombat(`<span class="text-cyan-300 font-bold">【協力·${ally._allyName}·共鳴】</span>光箭對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。${isCrit?' (爆擊!)':''}`, 'magic');
     _allyDamageMob(ally, t, dmg, 'magic');
     // 🔮 魔女 5/5（傭兵）：每 5 次共鳴 → 免費施放冰矛圍籬
-    if (ally._setWitch5) { ally._witchResCnt = (ally._witchResCnt || 0) + 1; if (ally._witchResCnt >= 5) { ally._witchResCnt = 0; allyWitchIceLance(ally); } }
+    if (ally._setWitch5) { ally._witchResCnt = (ally._witchResCnt || 0) + 1; if (ally._witchResCnt >= 5) { ally._witchResCnt = 0; if (typeof allyStormTick === 'function' && DB.skills['sk_blizzard_storm']) allyStormTick(ally, DB.skills['sk_blizzard_storm'], true); } }   // 🔮 魔女5/5(傭兵)：每5共鳴→免費冰雪暴(不吃法師階級加成)
 }
 // 🔮 魔女 5/5（傭兵）：免費冰矛圍籬（公式同 witchIceLance，但用傭兵 d / 旗標）
 function allyWitchIceLance(ally) {
@@ -745,7 +746,7 @@ function allyProcMoonburst(ally, t) {
 function _allyProcWeaponSpellHit(ally, t, sp, en) {
     if (!t || t.curHp <= 0) return;
     let d = ally.d || {};
-    let base = roll(sp.dice[0], sp.dice[1]);   // 🔧 基礎傷害（強化改吃 +11 最終倍率·見下方，原 ×(1+強化/20) 移除）
+    let base = roll(sp.dice[0], sp.dice[1]) + (sp.flat || 0);   // 🔧 基礎傷害（含 sp.flat 固定加值·與玩家版一致；強化改吃 +11 最終倍率·原 ×(1+強化/20) 移除）
     let core = base * (1 + 3 * (d.magicDmg || 0) / 16);
     let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
     let mrFactor = mrMult(effMr);
@@ -761,8 +762,10 @@ function _allyProcWeaponSpellHit(ally, t, sp, en) {
              : (sp.ele === 'earth') ? '#fcd34d;text-shadow:0 0 6px #b45309'
              : '#d8b4fe;text-shadow:0 0 6px #a855f7';
     let counterTxt = fixed ? ' <span class="text-emerald-300 font-bold">(剋屬性!)</span>' : '';
-    logCombat(`<span class="font-bold" style="color:${glow};">【協力·${ally._allyName}·${sp.skn}】</span>劍中之力爆發，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dd} 點${ELE_CN[sp.ele] || ''}屬性魔法傷害！${counterTxt}`, 'player-special');
+    logCombat(`<span class="font-bold" style="color:${glow};">【協力·${ally._allyName}·${sp.skn}】</span>武器之力爆發，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dd} 點${ELE_CN[sp.ele] || ''}屬性魔法傷害！${counterTxt}`, 'player-special');
     _allyDamageMob(ally, t, dd, (sp.ele && sp.ele !== 'none') ? sp.ele : 'magic');
+    // ⚡ 固定機率附加異常狀態（與玩家版一致；force 繞過魔抗命中判定，BOSS 免疫仍生效）
+    if (t.curHp > 0 && sp.status && Math.random() * 100 < sp.status.pct) applyMobStatus(t, { kind: sp.status.kind, dur: sp.status.dur || 4, force: true }, sp.skn);
 }
 function allyProcWeaponSpell(ally, t, sp, en) {
     if (sp.aoe) {
@@ -1214,14 +1217,14 @@ function allyCubeTick(ally) {
 }
 // 🌨️🔥 傭兵 持續傷害型增益（冰雪颶風/火牢）：已學會即視為常駐展開（傭兵無手動開關），每 stormInterval ticks 對全體造成該屬性魔法傷害。
 //   公式鏡像玩家 stormBuffTick（js/04），改用傭兵自身 magicDmg/cls/magicCrit/武器最終倍率；冰凍命中換身用傭兵 lv/magicHit；擊殺仍歸玩家（killMob 不換身）。
-function allyStormTick(ally, sk) {
+function allyStormTick(ally, sk, noMageBonus) {
     if (!ally || ally.dead || !sk || !state.running) return;
     let targets = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
     if (!targets.length) return;
     let d = ally.d || {};
     let tier = sk.tier || 1;
     let spCoef = (1 + 3 * (d.magicDmg || 0) / 16) * (1 + tier / 3);
-    let mageDmgMult = (ally.cls === 'mage') ? (1.5 + tier / 20) : 1.0;
+    let mageDmgMult = (!noMageBonus && ally.cls === 'mage') ? (1.5 + tier / 20) : 1.0;   // 🔮 魔女5/5 免費冰雪暴：noMageBonus 不吃法師階級加成
     let dice = sk.dmgDice || [1, 10];
     let canFreeze = (sk.freezeHitOff !== undefined);
     let counterEle = STORM_ELE_COUNTER[sk.ele];

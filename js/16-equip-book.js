@@ -73,7 +73,8 @@ const EQUIP_CAT_BONUS = {
     ring:   { stat: 'mpR',     val: 1,  label: 'MP自然恢復量 +1' },
     belt:   { stat: 'weight',  val: 20, label: '負重 +20' },
     ear:    { stat: 'mpR',     val: 1,  label: 'MP自然恢復量 +1' },
-    pet:    { stat: 'petHit',  val: 1,  label: '項圈夥伴命中率 +1' }
+    pet:    { stat: 'petHit',  val: 1,  label: '項圈夥伴命中率 +1' },
+    doll:   { stat: 'allattr', val: 1,  label: '全屬性 +1' }   // 🪆 魔法娃娃全收集：六維各+1。實際套用在 js/02 Phase1(屬性須在換算衍生值前計入)；此處僅供收集冊顯示 label，equipCollectionBonus 對 allattr 做 no-op 避免 Phase3 重複套用
 };
 
 // ---- 將一件裝備分到部位 key（回傳 null＝不收錄，例如箭矢、非裝備）----
@@ -168,6 +169,7 @@ function equipCollectionBonus(p, d) {
             case 'ac':     d.ac  -= b.val; break;                 // AC 越低越好：AC-1 = d.ac -= 1
             case 'weight': d._equipWeightBonus += b.val; break;   // 延後到 js/02 負重段併入 _cap
             case 'petHit': p._equipPetHit += b.val; break;        // 由 petGearBonus 加到夥伴命中
+            case 'allattr': break;                                // 🪆 六維加成改在 js/02 Phase1 套用（屬性須在換算衍生值前計入）；此處 no-op 不重複套用
         }
     }
 }

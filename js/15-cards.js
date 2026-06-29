@@ -122,9 +122,9 @@ function ensureCardBook() {
 function rollCardDrops(mob) {
     if (!mob || mob.race === '血盟' || mob.race === '建築') return;
     if (!CARD_MOB_INFO[mob.n]) return;
-    _cardDropRoll(mob.n, 3, 0.000001);   // 金卡 0.0001%
-    _cardDropRoll(mob.n, 2, 0.00001);    // 銀卡 0.001%
-    _cardDropRoll(mob.n, 1, 0.0001);     // 普卡 0.01%
+    _cardDropRoll(mob.n, 3, 0.00001);    // 金卡 0.001%
+    _cardDropRoll(mob.n, 2, 0.0001);     // 銀卡 0.01%
+    _cardDropRoll(mob.n, 1, 0.001);      // 普卡 0.1%
 }
 function _cardDropRoll(name, tier, rate) {
     if (Math.random() >= rate) return;
