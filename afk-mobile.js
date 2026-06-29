@@ -285,8 +285,6 @@
 
     window.__afkm = { version: '1.0.0', apply: apply, setView: setView, setLog: setLog, openLog: openLog, closeLog: closeLog, toggleLog: toggleLog, isMobile: detectMobile };
 
-    wrapSlotSelect(mql);   // 手機:把存檔鈕單行文字重排成兩行(編號+職業 / 等級+暱稱)
-
     console.log('[AFK-mobile] hooks OK — 手機版面已啟用(目前:' + (detectMobile() ? '手機' : '桌機') + ')。');
 
     // --- 精簡一行式狀態列 --------------------------------------------------
@@ -567,52 +565,6 @@
     window.addEventListener('resize', set);
     window.addEventListener('orientationchange', function () { setTimeout(set, 250); });
     if (vv) vv.addEventListener('resize', set);
-  }
-
-  // --- 手機載入/創角畫面:把存檔鈕的單行文字重排成兩行 ---------------------------
-  //   原作 label 是一整串「存檔 N　職業 Lv.X　暱稱」塞進按鈕,手機 2/3 寬會折得參差。
-  //   包住 openSlotSelect:原函式渲染後,在手機用 slotSummary(n) 的原始資料把每個存檔鈕重排成
-  //   兩行(第一行 編號+職業、第二行 等級+暱稱)。用 textContent 寫入,暱稱不會被當 HTML(防 XSS)。
-  //   桌機(mql 不命中)維持原樣不動;原作改掉 openSlotSelect / slotSummary 即自動失效(優雅降級,不弄壞畫面)。
-  //   📍 掛機地點 / ⏱ 已掛機多久 的讀取邏輯抽到 afk-slotinfo.js(桌機/手機共用);本檔只負責手機版面排版。
-  function wrapSlotSelect(mql) {
-    if (typeof window.openSlotSelect !== 'function' || window.openSlotSelect.__afkmWrapped) return;
-    var orig = window.openSlotSelect;
-    function reformat() {
-      var list = document.getElementById('slot-list');
-      if (!list || typeof slotSummary !== 'function') return;
-      var rows = list.children;
-      for (var i = 0; i < rows.length; i++) {
-        var btn = rows[i].children[0];
-        if (!btn) continue;
-        var sum = slotSummary(i + 1);
-        if (!sum) continue;   // 空存檔位維持原本單行「存檔 N　（空）」
-        btn.textContent = '';
-        // 👤 補回作者新加的存檔大頭貼(原 textContent='' 會連 img 一起清掉);路徑規則同原作 assets/save/<avatar>.jpg
-        if (sum.avatar) {
-          var av = document.createElement('img'); av.className = 'm-slot-av'; av.alt = '';
-          av.src = 'assets/save/' + String(sum.avatar).replace('黑暗妖精', '黑妖').replace('幻術士', '幻術師') + '.jpg';
-          av.onerror = function () { this.style.display = 'none'; };   // 缺檔自動隱藏
-          btn.appendChild(av);
-        }
-        var l1 = document.createElement('span'); l1.className = 'm-slot-l1'; l1.textContent = '存檔 ' + (i + 1) + '　' + sum.cls;
-        var l2 = document.createElement('span'); l2.className = 'm-slot-l2'; l2.textContent = 'Lv.' + sum.lv + '　' + sum.name;
-        btn.appendChild(l1); btn.appendChild(l2);
-        // 📍 掛機地點 + ⏱ 已掛機多久:資料由 afk-slotinfo.js 提供(桌機/手機共用);沒載到就跳過(優雅降級)
-        var _info = (window.AFK_SLOTINFO && window.AFK_SLOTINFO.read) ? window.AFK_SLOTINFO.read(i + 1) : null;
-        if (_info && _info.mapName) {
-          var l3m = document.createElement('span'); l3m.className = 'm-slot-l3'; l3m.textContent = '📍 ' + _info.mapName;
-          btn.appendChild(l3m);
-        }
-        if (_info && _info.idleText) {
-          var l3 = document.createElement('span'); l3.className = 'm-slot-l3'; l3.textContent = _info.idleText;
-          btn.appendChild(l3);
-        }
-      }
-    }
-    var wrapped = function () { orig.apply(this, arguments); if (mql.matches) reformat(); };
-    wrapped.__afkmWrapped = true;
-    window.openSlotSelect = wrapped;
   }
 
   // --- 注入手機版 CSS(全部掛在 body.m-mobile 之下)--------------------------
@@ -900,11 +852,12 @@
          不寫死高度、名稱變長也會自己同步。 */
       'body.m-mobile #slot-list{display:grid !important;grid-template-columns:minmax(0,1fr) !important;grid-auto-rows:1fr !important;max-height:none !important;overflow:visible !important;}',   /* 拆掉內層捲動:原生 max-h-[85vh]+overflow-y-auto 會與外層 #creation-screen 形成雙 scrollbar,手機改讓整頁(外層)單一捲動 */
       'body.m-mobile #slot-list > div{flex-wrap:nowrap !important;align-items:stretch !important;}',
-      'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:3px !important;line-height:1.25 !important;}',   /* 載入存檔鈕:左 2/3,文字直向兩行 */
-      'body.m-mobile #slot-list .m-slot-av{width:40px;height:40px;border-radius:6px;object-fit:cover;object-position:top;border:1px solid rgba(148,163,184,.55);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 1px 2px rgba(0,0,0,.5);}',   /* 👤 存檔大頭貼:置中直欄最上方 */
-      'body.m-mobile #slot-list .m-slot-l1{font-size:1rem;}',   /* 第一行:存檔編號 + 職業 */
-      'body.m-mobile #slot-list .m-slot-l2{font-size:.9rem;font-weight:bold;color:#cbd5e1;}',   /* 第二行:等級 + 暱稱 */
-      'body.m-mobile #slot-list .m-slot-l3{font-size:.78rem;color:#94a3b8;}',   /* ⏱ 第三行:已掛機多久 */
+      /* 載入存檔鈕:左 2/3。沿用原作者渲染的內容(大頭貼 + 單行 label,含經典/傳統標籤與配色),手機只調版面:
+         解除桌機的 truncate 讓整串 label 換行、置中、大頭貼放大。額外的 📍/⏱ 由 afk-slotinfo.js 附加為 .afk-slot-extra。 */
+      'body.m-mobile #slot-list > div > button:first-child{flex:2 1 0 !important;min-width:0 !important;justify-content:center !important;flex-wrap:wrap !important;gap:2px 6px !important;line-height:1.3 !important;padding:.5rem .35rem !important;}',
+      'body.m-mobile #slot-list > div > button:first-child > span{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;text-align:center !important;font-size:.92rem !important;}',   /* 解除桌機 truncate,讓「存檔N 職業 Lv 暱稱(模式)」整串換行顯示 */
+      'body.m-mobile #slot-list > div > button:first-child > img{width:40px !important;height:40px !important;}',   /* 👤 大頭貼放大(用原作者 img,不再自建 .m-slot-av) */
+      'body.m-mobile #slot-list .afk-slot-extra{font-size:.78rem !important;}',   /* 📍 掛機地點 / ⏱ 已掛機多久:afk-slotinfo.js 附加,手機微調字級 */
       'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
       'body.m-mobile #slot-list > div > div > button{flex:1 1 0 !important;padding:.5rem .25rem !important;font-size:.8rem !important;}'   /* 匯入/復原:各佔右側一半高 */
     ].join('\n');

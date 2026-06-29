@@ -1,18 +1,15 @@
 /*
- * afk-slotinfo.js — 選角/載入畫面的「掛機資訊」提供者 + 桌機渲染
+ * afk-slotinfo.js — 選角/載入畫面的「額外掛機資訊」掛載外掛(桌機 + 手機共用)
  *
- * 為什麼獨立成一支:存檔鈕要顯示的「📍 目前掛在哪張地圖」「⏱ 已掛機多久」這組資訊,
- *   讀取邏輯(afk_map_<slot> / afk_ts_<slot> / 地圖中文名 / 掛機時間格式化)跟「手機或桌機」無關,
- *   桌機與手機兩種版面都要用。把它放在 afk-mobile.js 裡是錯的歸屬,故抽成這支共用資料源:
- *     - window.AFK_SLOTINFO.read(slot) → { mapName, idleText }(純資料、無 DOM)
- *     - afk-mobile.js 的手機重排呼叫 read() 取資料,自己排兩行版面
- *     - 本檔負責「桌機」版面:在原作者存檔鈕下「附加」這兩行,不改動原本單行 label / 大頭貼
+ * 職責:在原作者 openSlotSelect 渲染的存檔鈕「下方附加」📍 目前掛在哪張地圖、⏱ 已掛機多久 兩行。
+ *   只「附加」、絕不清空 → 原作者的單行 label(含經典/傳統標籤與配色)、大頭貼都原封不動,
+ *   桌機與手機共用同一份附加邏輯(手機差異純由 afk-mobile.js 的 CSS 處理,不另外重建內容)。
+ *   對外仍暴露 window.AFK_SLOTINFO.read(slot) → { mapName, idleText }(純資料、無 DOM)供他人取用。
  *
  * 資料來源:afk-offline.js 寫的即時地圖記錄 afk_map_<slot>(較準)、最後活躍心跳 afk_ts_<slot>;
  *   讀不到 afk_map_ 就退回存檔 blob 的 ms.current。地圖中文名與離線上限呼叫 afk-offline 暴露的 window.__afk。
  *
- * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。桌機附加只在「非 m-mobile」時做,
- *   手機由 afk-mobile 自行渲染(兩者用 body.m-mobile 互斥,即使都 wrap 了 openSlotSelect 也不衝突)。
+ * 優雅降級:openSlotSelect / __afk 不存在就安靜停用,不弄壞畫面。
  */
 (function () {
   // 把離線毫秒數格式化成「X 天 Y 小時 / X 小時 Y 分 / X 分鐘 / 剛剛」
@@ -30,11 +27,17 @@
 
   // 唯一資料源:給一個存檔位編號,回「掛機地圖中文名」與「已掛機多久」文字(沒有就回空字串)
   function read(slot) {
+    // 存檔解析一次:優先用原作的 _lzGet(解壓 LZ1) + _saveUnwrap(去簽章),才讀得到壓縮存檔的 ms/p。
+    var save = null;
+    try {
+      var _raw = (typeof _lzGet === 'function') ? _lzGet('lineage_idle_save_' + slot) : localStorage.getItem('lineage_idle_save_' + slot);
+      if (_raw && typeof _saveUnwrap === 'function') _raw = _saveUnwrap(_raw).payload;
+      if (_raw) save = JSON.parse(_raw);
+    } catch (e) {}
+
     var mapId = '';
     try { mapId = localStorage.getItem('afk_map_' + slot) || ''; } catch (e) {}
-    if (!mapId) {
-      try { var rs = JSON.parse(localStorage.getItem('lineage_idle_save_' + slot)); mapId = (rs && rs.ms && rs.ms.current) || ''; } catch (e) {}
-    }
+    if (!mapId && save && save.ms) mapId = save.ms.current || '';
     var mapName = '';
     if (mapId) mapName = (window.__afk && typeof window.__afk.mapName === 'function') ? window.__afk.mapName(mapId) : mapId;
 
@@ -46,16 +49,20 @@
       idleText = '⏱ 已掛機 ' + fmtIdle(idleMs);
       if (idleMs >= capH * 3600000) idleText += '（收益上限 ' + capH + ' 小時）';   // 顯示真實時間,超過上限時提醒收益封頂
     }
-    return { mapName: mapName, idleText: idleText };
+
+    // 🔮 席琳世界狀態:存於 player.sherineWorld / player.sherineMad(兩者互斥),回 '' / 'world' / 'mad'
+    var p = save && save.p;
+    var sherine = p ? (p.sherineMad ? 'mad' : (p.sherineWorld ? 'world' : '')) : '';
+
+    return { mapName: mapName, idleText: idleText, sherine: sherine };
   }
 
   window.AFK_SLOTINFO = { version: '1.0.0', read: read };
 
-  // --- 桌機版面:在原作者的存檔鈕下「附加」📍/⏱ 兩行 -----------------------------
-  //   桌機鈕本體是 flex 橫排(大頭貼 + 單行 label),改成 flex-wrap 後把一個滿寬的資訊區塊擠到次行。
-  //   只附加、不清空 → 原作者的單行 label、大頭貼、經典模式樣式都原封不動。手機(m-mobile)不在此處理。
-  function appendDesktopInfo() {
-    if (document.body.classList.contains('m-mobile')) return;   // 手機由 afk-mobile 自行重排
+  // --- 在原作者的存檔鈕下「附加」📍/⏱ 兩行(桌機 + 手機共用)-----------------------
+  //   鈕本體是 flex 橫排(大頭貼 + 單行 label),設 flex-wrap 後把一個滿寬的資訊區塊擠到次行。
+  //   只附加、不清空 → 原作者的單行 label、大頭貼、經典/傳統模式樣式都原封不動。手機差異交給 afk-mobile 的 CSS。
+  function appendSlotInfo() {
     var list = document.getElementById('slot-list');
     if (!list) return;
     var rows = list.children;
@@ -63,11 +70,18 @@
       var btn = rows[i].children[0];
       if (!btn || btn.querySelector('.afk-slot-extra')) continue;   // openSlotSelect 每次重建清單,理論上不會殘留;仍防呆去重
       var info = read(i + 1);
-      if (!info.mapName && !info.idleText) continue;
+      if (!info.mapName && !info.idleText && !info.sherine) continue;
       btn.style.flexWrap = 'wrap';
       var box = document.createElement('span');
       box.className = 'afk-slot-extra';
       box.style.cssText = 'flex-basis:100%;width:100%;display:flex;flex-direction:column;gap:1px;margin-top:3px;font-size:.8rem;font-weight:400;color:#94a3b8;line-height:1.3;';
+      // 🔮 席琳世界狀態:一般＝綠(同遊戲 c-sherine)、瘋狂＝猩紅(同瘋狂主題);用正式名稱
+      if (info.sherine) {
+        var s = document.createElement('span');
+        s.textContent = info.sherine === 'mad' ? '🔥 瘋狂的席琳世界' : '🔮 席琳的世界';
+        s.style.cssText = 'font-weight:700;color:' + (info.sherine === 'mad' ? '#fb7185' : '#4ade80') + ';';
+        box.appendChild(s);
+      }
       if (info.mapName) { var a = document.createElement('span'); a.textContent = '📍 ' + info.mapName; box.appendChild(a); }
       if (info.idleText) { var b = document.createElement('span'); b.textContent = info.idleText; box.appendChild(b); }
       btn.appendChild(box);
@@ -77,14 +91,14 @@
   function wrapSlotSelect() {
     if (typeof window.openSlotSelect !== 'function' || window.openSlotSelect.__afkSlotInfo) return false;
     var orig = window.openSlotSelect;
-    var wrapped = function () { orig.apply(this, arguments); try { appendDesktopInfo(); } catch (e) {} };
+    var wrapped = function () { orig.apply(this, arguments); try { appendSlotInfo(); } catch (e) {} };
     wrapped.__afkSlotInfo = true;
     window.openSlotSelect = wrapped;
     return true;
   }
 
   if (wrapSlotSelect()) {
-    console.log('[AFK-slotinfo] hooks OK — 選角畫面掛機地點/已掛機時間(桌機附加、手機共用資料源 AFK_SLOTINFO.read)。');
+    console.log('[AFK-slotinfo] hooks OK — 選角畫面附加掛機地點/已掛機時間(桌機 + 手機共用)。');
   } else {
     console.warn('[AFK-slotinfo] 找不到 openSlotSelect,選角畫面掛機資訊停用。');
   }
