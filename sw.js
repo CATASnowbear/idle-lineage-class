@@ -2,7 +2,7 @@
  * sw.js — PWA Service Worker：程式桶 / 圖桶「分離快取」
  *
  * 兩個快取桶,刻意分開,這樣「改程式不會害人重載 30MB 圖」：
- *   ● 程式桶 CODE_CACHE：index.html + 所有外掛 js + manifest + PWA 圖示 + 外部 CDN(Tailwind/placehold)。
+ *   ● 程式桶 CODE_CACHE：index.html + 所有外掛 js + 遊戲 js/css(含 tailwind-built.css) + manifest + PWA 圖示 + 外部 CDN(placehold)。
  *       版本 CODE_VERSION 由 scripts/stamp-sw-version.mjs 依「index.html＋全部外掛 js 的內容 hash」
  *       自動覆寫 → 程式一變就換新桶 → 瀏覽器偵測到 sw.js 變了 → 觸發更新流程(由頁面 afk-pwa.js 決定何時接管)。
  *       ▸ 「導覽文件」(index.html / 目錄 '/')走 network-first：線上一律抓最新「殼」,根除 cache-first 把舊版釘死、
@@ -23,8 +23,8 @@
  *
  * 圖桶失效走 reconcileImages 逐張對帳(見上);不再背景預抓——圖片一律 on-demand 用到才抓、不主動下載整包。
  * ========================================================================== */
-const CODE_VERSION = 'code-328af6559f72';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
-const BUILD_ID     = '0630-0600'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
+const CODE_VERSION = 'code-7c65bcf5a3bd';   // ← scripts/stamp-sw-version.mjs 自動覆寫,勿手改
+const BUILD_ID     = '0630-0609'; // ← stamp 在 CODE_VERSION 變動時一起更新成台灣時間 MMDD-HHMM(僅供畫面辨識版本)
 const IMG_VERSION  = 'img-v3';    // 固定桶名,不再 bump(失效改走逐張對帳,見 reconcileImages)
 const CODE_CACHE = CODE_VERSION;
 const IMG_CACHE  = IMG_VERSION;
@@ -32,8 +32,10 @@ const IMG_CACHE  = IMG_VERSION;
 // 圖桶內一個合成 entry,存「path → 已快取版本的 git blob sha」對照表,供逐張對帳判斷哪張該重抓。
 const IMG_HASH_KEY = '/__afk-img-hashes__';
 
-// 外部 CDN：離線也要能用(Tailwind 沒了整個版面會爆),用 cache-first 收進程式桶(opaque 也存)。
-const EXTERNAL_HOSTS = ['cdn.tailwindcss.com', 'placehold.co'];
+// 外部 CDN：離線也要能用,用 cache-first 收進程式桶(opaque 也存)。
+//   placehold.co=怪物圖載入失敗的備援圖。(Tailwind 已由作者改成本機 css/tailwind-built.css,
+//   走 .css 副檔名進程式桶,不再需要列外部主機;原本的 cdn.tailwindcss.com 已移除。)
+const EXTERNAL_HOSTS = ['placehold.co'];
 
 // 導覽文件 network-first:有快取墊底時,等網路最多這麼久還沒回就先回快取(背景仍把快取更新到最新)。
 //   離線時 fetch 會更快直接失敗、不會等滿這段;這只是「連得到但很慢/卡住」時不讓開場被網路拖死的安全閥。
