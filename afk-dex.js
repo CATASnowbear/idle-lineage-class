@@ -186,6 +186,7 @@
     if (typeof SHOP_LISTS !== 'undefined' && SHOP_LISTS) {
       for (var k in SHOP_LISTS) (SHOP_LISTS[k] || []).forEach(function (sid) { shopSet[sid] = true; });
     }
+    if (_craftIndex === null) buildCraftIndex();   // ⑥ 需要「可製作」當收錄條件之一(下方)
     for (var id in DB.items) {
       var d = DB.items[id];
       if (!d || !d.n) continue;
@@ -198,7 +199,10 @@
       // ⑤ 被任一隻怪掉落的(DROPPED_SET,buildIndexes 已先建好):非裝備但有怪掉的法術書/材料(如記憶水晶=幻術士法術書·gachaWeight=0 那批)
       //    才搜得到名字、詳情卡會列出哪些怪會掉。掉落查詢本就是查「掉落」,有怪掉的東西理應能直接搜名字。
       var isDropped = !!DROPPED_SET[id];
-      if (!isEquip && !shopSet[id] && !hasAcq && !inGacha && !isDropped) continue;
+      // ⑥ 可製作的成品/中間材料(如「黑色米索莉金屬板」=炎魔鐵匠製作、無怪掉、非商店、gachaWeight=0)→ 收進來才搜得到名字,
+      //    詳情卡已有 🔨 製作 區塊(craftInfoHTML)會列出在哪個 NPC、用什麼材料。沒這條這類材料整個查無(使用者常被問怎麼拿)。
+      var isCraftable = !!(_craftIndex && _craftIndex[id]);
+      if (!isEquip && !shopSet[id] && !hasAcq && !inGacha && !isDropped && !isCraftable) continue;
       ITEM_INDEX.push({ id: id, n: d.n, hay: String(d.n).toLowerCase() });
     }
     ITEM_INDEX.sort(function (a, b) { return a.n.length - b.n.length || a.n.localeCompare(b.n); });   // 名稱短的(較接近完整匹配)排前面
@@ -339,6 +343,7 @@
       var npc = _npcInfo[rec.npcId] || { name: rec.npcId, town: '' };
       var where = esc(npc.name) + (npc.town ? '（' + esc(npc.town) + '）' : '');
       var mats = rec.req.map(function (m) {
+        if (m.id === 'gold') return '金幣 ×' + m.cnt;   // 金幣是貨幣(存 player.gold、不在 DB.items)→ 給中文、不做 dexlink(否則 fallback 會露出英文 "gold")
         var mn = (DB.items[m.id] && DB.items[m.id].n) || m.id;
         return '<span class="m-dexlink" data-dexq="' + esc(mn) + '">' + esc(mn) + '</span>' + (m.plus11 ? '（須 +11 以上）' : '') + ' ×' + m.cnt;   // 🔗 材料名可點→查它哪來
       }).join('、');
