@@ -400,6 +400,7 @@
   // 物品「有沒有固定取得來源」:怪掉 / 商店 / 製作 / 手動取得方式(itemAcquire,含兌換·試煉·靈魂之球喚回)。
   //   不含潘朵拉抽獎(隨機池,依規則不算取得方式)。用於詳情卡:有來源就由各區塊各自呈現;查無才補中性句。
   function hasFixedSource(id) {
+    if (DB.items[id] && DB.items[id].slot === 'doll') return true;            // 🎎 魔法娃娃:袋子/盒子/合成/卡片兌換/商人購買(非 MOB_DROPS),取得方式見 acquireHTML
     if (DROPPED_SET[id]) return true;                                         // 有怪會掉
     if (_craftIndex === null) buildCraftIndex();
     if (_craftIndex[id]) return true;                                         // 可製作
@@ -473,6 +474,7 @@
     }
     var ts = (exa && exa.short) ? null : trialSourceOf(id);   // 已有手動 note 就不重複;否則補試煉/兌換來源
     if (ts) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts) + '</div></div>');
+    if (d.slot === 'doll') parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎎 魔法娃娃</div><div class="m-dex-craft-mats">開「魔法娃娃的袋子／高級魔法娃娃的盒子」隨機取得、低一階娃娃合成、或向威頓村「魔法娃娃商人」以金幣購買。袋子用重複「銀卡」兌換、盒子用重複「金卡」兌換（需該怪卡片圖鑑已開到金階）。</div></div>');
     var body = parts.filter(Boolean).join('');
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
