@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.4.17';
+const GAME_VERSION = 'v2.4.22';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -2367,7 +2367,7 @@ const DB = {
         "pride_f9":  ["pride_medusa", "pride_chimera", "arian", "pride_stairs"],
         "pride_f10": ["pride_medusa", "pride_chimera", "arian", "pride_jenis"],
         // 直接挑戰的 2~10 樓farming（擊敗頭目不前進）
-        "pride_2_10": ["pride_medusa", "pride_chimera", "arian", "pride_jenis"],
+        "pride_2_10": ["pride_lamia", "pride_ungoliant", "pride_medusa", "pride_chimera", "arian", "pride_jenis"],   // 🐍🕷️ 補上變種蛇女/變種楊果里恩（原僅攀登樓 pride_f2~f4 有、自由farming層漏列）
         // 攀登 11~20 樓（succubus=思克巴）
         "pride_f11": ["succubus", "pride_wolf", "pride_stairs"],
         "pride_f12": ["succubus", "pride_wolf", "pride_mimic", "pride_stairs"],

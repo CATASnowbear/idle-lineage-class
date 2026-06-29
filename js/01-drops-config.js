@@ -507,6 +507,7 @@ function applySherineTheme() { document.body.classList.toggle('sherine-world', s
 let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
 let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
 let _tradLootCtx = false;   // 🏛️ 傳統模式「掠奪上下文」：在怪物掉落／潘朵拉黑市／製作期間設 true，供 gainItem 為裝備隨機自帶強化值＋抑制施法卷軸（商店購買不設→恆 +0）
+let _noAffixCtx = false;    // 🦴 「白板上下文」：設 true 時 gainItem 不附加詞綴（祝福/詛咒/屬性）但仍放行傳統自帶強化值——供寵物裝備製作（白板＋隨機強化值，機率同飾品）
 let _vfxLootCtx = false;   // ✨ VFX：擊殺掉落期間設 true，供 gainItem 判定稀有(潘朵拉權重=1)掉落閃光
 
 // ===== 🔮 席琳套裝效果（9 組；不再分五種詞綴，seteff 直接存「套裝名」＝組名）=====

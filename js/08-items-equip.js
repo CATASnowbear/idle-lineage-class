@@ -30,7 +30,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     let anc = false;
     let attr = false;   
     
-    if (!forceNormal && d && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc')) {
+    if (!forceNormal && !_noAffixCtx && d && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc')) {   // 🦴 _noAffixCtx：白板（寵物裝備製作）→ 不附詞綴（強化值另由下方 _tradLootCtx 區段放行）
         // 詞綴：怪物掉落/製作走新制(單1%/雙0.1%/三0.01%)；潘朵拉/血盟(affixOld=true)沿用舊制(各1%)。箭矢不附加。
         let _af = affixOld ? rollAffixesOld() : rollAffixesNew();
         attr = _af.attr; bless = _af.bless; anc = _af.anc;

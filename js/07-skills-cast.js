@@ -87,7 +87,7 @@ function cubeTick() {
         if (!live.length) return;
         if (c.kind === 'dmg') {
             let txt = [];
-            live.forEach(m => { let d = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', m, 0, 1) * illuLvMult(player))); m.curHp -= d; m.justHit = (c.ele && c.ele !== 'none') ? c.ele : 'magic'; mobWake(m); txt.push(d); });   // 🔮 立方傷害：幻術士等級加成 ×(1+等級/50)
+            live.forEach(m => { let d = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', m, 0, 1) * illuLvMult(player) * wpnEnFinalMult(player.eq && player.eq.wpn))); m.curHp -= d; m.justHit = (c.ele && c.ele !== 'none') ? c.ele : 'magic'; mobWake(m); txt.push(d); });   // 🔮 立方傷害：幻術士等級加成 ×(1+等級/50)；🔧 固定數值DoT→乘武器最終傷害加成(施法者武器 +11~+20)
             logCombat(`<span class="font-bold" style="color:#fb923c;text-shadow:0 0 6px #ea580c;">【${sk.n}】</span>對全體造成 ${txt.join('、')} 點傷害。`, 'dot', 'player');   // 🟢 立方傷害＝持續傷害(DoT)→綠色 dot 分類＋玩家來源(src 顯式'player'蓋過 cubeTick 所處的 _combatSrc='summon')
             live.forEach(m => { if (m.curHp <= 0) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });
             renderMobs();

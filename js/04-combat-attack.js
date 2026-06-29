@@ -280,7 +280,7 @@ function stormBuffTick(sk) {
         d = Math.max(1, d) + fixed;
         d = Math.floor(d * mageDmgMult);
         if (player._setRedLion5) d = Math.floor(d * 1.2);   // 🔮 紅獅 5/5
-        d = Math.max(1, Math.floor(d * fragileMult(t)));    // 🔮 脆弱（白鳥5）
+        d = Math.max(1, Math.floor(d * fragileMult(t) * wpnEnFinalMult(player.eq && player.eq.wpn)));    // 🔮 脆弱（白鳥5）；🔧 武器強化 +11~+20 最終倍率（魔法 DoT，與玩家傷害魔法 castSkill 一致）
         t.curHp -= d; t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic'; mobWake(t);
         dmgLog.push(`<span class="${getMobColor(t.lv)}">${t.n}</span> ${d}${isCrit ? '(爆)' : ''}`);
         if (t.curHp <= 0) {

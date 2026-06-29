@@ -907,15 +907,16 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
     if (sherine) consumeMaterialById('sherine_crystal', makeCount);
 
     // 產出（逐個產生，使每件各自有 1% 機率取得隨機詞綴；靜音後統一記錄一次）
-    _tradLootCtx = true;   // 🏛️ 傳統模式：製作的武器/防具/飾品隨機自帶強化值（寵物裝備走 forceNormal、材料非裝備→皆不受影響、恆 +0）
+    _tradLootCtx = true;   // 🏛️ 傳統模式：製作的武器/防具/飾品/寵物裝備隨機自帶強化值（材料非裝備→不受影響、恆 +0）
+    let _isPetGear = !!(DB.items[recipe.result] && DB.items[recipe.result].slot === 'pet');   // 🦴 寵物裝備（type:acc）
+    _noAffixCtx = _isPetGear;   // 🦴 寵物裝備＝白板：擋詞綴/套裝效果，但放行傳統自帶強化值（機率同飾品·rollTraditionalEnhance 走 acc 表）
     try {
         for (let k = 0; k < makeCount; k++) {
-            _forceSherineSet = !!sherine;   // 🔮 席琳製作：每件成品必定附帶隨機一種席琳套裝效果（其餘詞綴機率照舊）
-            let _petGearResult = !!(DB.items[recipe.result] && DB.items[recipe.result].slot === 'pet');   // 🦴 寵物裝備：白板製作，不附任何詞綴
-            gainItem(recipe.result, recipe.yield || 1, true, _petGearResult);
+            _forceSherineSet = !!sherine;   // 🔮 席琳製作：每件成品必定附帶隨機一種席琳套裝效果（寵物裝備 slot 非席琳適用部位，gainItem 自然不附）
+            gainItem(recipe.result, recipe.yield || 1, true, false);   // 🦴 forceNormal=false → 傳統自帶強化值生效；詞綴/套裝由 _noAffixCtx 擋（寵物裝備白板）
             _forceSherineSet = false;
         }
-    } finally { _tradLootCtx = false; _forceSherineSet = false; }   // try/finally：例外也必清旗標，杜絕殘留洩漏
+    } finally { _tradLootCtx = false; _forceSherineSet = false; _noAffixCtx = false; }   // try/finally：例外也必清旗標，杜絕殘留洩漏
     let totalOut = (recipe.yield || 1) * makeCount;
     logSys(`${sherine ? '<span class="c-sherine font-bold">席琳製作</span>' : '製作'}完成：<span class="${getItemColor({ id: recipe.result })} font-bold">${DB.items[recipe.result].n}</span> ×${totalOut}${sherine ? `（消耗 席琳結晶 ×${makeCount}）` : ''}`);
 
