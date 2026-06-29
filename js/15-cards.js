@@ -148,6 +148,15 @@ function useCardItem(item) {
     cardAddScore(nm, useN * pts);
     if (have > useN) item.cnt = have - useN; else player.inv = player.inv.filter(i => i.uid !== item.uid);
     logSys(`<span class="${ct.col} font-bold">卡片收集冊登錄了「${nm}」！</span>` + (useN > 1 ? `<span class="text-slate-400">（自動使用 ${useN} 張）</span>` : ''));
+    // 🎴 開通退費：使用高階卡把積分推到 100 時，超過 100 的部分會被夾掉浪費 → 依超出分數退還等值卡片（每 10 分退 1 銀卡、每 1 分退 1 普卡）。
+    //    overflow＝已付積分(useN*pts) − 實際計入(newScore−cur)。金卡(cur≥1)→溢出=cur→銀+普；銀卡溢出 0~9→普卡；普卡永不溢出(overflow=0)。積分守恆、無套利、比合成保守。
+    let _overflow = useN * pts - (cardDexScore(nm) - cur);
+    if (_overflow > 0) {
+        let backS = Math.floor(_overflow / 10), backP = _overflow % 10;
+        if (backS > 0) gainItem(cardId(nm, 2), backS, true);   // silent：自行彙整退費訊息
+        if (backP > 0) gainItem(cardId(nm, 1), backP, true);
+        logSys(`<span class="text-amber-300 font-bold">🎴 開通退費：</span>「${nm}」溢出 ${_overflow} 分，退還 ${[backS > 0 ? backS + ' 張銀卡' : '', backP > 0 ? backP + ' 張普卡' : ''].filter(Boolean).join('、')}。`);
+    }
     if (typeof calcStats === 'function') calcStats();   // 套用可能的地區完成加成
     if (typeof renderTabs === 'function') renderTabs(true);
     if (typeof updateUI === 'function') updateUI();
