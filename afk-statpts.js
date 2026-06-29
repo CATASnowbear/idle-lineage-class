@@ -20,26 +20,40 @@
   var STATS = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
   function n(o, s) { return (o && o[s]) || 0; }
 
+  // updateUI 在戰鬥中每秒被呼叫上百次,而「始/升/藥」只在升級配點/用萬能藥/回憶蠟燭重置時才變、
+  // 戰鬥中恆定。故用「數值簽章」短路:沒變就零 DOM 直接返回(絕大多數呼叫走這條);真的變了才就地
+  // 改那行文字。分解行插入後常駐(tab-stats 是靜態 DOM,updateUI 只改 innerText、renderTabs 不重建它),
+  // 所以快取行元素重用、不再每次 remove+createElement(免節點 churn 與 GC)。
+  var lines = {};       // s -> 已插入的分解行元素(快取重用)
+  var lastSig = null;   // 上次「始/升/藥」簽章
+
   function buildBreakdown() {
     if (typeof player === 'undefined' || !player || !player.base) return;
+    var sig = '';
+    for (var i = 0; i < STATS.length; i++) {
+      var s0 = STATS[i];
+      sig += n(player.base, s0) + ',' + n(player.alloc, s0) + ',' + n(player.panacea, s0) + ';';
+    }
+    // 數值沒變、且分解行還在 DOM 上 → 不動任何 DOM(isConnected 是純屬性讀取,不觸發 layout)
+    if (sig === lastSig && lines.str && lines.str.isConnected) return;
+    lastSig = sig;
+
     STATS.forEach(function (s) {
       var valEl = document.getElementById('dt-' + s);   // 原作:夾在 +/- 之間的屬性值 <span>
       if (!valEl) return;
       var cell = valEl.parentElement;                   // 值欄(grid 直接子元素;flex 容器含 - 值 +)
       if (!cell || !cell.parentElement) return;
-      // 清掉本屬性舊的分解行(原 updateUI 不會洗掉它,要自己防累積)
-      var nx = cell.nextElementSibling;
-      if (nx && nx.classList && nx.classList.contains('afk-stpts')) nx.remove();
+      var bi = n(player.base, s), al = n(player.alloc, s), pa = n(player.panacea, s);
+      var txt = '始' + bi + '／升' + al + '／藥' + pa + '／總' + (bi + al + pa);   // 總=不含裝備/buff
 
-      var bi = n(player.base, s);       // 始
-      var al = n(player.alloc, s);      // 升
-      var pa = n(player.panacea, s);    // 藥
-      var tot = bi + al + pa;           // 總(不含裝備/buff)
-
-      var line = document.createElement('div');
-      line.className = 'afk-stpts';
-      line.textContent = '始' + bi + '／升' + al + '／藥' + pa + '／總' + tot;
-      cell.after(line);                 // 插在值欄之後 → 靠 CSS grid-column:1/-1 撐成整列
+      var line = lines[s];
+      if (!line || !line.isConnected) {                 // 尚未插入 / 被外力移除 → 接既有的或新建,插在值欄之後
+        var nx = cell.nextElementSibling;
+        line = (nx && nx.classList && nx.classList.contains('afk-stpts')) ? nx : null;
+        if (!line) { line = document.createElement('div'); line.className = 'afk-stpts'; cell.after(line); }   // 靠 CSS grid-column:1/-1 撐成整列
+        lines[s] = line;
+      }
+      if (line.textContent !== txt) line.textContent = txt;
     });
   }
 

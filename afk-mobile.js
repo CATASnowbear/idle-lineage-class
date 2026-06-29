@@ -201,29 +201,36 @@
         elExp = strip.querySelector('#ms-exp'), elVictory = strip.querySelector('#ms-victory');
     function txt(id) { var e = document.getElementById(id); return e ? e.textContent.trim() : ''; }
     function barW(id) { var e = document.getElementById(id); return e && e.style.width ? e.style.width : '0%'; }
+    // mirror 每 300ms 跑一次,值多半沒變 → 只在「真的變了」才寫 DOM,免無謂觸發樣式重算/重排。
+    function setTxt(el, v) { if (el && el.textContent !== v) el.textContent = v; }
+    function setW(el, v) { if (el && el.style.width !== v) el.style.width = v; }
+    var _lastBuffsHtml = '';   // #m-battle-buffs 上次內容;沒變就不重設 innerHTML(免每 300ms 重新解析整段)
     function mirror() {
       if (!document.body.classList.contains('m-mobile')) return;
       // 暱稱(st-class);沒取名就退回職業(st-classname),都沒有才 '--'
-      if (elName) elName.textContent = txt('st-class') || txt('st-classname') || '--';
-      if (elLv) elLv.textContent = txt('st-lv') || '--';
-      if (elAc) elAc.textContent = txt('st-ac') || '--';   // 防禦 (AC)
-      if (elMr) elMr.textContent = txt('st-mr') || '--';   // 魔防 (MR)
-      if (elHp) elHp.textContent = txt('txt-hp') || '--';
-      if (elMp) elMp.textContent = txt('txt-mp') || '--';
-      if (elHpBar) elHpBar.style.width = barW('bar-hp');   // 跟原版血條同步寬度(讀遊戲自己算好的 %)
-      if (elMpBar) elMpBar.style.width = barW('bar-mp');
-      if (elGold) elGold.textContent = txt('st-gold') || '--';
+      setTxt(elName, txt('st-class') || txt('st-classname') || '--');
+      setTxt(elLv, txt('st-lv') || '--');
+      setTxt(elAc, txt('st-ac') || '--');   // 防禦 (AC)
+      setTxt(elMr, txt('st-mr') || '--');   // 魔防 (MR)
+      setTxt(elHp, txt('txt-hp') || '--');
+      setTxt(elMp, txt('txt-mp') || '--');
+      setW(elHpBar, barW('bar-hp'));   // 跟原版血條同步寬度(讀遊戲自己算好的 %)
+      setW(elMpBar, barW('bar-mp'));
+      setTxt(elGold, txt('st-gold') || '--');
       // 攻城獲勝才在金幣右邊亮出皇冠(讀全域 siegeVictoryActive,缺了就安靜不顯示)
-      if (elVictory) elVictory.style.display = (typeof siegeVictoryActive === 'function' && siegeVictoryActive()) ? '' : 'none';
+      if (elVictory) { var vd = (typeof siegeVictoryActive === 'function' && siegeVictoryActive()) ? '' : 'none'; if (elVictory.style.display !== vd) elVictory.style.display = vd; }
       var be = document.getElementById('bar-exp');
-      if (elExp && be) elExp.style.width = be.style.width || '0%';
-      // 手動喝水列:在村莊隱藏(本來就自動回滿)、更新圖示/數量/安特的水果列
+      if (be) setW(elExp, be.style.width || '0%');
+      // 村莊判定(控制喝水列在村莊隱藏)
       var townView = document.getElementById('town-view');
       document.body.classList.toggle('m-intown', !!(townView && !townView.classList.contains('hidden')));
-      updateHealBar();
-      syncSkillBar();
-      // 戰鬥畫面狀態鏡射:把 #dt-buffs(背包→能力→狀態)同步到喝水列下方的 #m-battle-buffs
-      if (battleBuffs) { var dtb = document.getElementById('dt-buffs'); battleBuffs.innerHTML = dtb ? dtb.innerHTML : ''; }
+      // 喝水列/技能列/狀態鏡射都只在「戰鬥畫面」看得到 → 切到設定/背包分頁時整段跳過,不白做
+      if (document.body.classList.contains('mview-battle')) {
+        updateHealBar();
+        syncSkillBar();
+        // 戰鬥畫面狀態鏡射:把 #dt-buffs(背包→能力→狀態)同步到喝水列下方的 #m-battle-buffs
+        if (battleBuffs) { var dtb = document.getElementById('dt-buffs'); var h = dtb ? dtb.innerHTML : ''; if (h !== _lastBuffsHtml) { _lastBuffsHtml = h; battleBuffs.innerHTML = h; } }
+      }
       // 村莊時遊戲會給 combat-log-panel 加 hidden(沒有戰鬥日誌):強制切系統日誌、隱藏「切到戰鬥」鈕
       var noCombat = !combatLog || combatLog.classList.contains('hidden');
       document.body.classList.toggle('mlog-nocombat', noCombat);
