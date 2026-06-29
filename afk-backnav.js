@@ -57,6 +57,13 @@
   window.addEventListener('popstate', function () {
     if (ignorePop) { ignorePop = false; return; }
     if (!isMobile()) return;            // 桌機:維持原生返回行為
+    // ⚠ 別的歷史管理器(afk-ui 接管的 alert 彈窗,用 AFK_UI.openLayer/closeLayer 壓/退一格歷史)在子畫面上方
+    //   開關彈窗時,它自己的 closeLayer 會呼叫 history.back() → 這個「程式化的 back」也會觸發本監聽器。
+    //   若退回後「還停在我們自己的攔截狀態(afkBack)或某個彈窗層(afkLayer)上」→ 表示被 pop 掉的是壓在我們上方的
+    //   彈窗歷史、我們的攔截狀態其實沒被動到,不是「使用者要離開子畫面」→ 不可路由回首頁、也不可清掉 trapped
+    //   (否則匯入後關閉提示彈窗會被誤判成返回→自動跳回首頁,且 trapped 殘留、每匯入一次累積一格歷史。踩過)。
+    var st = history.state;
+    if (st && (st.afkBack || st.afkLayer)) return;
     if (subVisible()) {
       trapped = false;                  // 瀏覽器已 pop 掉我們的攔截狀態
       routeHome();
