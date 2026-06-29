@@ -320,5 +320,37 @@
     } catch (e) {}
   })();
 
+  /* --------------------------------------------------------------------------
+   * 修正#8:快轉(離線 / 背景補跑)時靜音音效 + 不跳戰鬥特效(省效能、不洗畫面/耳朵)
+   *
+   * 問題:作者 .49 起的音效(js/17-audio.js 的 playSfx / playMobHurt / playMobKill / playSpellCast)與
+   *   戰鬥特效(js/09-vfx-render 的 vfxKill / vfxLevelUp / vfxRareDrop / vfxPlayerHit)是直接從戰鬥 /
+   *   擊殺碼「無條件」呼叫的,且它們只看自己的開關(_sfxCfg.on / __vfxOff),都沒有檢查 state.ff(快轉旗標)。
+   *   而 afk-offline 的離線結算 = 把原作 tick() 在 state.ff=true 下快轉幾十萬拍(24h≈86 萬拍)→ 補跑期間
+   *   仍逐拍播擊殺 / 受擊 / 升級音、跳金色稀有掉落特效與粒子:既洗畫面 / 耳朵,又白白吃效能(HTMLAudio.play
+   *   與建立一堆動畫 DOM 節點,長時間補跑累積很可觀)。背景分頁的補跑同理。使用者回報。
+   * 解法:包住這些函式,state.ff 為真時直接 no-op;ff=false(正常遊玩)完全照原樣。只在快轉時靜音 / 不跳特效,
+   *   不碰任何遊戲數值或掉落結算(掉落計算與音效 / 特效完全無關,收益一字不差)。
+   * 何時可移除:原作者自己在上述函式開頭加了 state.ff 判斷(快轉不出聲 / 不跳特效)時,本段即多餘,可整段
+   *   刪掉(留著無害:某函式不存在會自動略過,且 no-op 疊 no-op)。
+   * ------------------------------------------------------------------------ */
+  (function () {
+    function ffOn() { try { return typeof state !== 'undefined' && state && !!state.ff; } catch (e) { return false; } }
+    // 全是 js/*.js 的全域函式宣告(＝window 屬性);戰鬥碼以裸名呼叫,改指 window.* 後裸名即走包裝版(同本檔其他修正)。
+    var NAMES = ['playSfx', 'playMobHurt', 'playMobKill', 'playSpellCast', 'vfxKill', 'vfxLevelUp', 'vfxRareDrop', 'vfxPlayerHit'];
+    var patched = 0;
+    NAMES.forEach(function (name) {
+      try {
+        var orig = window[name];
+        if (typeof orig !== 'function' || orig.__afkFfMute) return;
+        var w = function () { if (ffOn()) return; return orig.apply(this, arguments); };
+        w.__afkFfMute = true;
+        window[name] = w;
+        patched++;
+      } catch (e) {}
+    });
+    console.log('[AFK-fixes] 快轉補跑靜音 / 不跳特效 已掛上(' + patched + ' 個函式)');
+  })();
+
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
 })();
