@@ -40,6 +40,9 @@
         /* 例外：文字輸入框保留打字游標(text)、停用元素保留禁用提示(not-allowed)——皆非「手指箭頭」、保留其辨識度 */
         body.has-doll-cursor input:not([type=checkbox]):not([type=radio]), body.has-doll-cursor textarea { cursor: text !important; }
         body.has-doll-cursor [disabled], body.has-doll-cursor .cursor-not-allowed { cursor: not-allowed !important; }
+        /* 🪆 娃娃游標點擊熱點光點：裝備娃娃時，於滑鼠座標(＝cursor hotspot 4,4，點擊實際發生處)顯示淡淡的圓點光；顏色＝娃娃名稱顏色(currentColor 由 applyDollCursor 設定 style.color)。pointer-events:none 不擋點擊；offscreen=滑鼠離開視窗時隱藏。 */
+        #doll-cursor-glow { position: fixed; left: 0; top: 0; width: 16px; height: 16px; margin-left: -8px; margin-top: -8px; border-radius: 50%; pointer-events: none; z-index: 9999; opacity: 0; background: radial-gradient(circle, currentColor 0%, transparent 68%); box-shadow: 0 0 7px 1px currentColor; transition: opacity .15s ease; will-change: left, top; }
+        #doll-cursor-glow.active:not(.offscreen) { opacity: 0.5; }
         .mob-target:hover:not(.active) { background: #1e293b; }
         /* 🔮 席琳的世界：深黑底色＋黑紅怪物框（透明度結構與原樣式一致） */
         body.sherine-world, body.game-bg-dim.sherine-world { background-image: linear-gradient(rgba(8,8,10,0.88), rgba(0,0,0,0.94)), url('../assets/background/background.png'); }
