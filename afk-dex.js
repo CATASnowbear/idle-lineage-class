@@ -474,7 +474,7 @@
     }
     var ts = (exa && exa.short) ? null : trialSourceOf(id);   // 已有手動 note 就不重複;否則補試煉/兌換來源
     if (ts) parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎓 試煉／兌換</div><div class="m-dex-craft-mats">' + esc(ts) + '</div></div>');
-    if (d.slot === 'doll') parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎎 魔法娃娃</div><div class="m-dex-craft-mats">開「魔法娃娃的袋子／高級魔法娃娃的盒子」隨機取得、低一階娃娃合成、或向威頓村「魔法娃娃商人」以金幣購買。袋子用重複「銀卡」兌換、盒子用重複「金卡」兌換（需該怪卡片圖鑑已開到金階）。</div></div>');
+    if (d.slot === 'doll') parts.push('<div class="m-dex-craft"><div class="m-dex-craft-h">🎎 魔法娃娃</div><div class="m-dex-craft-mats">開「魔法娃娃的袋子／高級魔法娃娃的盒子」隨機取得，或由低一階娃娃合成。袋子用重複「銀卡」兌換、盒子用重複「金卡」兌換（需該怪卡片圖鑑已開到金階）。</div></div>');
     var body = parts.filter(Boolean).join('');
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
@@ -483,7 +483,7 @@
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
-  var IT_SLOT = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊' };
+  var IT_SLOT = { helm: '頭盔', armor: '盔甲', boots: '長靴', gloves: '手套', shield: '盾牌', cloak: '斗篷', belt: '腰帶', ring: '戒指', amulet: '項鍊', doll: '娃娃' };
   function _baseInst(id) { return { id: id, uid: 0, cnt: 1, en: 0, bless: false, anc: false, attr: false, seteff: false, lock: false, junk: false }; }
   function itemDetailHTML(id, opts) {
     opts = opts || {};   // 🔧 noHead:不要圖示+名稱列(呼叫端自己有名稱,如小百科裝備卡)。「查掉落」鈕一律帶(只在有怪掉時)、click 走全域 handler,dex 內或小百科裝備頁皆可用

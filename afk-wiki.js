@@ -932,6 +932,7 @@
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
     { k: 'card', n: '卡片' },
+    { k: 'doll', n: '魔法娃娃' },
     { k: 'equipbook', n: '裝備圖鑑' },
     { k: 'equip', n: '裝備' },
     { k: 'enhance', n: '強化' },
@@ -1081,6 +1082,7 @@
     if (key === 'ally') return renderAlly();
     if (key === 'set') return renderSet();
     if (key === 'card') return renderCard();
+    if (key === 'doll') return renderDoll();
     if (key === 'equipbook') return renderEquipBook();
     if (key === 'equip') return renderEquip();
     if (key === 'enhance') return renderEnhance();
@@ -1127,6 +1129,7 @@
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
     { key: 'card', cls: false, label: '卡片' },
+    { key: 'doll', cls: false, label: '魔法娃娃' },
     { key: 'equipbook', cls: false, label: '裝備圖鑑' },
     { key: 'equip', cls: false, label: '裝備' },
     { key: 'enhance', cls: false, label: '強化' },
@@ -1443,16 +1446,81 @@
       ])
     );
 
-    out += wCard('🎎 魔法娃娃（娃娃飾品欄）',
-      wDesc('裝在專屬的<b>「娃娃」欄</b>（飾品類、不佔其他格），提供屬性加成；部分高階娃娃還有<b>機率觸發效果</b>（額外傷害、受傷減免、攻擊中毒、施放烈炎術／地裂術／極道落雷等），<b>無武器也生效、經典模式照常</b>。共一～六階，越高階越強。詳細數值看「裝備收集冊→魔法娃娃」分頁，或在掉落查詢搜娃娃名。') +
-      wTbl(['取得方式', '說明'], [
-        ['開魔法娃娃的袋子', '隨機獲得一隻一～二階娃娃（用重複銀卡兌換）'],
-        ['開高級魔法娃娃的盒子', '隨機獲得二～四階娃娃：80% 二階／18% 三階／2% 四階（用重複金卡兌換）'],
-        ['娃娃合成', '2~4 隻<b>同階</b> → 機率得 1 隻高一階（放越多隻成功率越高）；失敗退還 1 隻'],
-        ['金幣購買', '向威頓村「魔法娃娃商人」直接買']
-      ]) +
-      wDesc('合成<b>保底</b>：只有「放 4 隻」失敗才累積 1 點保底，滿 5 點時下次放 4 隻<b>必定成功</b>。想保留的娃娃可<b>鎖定</b>，合成不會吃到被鎖的。')
+    out += wCard('🎎 重複卡片 → 魔法娃娃',
+      wDesc('圖鑑已開到<b>金階</b>的怪，重複的銀／金卡可拿去換娃娃材料：<b>銀卡</b> 1:1 換「魔法娃娃的袋子」、<b>金卡</b> 1:1 換「高級魔法娃娃的盒子」。娃娃的階級、效果、取得與合成詳見「魔法娃娃」分頁。')
     );
+
+    return out;
+  }
+
+  // 魔法娃娃:全部讀遊戲資料動態產生(DB.items slot==='doll' 的 d.d 即官方逐隻介紹、含觸發效果/免疫;
+  //   袋子/盒子機率讀 DOLL_BAG_POOL/DOLL_BOX_TIER_POOL、合成成功率讀 DOLL_SYNTH_RATES;作者改數值自動跟上)。
+  //   不另用 buildItemDescHTML:娃娃的數值與特效已完整寫在 d.d prose,再疊結構化數值會重複;d.d 是此處唯一同時含 proc/免疫的來源。
+  var DOLL_TIER_CN = ['', '一階', '二階', '三階', '四階', '五階', '六階'];
+  function dollDescClean(id) {   // 去掉逐隻重複的開頭階級語與結尾游標語(已在頁首/分組講過);作者改字串時最差只是沒去乾淨,不會壞
+    var d = DB.items[id]; var t = (d && d.d) || '';
+    return t.replace(/^[一二三四五六]階魔法娃娃。/, '').replace(/。?裝於魔法娃娃欄，游標變其模樣。?/g, '').trim() || '（無加成）';
+  }
+  function renderDoll() {
+    var items = DB.items || {};
+    var byTier = (typeof DOLL_BY_TIER !== 'undefined') ? DOLL_BY_TIER : null;
+    if (!byTier) {   // 降級:DOLL_BY_TIER 沒載到就自己掃 DB
+      byTier = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+      for (var id in items) { var dd = items[id]; if (dd && dd.slot === 'doll' && byTier[dd.dollTier]) byTier[dd.dollTier].push(id); }
+    }
+    var total = [1, 2, 3, 4, 5, 6].reduce(function (s, t) { return s + ((byTier[t] || []).length); }, 0);
+    if (!total) return '<div class="m-wiki-note">讀不到魔法娃娃資料。</div>';
+
+    var out = '<div class="m-wiki-note">「魔法娃娃」是裝在專屬<b>「娃娃」飾品欄</b>的收藏品（不佔其他飾品格），提供屬性加成；部分還有<b>機率觸發效果</b>或<b>異常狀態免疫</b>。<b>無武器也生效、經典模式照常吃</b>。共<b>一～六階</b>，越高階越強；裝上後滑鼠游標會變成該娃娃的模樣。</div>';
+
+    // 取得方式(讀實際機率表)
+    var bagPool = (typeof DOLL_BAG_POOL !== 'undefined') ? DOLL_BAG_POOL : null;
+    var boxPool = (typeof DOLL_BOX_TIER_POOL !== 'undefined') ? DOLL_BOX_TIER_POOL : null;
+    var bagRows = [], boxRows = [];
+    if (bagPool) {   // 袋子:同階權重相同,聚合成「各階機率」
+      var bagByTier = {};
+      bagPool.forEach(function (p) { var dd = items[p[0]]; var t = dd ? dd.dollTier : 0; bagByTier[t] = (bagByTier[t] || 0) + p[1]; });
+      var bagSum = bagPool.reduce(function (s, p) { return s + p[1]; }, 0);
+      Object.keys(bagByTier).sort().forEach(function (t) {
+        bagRows.push([DOLL_TIER_CN[t] + '娃娃', (bagByTier[t] / bagSum * 100).toFixed(0) + '%']);
+      });
+    }
+    if (boxPool) {
+      var boxSum = boxPool.reduce(function (s, p) { return s + p[1]; }, 0);
+      boxPool.forEach(function (p) { boxRows.push([DOLL_TIER_CN[p[0]] + '娃娃', (p[1] / boxSum * 100).toFixed(0) + '%']); });
+    }
+    out += wCard('🎁 怎麼取得',
+      wDesc('娃娃材料來自<b>重複卡片兌換</b>（見「卡片」分頁）：銀卡 → 魔法娃娃的袋子；金卡 → 高級魔法娃娃的盒子。開出後可再用同階娃娃合成更高階。') +
+      (bagRows.length ? '<div class="m-wiki-desc" style="margin-top:8px;"><b>🎒 魔法娃娃的袋子</b>（開出機率）</div>' + wTbl(['開出', '機率'], bagRows) : '') +
+      (boxRows.length ? '<div class="m-wiki-desc" style="margin-top:8px;"><b>📦 高級魔法娃娃的盒子</b>（開出機率）</div>' + wTbl(['開出', '機率'], boxRows) : '')
+    );
+
+    // 合成:讀 DOLL_SYNTH_RATES = { 來源階: { 放入數量: 成功率% } }
+    if (typeof DOLL_SYNTH_RATES !== 'undefined') {
+      var sr = DOLL_SYNTH_RATES;
+      var synRows = Object.keys(sr).sort().map(function (ft) {
+        var r = sr[ft];
+        return [DOLL_TIER_CN[ft] + ' → ' + DOLL_TIER_CN[+ft + 1], (r[2] != null ? r[2] + '%' : '—'), (r[3] != null ? r[3] + '%' : '—'), (r[4] != null ? r[4] + '%' : '—')];
+      });
+      out += wCard('🪆 娃娃合成（同階 → 高一階）',
+        wDesc('放入 <b>2~4 隻同階</b>娃娃，機率得 1 隻<b>高一階</b>；失敗退還 1 隻。放越多隻成功率越高：') +
+        wTbl(['合成', '放 2 隻', '放 3 隻', '放 4 隻'], synRows) +
+        wDesc('<b>保底</b>：只有「放 4 隻」失敗才累積 1 點，滿 5 點時下次放 4 隻<b>必定成功</b>（成功後歸零）。') +
+        wDesc('想保留的娃娃可在背包<b>鎖定</b>，合成只會吃<b>未鎖定</b>的同階娃娃（倉庫裡的娃娃也不列入、不會被吃）。')
+      );
+    }
+
+    // 逐階列出每隻娃娃(讀 d.d 官方介紹)
+    for (var tier = 1; tier <= 6; tier++) {
+      var list = (byTier[tier] || []).slice();
+      if (!list.length) continue;
+      var rows = list.map(function (id) {
+        var dd = items[id];
+        var nm = '<b class="' + (dd.c || '') + '">' + esc((dd.n || '').replace(/^魔法娃娃：/, '')) + '</b>';
+        return [nm, dollDescClean(id)];
+      });
+      out += wCard(DOLL_TIER_CN[tier] + '魔法娃娃（' + list.length + ' 隻）', wTbl(['娃娃', '加成 / 效果'], rows));
+    }
 
     return out;
   }
