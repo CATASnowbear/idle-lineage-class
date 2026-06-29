@@ -524,7 +524,7 @@
     st.id = 'm-train-css';
     st.textContent = [
       '#m-train-hud{position:fixed;bottom:12px;left:10px;z-index:9000;width:212px;background:rgba(15,23,42,.96);border:1px solid #475569;border-radius:10px;color:#e2e8f0;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.5);}',
-      '.m-train-hud-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-weight:bold;color:#fbbf24;border-bottom:1px solid #334155;}',
+      '.m-train-hud-head{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-weight:bold;color:#fbbf24;border-bottom:1px solid #334155;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}',   /* 📱 touch-action:none → 拖曳把手不被瀏覽器當捲動手勢搶走(否則手機拖曳會中途 pointercancel、卡頓);user-select:none → 拖曳不選到標題字 */
       '.m-train-hud-head button{background:none;border:none;color:#94a3b8;font-size:16px;line-height:1;cursor:pointer;padding:0 4px;}',
       '#m-train-hud-body{padding:8px 10px;}',
       '.m-train-total{text-align:center;margin-bottom:8px;}',
