@@ -55,7 +55,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     // 🏛️ 傳統模式：掉落／黑市／製作的「裝備」隨機自帶強化值（_tradLootCtx 期間；商店 forceNormal=true 不設→恆 +0；箭矢/材料/消耗品不套）
     let _tEn = (_tradLootCtx && !forceNormal && d && !d.noEnhance && ((d.type === 'wpn' && !d.isArrow) || d.type === 'arm' || d.type === 'acc') && traditionalActive()) ? rollTraditionalEnhance(d) : 0;   // 🏛️ 無法強化的裝備（古老系列 noEnhance）恆 +0，不自帶強化值
     let _probe = { id: id, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
-    let ex = _tEn > 0 ? null : player.inv.find(i => (i.en || 0) === 0 && sameItemSig(i, _probe));   // 🔧 架構#3：統一簽章比對（並容忍舊存檔 en 為 undefined）；🏛️ 自帶強化(en>0)獨立成堆、不併入 +0
+    let ex = player.inv.find(i => sameItemSig(i, _probe));   // 🔧 架構#3：統一簽章比對（itemSig 已含 en→+0 只併 +0、+3 只併 +3，永不誤併不同強化值）；🏛️ 傳統自帶強化：同名同強化值同詞綴自動疊加（移除原 en>0 不疊加限制）
     if(ex) ex.cnt += cnt;   // 不論是否鎖定都疊加；僅加數量、不更動既有堆疊的鎖定/廢品狀態
     else player.inv.push({ id: id, uid: uid(), cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff, lock: false, junk: !!(player.junkPrefs && player.junkPrefs[itemSig(_probe)]) && !(d && d.noJunk) });   // 🔧 廢品記憶改以完整簽章比對：詞綴物品也可自動標記，但僅限「完全相同詞綴」者；🎴 noJunk(收集冊)永不自動標記
 

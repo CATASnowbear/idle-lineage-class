@@ -924,7 +924,7 @@ function renderBianBless(el) {
         </div>`;
 }
 function ismaelBuyAcc() {
-    if (traditionalActive()) { alert('🏛️ 傳統模式無法購買施法卷軸。'); return; }   // 🏛️ 縱深防護（伊賽馬利在傳統模式已隱藏，正常情況不可達）
+    if (tradNoScrolls()) { alert('🏛️ 經典＋傳統模式無法購買施法卷軸。'); return; }   // 🏛️ 縱深防護：僅經典+傳統封鎖（伊賽馬利在該模式已隱藏，不可達）；一般+傳統可購買，與可見性閘 tradNoScrolls 及 gainItem 一致
     if (!ismaelAccAvailable()) { alert('本次購買額度已用完，攻城獲勝後可再購買 1 張。'); return; }
     if (player.gold < 1000000) { alert(`金幣不足（需 1,000,000，目前 ${player.gold.toLocaleString()}）。`); return; }
     player.gold -= 1000000;
