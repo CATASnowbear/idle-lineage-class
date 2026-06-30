@@ -731,6 +731,11 @@
       'body.m-mobile #battle-view.area-fit{flex:1 1 auto !important;aspect-ratio:auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
       /* 怪名手機一律不顯示(使用者指定:連「鎖定/被打的目標」也不要顯示名字)→ 蓋過原作 hover/.name-show 的 opacity:1 */
       'body.m-mobile #battle-view .mob-name{opacity:0 !important;}',
+      /* 🔍 手機怪物圖放大(使用者校到這個大小):原作 area-fit grid 後排 scale 1.25、前排 1.5。
+         卡片/圖框改 overflow:visible 讓放大的怪溢出格子不被裁(整個戰鬥框仍 overflow:hidden 收邊)。 */
+      'body.m-mobile #battle-view.area-fit .mob-target,body.m-mobile #battle-view.area-fit .mob-img-wrap{overflow:visible !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner{transform:scale(calc(1.6 * var(--jit-scale,1))) !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(1.9 * var(--jit-scale,1))) !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
