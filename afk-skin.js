@@ -43,8 +43,19 @@
       'padding:2px 14px;font-size:12.5px;font-weight:700;letter-spacing:2px;color:#cbd5e1;',
       'background:linear-gradient(180deg,rgba(40,52,72,.96),rgba(28,38,56,.96));',
       'border:1px solid rgba(148,163,184,.4);border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;}',
+
+    /* 📢 公告跑馬燈:坐在「加掛版」副標下方、標題與首頁按鈕之間;紅底捲動,游標移上去暫停。margin-top 騰開上方浮動的副標。 */
+    '#afk-marquee{position:relative;width:100%;max-width:34rem;margin:30px auto 0;overflow:hidden;border-radius:8px;border:1px solid rgba(220,90,90,.34);background:linear-gradient(180deg,rgba(90,18,18,.30),rgba(60,12,12,.30));padding:5px 0;box-shadow:inset 0 0 14px rgba(0,0,0,.25);}',
+    '#afk-marquee .afk-mq-track{display:inline-block;white-space:nowrap;padding-left:100%;animation:afkMq 24s linear infinite;font-size:13px;font-weight:700;letter-spacing:1px;color:#fecaca;text-shadow:0 1px 2px rgba(0,0,0,.7);}',
+    '#afk-marquee:hover .afk-mq-track{animation-play-state:paused;}',
+    '@keyframes afkMq{from{transform:translateX(0)}to{transform:translateX(-100%)}}',
+    'body.m-mobile #afk-marquee{max-width:94%;margin-top:26px;}',
+    'body.m-mobile #afk-marquee .afk-mq-track{font-size:12px;letter-spacing:.5px;}',
     ''
   ].join('');
+
+  // 📢 公告跑馬燈文字(標點已修正:列項用頓號、界面→介面)
+  var MARQUEE_TEXT = '如有介面、離線掛機、小百科、掉落查詢問題，請至巴哈301樓回報，請勿打擾原作者秋玥，謝謝大家配合！';
 
   function injectCss() {
     if (document.getElementById('afk-skin-css')) return;
@@ -63,6 +74,20 @@
     var b = document.createElement('div'); b.id = 'afk-brand-badge';
     b.innerHTML = '<span class="afk-brand-inner"><span class="afk-cloud"></span><span class="afk-brand-text">加掛版</span></span>';
     header.appendChild(b);
+  }
+
+  // ---- 公告跑馬燈(加掛版副標下方) ----------------------------------------
+  function ensureMarquee() {
+    var cs = document.getElementById('creation-screen'); if (!cs) return;
+    if (document.getElementById('afk-marquee')) return;
+    var h1 = cs.querySelector('h1'); if (!h1) return;
+    var headerDiv = h1.parentElement;   // 標題+副標的容器(.text-center.border-b);跑馬燈插在它正下方、首頁按鈕之上
+    if (!headerDiv || headerDiv.parentElement !== cs) return;
+    var mq = document.createElement('div'); mq.id = 'afk-marquee';
+    var track = document.createElement('div'); track.className = 'afk-mq-track';
+    track.textContent = MARQUEE_TEXT;
+    mq.appendChild(track);
+    cs.insertBefore(mq, headerDiv.nextSibling);
   }
 
   // ---- 外掛外框 -----------------------------------------------------------
@@ -92,7 +117,7 @@
 
   function apply() {
     if (_busy) return; _busy = true;
-    try { injectCss(); ensureBadge(); ensureFrame(); } catch (e) { /* 視覺外掛,出錯不影響遊戲 */ }
+    try { injectCss(); ensureBadge(); ensureMarquee(); ensureFrame(); } catch (e) { /* 視覺外掛,出錯不影響遊戲 */ }
     _busy = false;
   }
 

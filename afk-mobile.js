@@ -722,10 +722,6 @@
          有 area-fit 條狀背景的一般狩獵圖走下方緊湊版。原作改掉固定高即自動失效。 */
       'body.m-mobile #battle-view:not(.area-fit) #mob-list .mob-target{height:252px !important;overflow:hidden !important;}',
       'body.m-mobile #battle-view:not(.area-fit) #mob-list .mob-target > div:first-child > span{display:-webkit-box !important;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.15;}',
-      /* 原作把怪名改成預設 opacity:0、靠滑鼠 hover(或被點到的那隻 .name-show)才顯示(index.html .mob-name)。
-         手機無 hover→所有怪名全程隱形。手機改成「只顯示選取目標(.active)那隻」的怪名(5 隻全顯太擠、窄卡硬塞會被截到剩一字),
-         且不截斷(見下方 .mob-name 規則:單行不換行、比卡寬時往左右溢出)。原作哪天改回怪名常顯,本段即多餘、無害。 */
-      'body.m-mobile #battle-view .mob-target.active .mob-name{opacity:1 !important;}',
       /* 🏜️ 戰鬥區(2026-07-01 v2·使用者指定「跟桌面版一樣填滿空白」):作者新版狩獵區背景＝16:9 滿版圖,戰鬥框
          由 flex 吃滿地圖面板;桌機面板≈16:9 故背景/怪物比例都對。手機改成跟桌機一致——戰鬥框 flex:1 吃滿中欄
          剩餘高度(背景 cover 滿版·對齊底部讓怪站地面),怪物完全交回原作 area-fit 的 grid＋景深 CSS(等同桌機
@@ -733,7 +729,8 @@
          吃光高度、怪物圖被擠到只剩 ~12px(使用者回報「看不到怪物」);吃滿高度後格子夠高、怪物圖就回來了。
          不套舊版「條狀矮帶＋絕對定位疊圖」覆寫(上一代 strip 背景時代的,新版 grid 會打架)。 */
       'body.m-mobile #battle-view.area-fit{flex:1 1 auto !important;aspect-ratio:auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
-      /* 怪名比照桌機:只在 hover/選取(.name-show)時顯示——手機無 hover 故預設不固定顯示(使用者指定);不再加 opacity:1 強制常顯 */
+      /* 怪名手機一律不顯示(使用者指定:連「鎖定/被打的目標」也不要顯示名字)→ 蓋過原作 hover/.name-show 的 opacity:1 */
+      'body.m-mobile #battle-view .mob-name{opacity:0 !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
@@ -1066,6 +1063,21 @@
     });
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-  else init();
+  // 🔒 零接觸桌機:init() 會插入手機元素、搬動戰鬥/系統日誌、改地圖標題列等——這些都動到原作者既有 DOM。
+  //   為了讓本外掛「永遠不可能弄壞桌機版」(省去每次作者改版都要用 Playwright 驗桌機),改成只有「真的是手機
+  //   尺寸/裝置」時才呼叫 init();桌機(且視窗沒縮窄)整支 init 不執行 → 原作者桌機 DOM 一字不動。
+  //   視窗縮窄/旋轉成手機尺寸時再 lazy 跑一次 init();init() 內部自帶 mql/orientationchange 監聽,接手後續手機↔桌機切換。
+  var _mql = window.matchMedia(MQ);
+  var _mInited = false;
+  function _isMobileNow() {
+    var sc = window.__mobileScaling;
+    var dev = (sc && typeof sc.isMobileDevice === 'function') ? sc.isMobileDevice() : false;
+    return dev || _mql.matches;   // 與 init 內 detectMobile 同邏輯:裝置(粗指標/UA)或窄視窗任一即手機
+  }
+  function _maybeInit() { if (_mInited || !_isMobileNow()) return; _mInited = true; init(); }
+  if (_mql.addEventListener) _mql.addEventListener('change', _maybeInit);
+  else if (_mql.addListener) _mql.addListener(_maybeInit);
+  window.addEventListener('orientationchange', _maybeInit);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _maybeInit);
+  else _maybeInit();
 })();
