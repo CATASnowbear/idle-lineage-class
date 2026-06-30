@@ -2284,7 +2284,7 @@
     var icon = '<img class="m-wiki-spell-ic" src="assets/icons/skills/' + esc(sk.n) + '.png" alt="" loading="lazy" onerror="this.style.display=\'none\'">';
     return '<div class="m-wiki-spell' + learnCls + '">' + icon +
       '<div class="m-wiki-spell-main">' +
-        '<div class="m-wiki-spell-top"><span class="m-wiki-spell-n">' + esc(sk.n) + '</span>' +
+        '<div class="m-wiki-spell-top"><span class="m-wiki-spell-n">' + wDexLink(sk.n) + '</span>' +   // 🔗 魔法名可點→掉落查詢搜尋(找該魔法的技能書怎麼取得)
         (tags.length ? '<span class="m-wiki-spell-tags">' + esc(tags.join('・')) + '</span>' : '') + '</div>' +
         '<div class="m-wiki-spell-eff">' + esc(skillEffect(id, sk)) + esc(eleReq) + '</div>' +
         (lvLabel ? '<div class="m-wiki-spell-lv">' + esc(lvLabel) + '</div>' : '') +
