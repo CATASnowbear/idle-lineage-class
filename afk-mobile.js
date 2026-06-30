@@ -726,18 +726,14 @@
          手機無 hover→所有怪名全程隱形。手機改成「只顯示選取目標(.active)那隻」的怪名(5 隻全顯太擠、窄卡硬塞會被截到剩一字),
          且不截斷(見下方 .mob-name 規則:單行不換行、比卡寬時往左右溢出)。原作哪天改回怪名常顯,本段即多餘、無害。 */
       'body.m-mobile #battle-view .mob-target.active .mob-name{opacity:1 !important;}',
-      /* 🏜️ 戰鬥區比例(2026-07-01 重訂):作者大改版把狩獵區背景全換成 16:9(2560×1440)滿版圖,戰鬥框由 flex
-         吃滿地圖面板——桌機面板≈16:9,故怪物的前後排景深/大小/站位全部正確(已對比作者官方站:桌機 battle-view
-         1132×627≈16:9、怪物大小與作者完全一致)。手機若讓戰鬥框吃滿整個「直式中欄」→ 框變直立(約 354×514),
-         16:9 背景被 cover 裁成中央放大一塊、怪物比例也跟著跑掉(使用者回報「比例怪」)。
-         解法:手機把戰鬥框鎖成 16:9(＝背景圖實際比例),背景 cover 就不變形;怪物交回「原作 area-fit 的
-         grid＋景深 CSS」自己排(等同桌機等比縮小),不再套舊版「條狀矮帶＋絕對定位疊圖」的整套覆寫(那是上一代
-         strip 背景時代的,新版會打架)。背景對齊底部讓怪物站在地面。⏏️ 作者哪天改背景比例,把 16/9 換成新值即可。 */
-      'body.m-mobile #battle-view.area-fit{aspect-ratio:16/9 !important;flex:0 0 auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
-      'body.m-mobile #battle-view.area-fit .mob-name{opacity:1 !important;}',   /* 手機無 hover:area-fit 怪名常顯(原作預設 opacity:0 靠 hover) */
-      /* 版面順序(使用者指定):16:9 場景圖 → 喝水/狀態列 → 底部留白。喝水/狀態緊接場景下方(不沉底),
-         留白落在中欄最下方(nav 上方),方便日後微調場景大小。area-fit 戰鬥框 flex:0 0 auto→中欄子層
-         預設 justify-content:flex-start 即「由上往下排、空白沉底」,不需額外規則。 */
+      /* 🏜️ 戰鬥區(2026-07-01 v2·使用者指定「跟桌面版一樣填滿空白」):作者新版狩獵區背景＝16:9 滿版圖,戰鬥框
+         由 flex 吃滿地圖面板;桌機面板≈16:9 故背景/怪物比例都對。手機改成跟桌機一致——戰鬥框 flex:1 吃滿中欄
+         剩餘高度(背景 cover 滿版·對齊底部讓怪站地面),怪物完全交回原作 area-fit 的 grid＋景深 CSS(等同桌機
+         等比縮放)。⚠️ 之前鎖 16:9(217px)時格子只剩 ~93px→原作「名字/徽章/狀態」三條固定列(flex-shrink:0)
+         吃光高度、怪物圖被擠到只剩 ~12px(使用者回報「看不到怪物」);吃滿高度後格子夠高、怪物圖就回來了。
+         不套舊版「條狀矮帶＋絕對定位疊圖」覆寫(上一代 strip 背景時代的,新版 grid 會打架)。 */
+      'body.m-mobile #battle-view.area-fit{flex:1 1 auto !important;aspect-ratio:auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
+      /* 怪名比照桌機:只在 hover/選取(.name-show)時顯示——手機無 hover 故預設不固定顯示(使用者指定);不再加 opacity:1 強制常顯 */
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
