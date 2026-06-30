@@ -735,8 +735,9 @@
          strip 背景時代的,新版會打架)。背景對齊底部讓怪物站在地面。⏏️ 作者哪天改背景比例,把 16/9 換成新值即可。 */
       'body.m-mobile #battle-view.area-fit{aspect-ratio:16/9 !important;flex:0 0 auto !important;height:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
       'body.m-mobile #battle-view.area-fit .mob-name{opacity:1 !important;}',   /* 手機無 hover:area-fit 怪名常顯(原作預設 opacity:0 靠 hover) */
-      /* 喝水/狀態列沉到中欄底部(拇指好按);16:9 戰鬥場景在上,中間留白即「天空/場景上方」,不再是破版空殼 */
-      'body.m-mobile.mview-battle #m-heal-bar{margin-top:auto !important;}',
+      /* 版面順序(使用者指定):16:9 場景圖 → 喝水/狀態列 → 底部留白。喝水/狀態緊接場景下方(不沉底),
+         留白落在中欄最下方(nav 上方),方便日後微調場景大小。area-fit 戰鬥框 flex:0 0 auto→中欄子層
+         預設 justify-content:flex-start 即「由上往下排、空白沉底」,不需額外規則。 */
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
