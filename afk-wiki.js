@@ -949,7 +949,7 @@
     { k: 'rift', n: '時空裂痕' },
     { k: 'kingroom', n: '軍王之室' }
   ];
-  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', equipCls: 'all', equipSlot: 'wpn' };
+  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', magicChar: '', equipCls: 'all', equipSlot: 'wpn' };
   // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
   var SEARCH_DEBOUNCE_MS = 150;
   var _searchTimer = null;
@@ -1037,6 +1037,14 @@
       var b = e.target.closest ? e.target.closest('[data-magiccls]') : null;
       if (!b) return;
       state.magicCls = b.getAttribute('data-magiccls');
+      state.magicChar = '';   // 切職業時重設角色選擇(預設不選)
+      render();
+    });
+    // 職業魔法分頁「選擇角色」下拉(body innerHTML 重繪後仍有效)
+    document.getElementById('m-wiki-body').addEventListener('change', function (e) {
+      var sel = e.target.closest ? e.target.closest('[data-magicchar]') : null;
+      if (!sel) return;
+      state.magicChar = sel.value;
       render();
     });
     document.getElementById('m-wiki-close').addEventListener('click', userCloseTop);
@@ -2219,17 +2227,68 @@
     return out;
   }
 
-  function magicSpellHTML(id, sk, lvLabel) {
+  // ---- 角色存檔讀取(唯讀;絕不呼叫會寫存檔的原作函式) ----
+  // 讀某存檔位的角色摘要(職業/等級/暱稱);解壓+解簽走原作全域 _lzGet/_saveUnwrap。
+  function readCharSlot(n) {
+    try {
+      if (typeof _lzGet !== 'function' || typeof _saveUnwrap !== 'function') return null;
+      var raw = _lzGet('lineage_idle_save_' + n);
+      if (!raw) return null;
+      var d = JSON.parse(_saveUnwrap(raw).payload);
+      var p = d && d.p; if (!p || !p.cls) return null;
+      return { slot: n, name: p.name || '', lv: p.lv || 1, cls: p.cls };
+    } catch (e) { return null; }
+  }
+  // 列出某職業的所有存檔角色(8 格)
+  function charsForClass(clsKey) {
+    var out = [];
+    for (var n = 1; n <= 8; n++) { var c = readCharSlot(n); if (c && c.cls === clsKey) out.push(c); }
+    return out;
+  }
+  // 某角色「真的學過的魔法」集合(扣掉裝備臨時授予的 grantedSkills);
+  // 該格正好是目前載入中的角色 → 用記憶體即時值(較新),否則讀存檔。
+  function charLearnedSet(slot) {
+    function pick(skills, granted) { granted = granted || []; return new Set((skills || []).filter(function (s) { return granted.indexOf(s) < 0; })); }
+    if (typeof player !== 'undefined' && player && player.cls && typeof currentSlot !== 'undefined' && String(currentSlot) === String(slot)) {
+      return pick(player.skills, player.grantedSkills);
+    }
+    var c = readCharSlot(slot); if (!c) return null;
+    try {
+      var d = JSON.parse(_saveUnwrap(_lzGet('lineage_idle_save_' + slot)).payload);
+      var p = d && d.p; if (!p) return null;
+      return pick(p.skills, p.grantedSkills);
+    } catch (e) { return null; }
+  }
+  // 職業魔法分頁的「選擇角色」下拉(只在選定單一職業時顯示;預設不選);
+  // 選了角色後 renderMagic 會把該角色學過的魔法圖示變亮、未學的變暗。
+  function charSelectHTML(clsKey) {
+    var chars = charsForClass(clsKey);
+    if (!chars.length) return '';
+    var clsName = (CLASSES.filter(function (c) { return c.k === clsKey; })[0] || {}).n || '';
+    if (!chars.some(function (c) { return String(c.slot) === String(state.magicChar); })) state.magicChar = '';   // 切職業後舊選擇失效 → 退回不選
+    var opts = '<option value="">不選（只看清單）</option>' + chars.map(function (c) {
+      var label = c.name ? ('Lv.' + c.lv + '　' + c.name) : ('Lv.' + c.lv + '　' + clsName);
+      return '<option value="' + c.slot + '"' + (String(c.slot) === String(state.magicChar) ? ' selected' : '') + '>' + esc(label) + '</option>';
+    }).join('');
+    return '<div class="m-wiki-charsel"><label>選擇角色</label><select data-magicchar>' + opts + '</select>' +
+      '<span class="m-wiki-charsel-hint">選角色後，已學會的魔法<b style="color:#22c55e">變亮</b>、未學的<b>變暗</b></span></div>';
+  }
+
+  function magicSpellHTML(id, sk, lvLabel, learnedSet) {
     var tags = [];
     if (sk.type === 'atk' && sk.ele) tags.push(ELE[sk.ele] || sk.ele);
     if (sk.mp) tags.push('MP ' + sk.mp);
     if (sk.hpCost) tags.push('HP ' + sk.hpCost);
     var eleReq = sk.reqEle ? '　※需' + (ELE_REQ[sk.reqEle] || sk.reqEle) + '屬性' : (sk.reqEleAny ? '　※需先選定屬性' : '');
-    return '<div class="m-wiki-spell">' +
-      '<div class="m-wiki-spell-top"><span class="m-wiki-spell-n">' + esc(sk.n) + '</span>' +
-      (tags.length ? '<span class="m-wiki-spell-tags">' + esc(tags.join('・')) + '</span>' : '') + '</div>' +
-      '<div class="m-wiki-spell-eff">' + esc(skillEffect(id, sk)) + esc(eleReq) + '</div>' +
-      (lvLabel ? '<div class="m-wiki-spell-lv">' + esc(lvLabel) + '</div>' : '') +
+    var learnCls = learnedSet ? (learnedSet.has(id) ? ' is-learned' : ' is-unlearned') : '';
+    var icon = '<img class="m-wiki-spell-ic" src="assets/icons/skills/' + esc(sk.n) + '.png" alt="" loading="lazy" onerror="this.style.display=\'none\'">';
+    return '<div class="m-wiki-spell' + learnCls + '">' + icon +
+      '<div class="m-wiki-spell-main">' +
+        '<div class="m-wiki-spell-top"><span class="m-wiki-spell-n">' + esc(sk.n) + '</span>' +
+        (tags.length ? '<span class="m-wiki-spell-tags">' + esc(tags.join('・')) + '</span>' : '') + '</div>' +
+        '<div class="m-wiki-spell-eff">' + esc(skillEffect(id, sk)) + esc(eleReq) + '</div>' +
+        (lvLabel ? '<div class="m-wiki-spell-lv">' + esc(lvLabel) + '</div>' : '') +
+      '</div>' +
     '</div>';
   }
   var MAGIC_FILTERS = [['all', '全部'], ['royal', '王族'], ['knight', '騎士'], ['mage', '法師'], ['elf', '妖精'], ['dark', '黑暗妖精'], ['illusion', '幻術士'], ['dragon', '龍騎士'], ['warrior', '戰士']];   // 順序＝全部＋創角職業序(同 CLASSES)
@@ -2250,6 +2309,12 @@
   function renderMagic(magicCls) {
     magicCls = magicCls || 'all';
     var html = magicFilterRow(magicCls);
+    // 選定單一職業時:顯示「選擇角色」下拉(預設不選);選了角色 → 學過的魔法變亮、未學變暗
+    var learnedSet = null;
+    if (magicCls !== 'all') {
+      html += charSelectHTML(magicCls);
+      if (state.magicChar) learnedSet = charLearnedSet(state.magicChar);
+    }
     // ⚔️ 攻擊魔法實際傷害公式(以 castSkill 為準):別只比「威力」骰子,階級係數才是大頭
     html += '<div class="m-wiki-note">⚔️ <b>攻擊魔法的實際傷害不只看「威力」骰子。</b>每段傷害 ≈ <b>骰子 ×（1＋階級÷3）×（1＋魔法傷害÷16）</b>，<b>法師</b>再 ×（1.5＋階級÷20），最後扣目標魔防(MR)。<b>階級越高、倍率越大</b>——所以高階魔法即使骰子看起來差不多甚至略低，實際往往更強。<br>例：流星雨(10 階，骰 6~60) 看似低於冰雪暴(8 階，骰 8~64)，但把階級係數乘進去後<b>流星雨實際約強 14%</b>。下面每條的「威力」是<b>骰子基礎值</b>，比強度請連階級一起看。</div>';
     if (magicCls !== 'all') {
@@ -2269,7 +2334,7 @@
       var curLv = null;
       rows.forEach(function (r) {
         if (r.lv !== curLv) { curLv = r.lv; html += '<div class="m-wiki-lv">Lv ' + r.lv + '</div>'; }
-        html += magicSpellHTML(r.id, r.sk, r.needMastery ? '需魔導精通' : '');
+        html += magicSpellHTML(r.id, r.sk, r.needMastery ? '需魔導精通' : '', learnedSet);
       });
       if (magicCls === 'knight') html += '<div class="m-wiki-note">騎士／王族／戰士裝備「治癒／敏捷／力量魔法頭盔」時，額外獲得頭盔自帶的魔法（持有即可用、卸下就消失），不受等級限制。</div>';
       return html;
@@ -2366,7 +2431,17 @@
       '.m-wiki-captbl td:last-child{text-align:center;color:#fcd34d;}',
       '.m-wiki-captbl td.cap-none{color:#86efac;font-weight:bold;}',
       '.m-wiki-lv{font-size:13px;font-weight:bold;color:#a5b4fc;background:#1e293b;border-radius:6px;padding:4px 10px;margin-top:4px;}',
-      '.m-wiki-spell{background:#111c30;border:1px solid #243049;border-radius:8px;padding:8px 11px;}',
+      '.m-wiki-spell{background:#111c30;border:1px solid #243049;border-radius:8px;padding:8px 11px;display:flex;gap:10px;align-items:flex-start;}',
+      '.m-wiki-spell-ic{width:40px;height:40px;flex:none;object-fit:contain;border-radius:6px;background:#0a1322;}',
+      '.m-wiki-spell-main{flex:1;min-width:0;}',
+      '.m-wiki-spell.is-unlearned{opacity:.42;}',
+      '.m-wiki-spell.is-unlearned .m-wiki-spell-ic{filter:grayscale(1);}',
+      '.m-wiki-spell.is-learned{border-color:#22c55e;background:#0e1f17;}',
+      '.m-wiki-spell.is-learned .m-wiki-spell-ic{box-shadow:0 0 7px #22c55e88;}',
+      '.m-wiki-charsel{display:flex;align-items:center;gap:8px;margin:4px 2px 8px;flex-wrap:wrap;}',
+      '.m-wiki-charsel label{font-size:13px;color:#cbd5e1;font-weight:bold;flex:none;}',
+      '.m-wiki-charsel select{flex:1 1 160px;min-width:140px;background:#111c30;border:1px solid #334155;color:#e2e8f0;border-radius:7px;padding:6px 8px;font-size:13px;font-family:inherit;cursor:pointer;}',
+      '.m-wiki-charsel-hint{font-size:11.5px;color:#94a3b8;flex:1 1 100%;}',
       '.m-wiki-spell-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}',
       '.m-wiki-spell-n{font-size:14px;font-weight:bold;color:#fff;}',
       '.m-wiki-spell-tags{font-size:11.5px;color:#94a3b8;}',
