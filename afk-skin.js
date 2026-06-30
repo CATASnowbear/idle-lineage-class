@@ -45,12 +45,15 @@
       'border:1px solid rgba(148,163,184,.4);border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;}',
 
     /* 📢 公告跑馬燈:坐在「加掛版」副標下方、標題與首頁按鈕之間;紅底捲動,游標移上去暫停。margin-top 騰開上方浮動的副標。 */
-    '#afk-marquee{position:relative;width:100%;max-width:34rem;margin:30px auto 0;overflow:hidden;border-radius:8px;border:1px solid rgba(220,90,90,.34);background:linear-gradient(180deg,rgba(90,18,18,.30),rgba(60,12,12,.30));padding:5px 0;box-shadow:inset 0 0 14px rgba(0,0,0,.25);}',
-    '#afk-marquee .afk-mq-track{display:inline-block;white-space:nowrap;padding-left:100%;animation:afkMq 24s linear infinite;font-size:13px;font-weight:700;letter-spacing:1px;color:#fecaca;text-shadow:0 1px 2px rgba(0,0,0,.7);}',
+    '#afk-marquee{position:relative;width:100%;max-width:34rem;margin:30px auto 0;overflow:hidden;border-radius:8px;border:1px solid rgba(230,110,110,.5);background:linear-gradient(180deg,rgba(96,16,16,.82),rgba(58,8,8,.82));padding:6px 0;box-shadow:inset 0 0 14px rgba(0,0,0,.35);}',
+    /* 無縫捲動:track 放兩份相同文字,translateX 只移 -50%(=一份寬)→ 看起來連續、且第一份一開始就在可視區
+       (動畫沒跑/還沒開始也看得到字,不會像「padding-left:100%」那樣有一段空白期 → 修「字沒出現」)。 */
+    '#afk-marquee .afk-mq-track{display:flex;width:max-content;animation:afkMq 26s linear infinite;}',
+    '#afk-marquee .afk-mq-seg{flex:0 0 auto;white-space:nowrap;padding:0 1.8rem;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff2f2;text-shadow:0 1px 2px #000,0 0 4px rgba(0,0,0,.8);}',
     '#afk-marquee:hover .afk-mq-track{animation-play-state:paused;}',
-    '@keyframes afkMq{from{transform:translateX(0)}to{transform:translateX(-100%)}}',
+    '@keyframes afkMq{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
     'body.m-mobile #afk-marquee{max-width:94%;margin-top:26px;}',
-    'body.m-mobile #afk-marquee .afk-mq-track{font-size:12px;letter-spacing:.5px;}',
+    'body.m-mobile #afk-marquee .afk-mq-seg{font-size:12px;letter-spacing:.5px;padding:0 1.3rem;}',
     ''
   ].join('');
 
@@ -85,7 +88,12 @@
     if (!headerDiv || headerDiv.parentElement !== cs) return;
     var mq = document.createElement('div'); mq.id = 'afk-marquee';
     var track = document.createElement('div'); track.className = 'afk-mq-track';
-    track.textContent = MARQUEE_TEXT;
+    for (var i = 0; i < 2; i++) {   // 兩份文字→無縫捲動;第一份開場即在可視區
+      var seg = document.createElement('span'); seg.className = 'afk-mq-seg';
+      if (i === 1) seg.setAttribute('aria-hidden', 'true');
+      seg.textContent = MARQUEE_TEXT;
+      track.appendChild(seg);
+    }
     mq.appendChild(track);
     cs.insertBefore(mq, headerDiv.nextSibling);
   }
