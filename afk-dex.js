@@ -36,6 +36,21 @@
   }
   // 🔗 通用跨頁:是否在「獨立頁」(任一 ?view=,不限本外掛)→ 決定連結走「網址」還是「模態」
   function inStandaloneView() { try { return !!new URLSearchParams(location.search).get('view'); } catch (e) { return false; } }
+
+  // 🔇 獨立頁(?view=wiki / ?view=dex)不播背景音樂:小百科 / 掉落查詢是當「靜態查詢工具頁」開,
+  //   不該有遊戲 BGM。作法:遊戲 BGM 引擎(js/17-audio.js)是在 DOMContentLoaded 才自我初始化的,
+  //   而本外掛同步執行、早於 DOMContentLoaded,故在它啟動「之前」把 _bgmInit / _bgmSwitch 換成 no-op
+  //   → 音樂從不啟動。刻意不呼叫 setBgmOn(false)(那會寫存檔 fb5_bgm、關掉玩家在遊戲內的 BGM 偏好);
+  //   防呆:萬一載入順序意外、引擎已先跑,補呼叫 _bgmStopAll 收掉。本外掛在任一 ?view= 皆載入,
+  //   inStandaloneView() 對 wiki / dex 都為真,故一處即同時涵蓋兩個獨立頁。
+  (function () {
+    if (!inStandaloneView()) return;
+    try {
+      if (typeof window._bgmInit === 'function') window._bgmInit = function () {};
+      if (typeof window._bgmSwitch === 'function') window._bgmSwitch = function () {};
+      if (typeof window._bgmStopAll === 'function') { try { window._bgmStopAll(); } catch (e) {} }
+    } catch (e) {}
+  })();
   // 🔗 通用「前往掉落查詢」(供小百科等任何跨頁連結重用):模態連模態、網址連網址。
   //    opts.q = 預設搜尋字。獨立頁 → 導去 ?view=dex&q=(dex 初始化讀 q 自動搜);模態(遊戲內) → 開 dex 模態並搜尋。
   function gotoDex(opts) {
