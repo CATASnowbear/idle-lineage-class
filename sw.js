@@ -125,14 +125,16 @@ async function reconcileImages(manifest, client) {
   if (client) client.postMessage({ type: 'reconcile-done', evicted });
 }
 
-// cache-first + 連網補存。ok(200)或 opaque(跨網域)都存。
+// cache-first + 連網補存。只存 status 200 或 opaque(跨網域);206(Range 部分回應,如 <audio> 串流音檔)
+//   不能進 Cache(cache.put 對 206 會 reject:Partial response unsupported)→ 必須排除,否則丟出未捕捉的 rejection。
+//   put 一律掛 .catch:任何寫入失敗(配額滿/極端 race)都不該變成頁面端看到的錯誤、也不該影響回傳 res。
 async function cacheFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(req);
   if (hit) return hit;
   try {
     const res = await fetch(req);
-    if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+    if (res && (res.status === 200 || res.type === 'opaque')) cache.put(req, res.clone()).catch(() => {});
     return res;
   } catch (err) {
     const fallback = await cache.match(req);
