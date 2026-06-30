@@ -321,35 +321,59 @@
   })();
 
   /* --------------------------------------------------------------------------
-   * 修正#8:快轉(離線 / 背景補跑)時靜音音效 + 不跳戰鬥特效(省效能、不洗畫面/耳朵)
+   * 修正#8:快轉(離線 / 背景補跑)時靜音音效 + 不跳戰鬥特效(省效能、不洗畫面 / 耳朵)
    *
-   * 問題:作者 .49 起的音效(js/17-audio.js 的 playSfx / playMobHurt / playMobKill / playSpellCast)與
-   *   戰鬥特效(js/09-vfx-render 的 vfxKill / vfxLevelUp / vfxRareDrop / vfxPlayerHit)是直接從戰鬥 /
-   *   擊殺碼「無條件」呼叫的,且它們只看自己的開關(_sfxCfg.on / __vfxOff),都沒有檢查 state.ff(快轉旗標)。
-   *   而 afk-offline 的離線結算 = 把原作 tick() 在 state.ff=true 下快轉幾十萬拍(24h≈86 萬拍)→ 補跑期間
-   *   仍逐拍播擊殺 / 受擊 / 升級音、跳金色稀有掉落特效與粒子:既洗畫面 / 耳朵,又白白吃效能(HTMLAudio.play
-   *   與建立一堆動畫 DOM 節點,長時間補跑累積很可觀)。背景分頁的補跑同理。使用者回報。
-   * 解法:包住這些函式,state.ff 為真時直接 no-op;ff=false(正常遊玩)完全照原樣。只在快轉時靜音 / 不跳特效,
-   *   不碰任何遊戲數值或掉落結算(掉落計算與音效 / 特效完全無關,收益一字不差)。
-   * 何時可移除:原作者自己在上述函式開頭加了 state.ff 判斷(快轉不出聲 / 不跳特效)時,本段即多餘,可整段
-   *   刪掉(留著無害:某函式不存在會自動略過,且 no-op 疊 no-op)。
+   * 問題:作者 .49 起的音效(js/17-audio.js)與戰鬥特效(js/09-vfx-render.js)從戰鬥 / 擊殺碼
+   *   「無條件」呼叫,只看自己的開關,都沒檢查 state.ff(快轉旗標)。快轉(離線結算 24h≈86 萬拍、
+   *   背景分頁批次補跑)會逐拍播擊殺 / 受擊 / 升級音、跳金色稀有掉落等特效:洗畫面 / 耳朵又白吃效能。
+   * 解法:不列舉個別函式(作者每新增一個音效 / 特效就要補名單),改抓「作者所有相關函式都會先檢查的
+   *   總開關」這一層,把它改成「計算屬性」,快轉(state.ff)時自動視為關閉——現有與未來的音效 / 特效
+   *   全部一併納管、零維護:
+   *     - 音效總開關 _sfxCfg.on:每支發聲函式(playSfx / playMobHurt / playMobKill / playSpellCast)
+   *       開頭都 `if (!_sfxCfg.on) return;` → 改成 getter =「玩家原設定 && 非快轉」,ff 時第一行就 return
+   *       (連音檔懶載 / 查表都不做、零副作用)。
+   *     - 特效總開關 window.__vfxOff:每支 vfx 函式開頭都 `if (window.__vfxOff) return;` → 改成 getter =
+   *       「玩家原設定 || 快轉中」。
+   *   兩者 setter 都把值存進私有變數,玩家在設定 / 標題畫面的開關照常運作。完全不碰遊戲數值 / 掉落結算
+   *   (音效 / 特效與收益無關,一字不差)。
+   * 何時可移除:原作者自己在音效 / 特效函式開頭加了 state.ff 判斷時,本段即多餘,可整段刪掉
+   *   (抓不到 _sfxCfg / __vfxOff 會自動略過,不弄壞遊戲)。
    * ------------------------------------------------------------------------ */
   (function () {
     function ffOn() { try { return typeof state !== 'undefined' && state && !!state.ff; } catch (e) { return false; } }
-    // 全是 js/*.js 的全域函式宣告(＝window 屬性);戰鬥碼以裸名呼叫,改指 window.* 後裸名即走包裝版(同本檔其他修正)。
-    var NAMES = ['playSfx', 'playMobHurt', 'playMobKill', 'playSpellCast', 'vfxKill', 'vfxLevelUp', 'vfxRareDrop', 'vfxPlayerHit'];
-    var patched = 0;
-    NAMES.forEach(function (name) {
-      try {
-        var orig = window[name];
-        if (typeof orig !== 'function' || orig.__afkFfMute) return;
-        var w = function () { if (ffOn()) return; return orig.apply(this, arguments); };
-        w.__afkFfMute = true;
-        window[name] = w;
-        patched++;
-      } catch (e) {}
-    });
-    console.log('[AFK-fixes] 快轉補跑靜音 / 不跳特效 已掛上(' + patched + ' 個函式)');
+
+    // 音效總開關:_sfxCfg.on 改成 getter =「玩家原設定 && 非快轉」。
+    //   ⚠ 必須 enumerable:true——_sfxSaveCfg 用 JSON.stringify(_sfxCfg) 存檔,非列舉屬性會被漏掉而存不回 on。
+    //   ⚠ 用私有 _realSfxOn 保存玩家真值;作者的 _sfxLoadCfg / setSfxOn 寫 _sfxCfg.on 會走 setter 自動同步。
+    try {
+      var sc = window._sfxCfg;
+      if (sc) {
+        var d1 = Object.getOwnPropertyDescriptor(sc, 'on');
+        if (!d1 || !d1.get) {   // 尚未被本段接管(避免重複安裝)
+          var _realSfxOn = d1 ? (d1.value !== false) : true;
+          Object.defineProperty(sc, 'on', {
+            enumerable: true, configurable: true,
+            get: function () { return _realSfxOn && !ffOn(); },
+            set: function (v) { _realSfxOn = !!v; }
+          });
+        }
+      }
+    } catch (e) {}
+
+    // 特效總開關:window.__vfxOff 改成 getter =「玩家原設定 || 快轉中」。玩家標題畫面的開關寫入走 setter。
+    try {
+      var d2 = Object.getOwnPropertyDescriptor(window, '__vfxOff');
+      if (!d2 || !d2.get) {
+        var _realVfxOff = !!window.__vfxOff;
+        Object.defineProperty(window, '__vfxOff', {
+          configurable: true,
+          get: function () { return _realVfxOff || ffOn(); },
+          set: function (v) { _realVfxOff = !!v; }
+        });
+      }
+    } catch (e) {}
+
+    console.log('[AFK-fixes] 快轉補跑靜音 / 不跳特效 已掛上(音效 / 特效總開關 ff-aware)');
   })();
 
   console.log('[AFK-fixes] hooks OK — 通用修正外掛已啟用。');
