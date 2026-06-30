@@ -738,7 +738,7 @@ function openModal(item, isEq, slot) {
     }
 
     // 廢品勾選（所有背包道具：武器/防具/飾品/藥水/卷軸/魔法書/技能書/材料/試煉道具等）：
-    //   勾選後系統會每隔一段時間（每 60 秒）自動賣出（autoSellJunk）；鎖定中無法勾選且會自動取消。
+    //   勾選後，從「最後一次手動標示」起算 10 分鐘沒有新動作，系統才自動賣出（autoSellJunk·每次手動標示會重置倒數）；鎖定中無法勾選且會自動取消。
     if (!isEq && !(DB.items[item.id] && DB.items[item.id].noJunk)) {   // 🎴 noJunk(收集冊等)：不顯示「標記為廢品」
         let locked = !!item.lock;
         let checked = (item.junk && !locked) ? 'checked' : '';
@@ -1197,6 +1197,7 @@ function runQuickJunk(type) {
         if (want) { player.junkPrefs[itemSig(i)] = true; marked++; }
         else { delete player.junkPrefs[itemSig(i)]; unmarked++; }
     });
+    if (marked > 0) _bumpJunkSellTimer();   // 🗑️ 有新標記廢品→重置自動賣出倒數（標完 10 分鐘才賣）
     st.active = false; st.sel = {}; st.known = {};
     logSys(`<span class="text-amber-300 font-bold">快速廢品完成：</span>標記 ${marked} 件、取消 ${unmarked} 件。`);
     renderTabs(true);
@@ -1215,6 +1216,12 @@ function getSellPrice(item) {
     return price * mult;
 }
 
+// 🗑️ 玩家手動標示廢品 → 把自動賣出倒數重置為 10 分鐘（標完 10 分鐘沒有新動作才會賣，避免剛標就被賣掉）。
+//    ⚠️farming 自動標記（junkPrefs 命中掉落，js/04/js/08 gainItem）刻意不呼叫此函式，否則持續掉落會讓倒數永遠被重置、永不賣出。
+function _bumpJunkSellTimer() {
+    if (typeof state !== 'undefined' && state) state._junkSellAt = (state.ticks || 0) + JUNK_AUTOSELL_TICKS;
+}
+
 // 切換「廢品」勾選（僅背包內武器/防具/飾品；鎖定者無法勾選且自動取消）
 function toggleJunk(uid) {
     let item = player.inv.find(i => i.uid === uid);
@@ -1226,7 +1233,7 @@ function toggleJunk(uid) {
     if (d.noJunk) { item.junk = false; delete player.junkPrefs[itemSig(item)]; openModal(item, false); return; }   // 🎴 收集冊等 noJunk：無法標示為廢品
     item.junk = !item.junk;
     // 🔧 記憶廢品勾選（依完整簽章 id＋詞綴）：之後獲得「完全相同詞綴」的同種物品自動標記，直到玩家取消勾選為止
-    if (item.junk) player.junkPrefs[itemSig(item)] = true;
+    if (item.junk) { player.junkPrefs[itemSig(item)] = true; _bumpJunkSellTimer(); }   // 🗑️ 標為廢品→重置自動賣出倒數（標完 10 分鐘才賣）
     else delete player.junkPrefs[itemSig(item)];
     openModal(item, false);
     renderTabs();
@@ -1318,25 +1325,40 @@ function sortInventory() {
 
 // 一鍵賣出所有已勾為廢品的武器/防具/飾品（鎖定者不會被賣，因鎖定時已自動取消勾選）
 // ⏲️ 自動賣出廢品：由主迴圈 tick（每 60 秒）呼叫；賣掉所有標示為廢品(且非鎖定/可販售)的物品。無廢品→靜默不洗版。
-function autoSellJunk() {
+function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」立即賣（無廢品時給提示）；不帶參數＝主迴圈自動賣(靜默)
     if (!player || !Array.isArray(player.inv)) return;
     let toSell = player.inv.filter(i => {
         let d = DB.items[i.id];
         return i.junk && !i.lock && d && !d.noSell;   // 🏅 不可販售物（精通之證）排除
     });
-    if (toSell.length === 0) return;   // 無廢品→靜默
+    if (toSell.length === 0) { if (manual) logSys('<span class="text-slate-400">目前沒有標記為廢品的物品可賣出（請先在 武器／防具／道具 分頁用「🗑️ 快速廢品」標記）。</span>'); return; }   // 無廢品→自動靜默、手動給提示
     let totalGold = 0, totalCount = 0;
     toSell.forEach(i => { totalGold += getSellPrice(i) * i.cnt; totalCount += i.cnt; });
     let _grantSold = toSell.some(i => DB.items[i.id] && DB.items[i.id].grantSkills);
     player.inv = player.inv.filter(i => !toSell.includes(i));
     player.gold += totalGold;
-    logSys(`<span class="text-amber-300">系統自動賣出 ${toSell.length} 件(共 ${totalCount} 個)廢品，獲得 <span class="text-yellow-400 font-bold">${totalGold}</span> 金幣。</span>`);
+    logSys(`<span class="text-amber-300">${manual ? '一鍵賣出' : '系統自動賣出'} ${toSell.length} 件(共 ${totalCount} 個)廢品，獲得 <span class="text-yellow-400 font-bold">${totalGold}</span> 金幣。</span>`);
     renderTabs();
     updateUI();
     if(_grantSold) { calcStats(); renderSkillSelects(); }
     saveGame();
 }
 
+// 🗑️ 自動賣出開關（右上角按鈕）：點亮＝開啟自動賣出(每 3 分鐘)；點一下變暗、文字「停止賣出」並暫停。狀態存 player.autoSellOn(預設開·undefined 視為開)，隨存檔持久化。
+function toggleAutoSell() {
+    if (!player) return;
+    player.autoSellOn = (player.autoSellOn === false);   // false→true(開)；true/undefined→false(停)
+    _renderAutoSellBtn();
+    if (typeof saveGame === 'function') saveGame();
+}
+function _renderAutoSellBtn() {
+    let b = document.getElementById('btn-autosell'); if (!b) return;
+    let on = !player || player.autoSellOn !== false;   // 預設(undefined)＝開
+    b.textContent = on ? '自動賣出' : '停止賣出';
+    b.style.opacity = on ? '' : '0.4';            // 變暗＝停止
+    b.style.filter = on ? '' : 'grayscale(0.85)';
+    b.title = on ? '自動賣出已開啟（每 3 分鐘賣出標記為廢品的物品）。點一下暫停。' : '自動賣出已停止。點一下重新開啟。';
+}
 function toggleLock(uid) {
     let item = player.inv.find(i => i.uid === uid);
     if (item) {
@@ -1376,4 +1398,134 @@ function switchTab(t, btn) {
     ['stats', 'equip', 'weapons', 'skill', 'armors', 'items', 'audit'].forEach(id => { let _e = document.getElementById(`tab-${id}`); if(_e) _e.classList.add('hidden'); });
     document.getElementById(`tab-${t}`).classList.remove('hidden');
     if(t === 'audit' && typeof renderAuditTab === 'function') renderAuditTab();
+}
+
+// ===== 🤝 協力傭兵隊伍面板（Phase 1：顯示血/魔/經驗條＋每傭兵攻擊技能/治癒魔法設定）=====
+let _squadSig = '';          // 結構簽章：名單(slot)變動才重建 DOM，避免每幀 innerHTML 重繪
+let _squadTab = 'team';      // 目前分頁：team / skill
+let _autoCollapseInit = false;   // 自動化設定收合偏好只在首次套用
+
+// 依某個傭兵「自身的可學技能」產生攻擊／治癒下拉選項（比照 renderSkillSelects 過濾，但讀 ally 而非 player）
+function _allySkillOptions(ally, kind, cur) {
+    let opts = '<option value="">無</option>';
+    let skills = (ally && ally.skills) ? ally.skills : [];
+    let sorted = [...skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a, b) => (DB.skills[a].tier || 0) - (DB.skills[b].tier || 0));
+    sorted.forEach(sid => {
+        let sk = DB.skills[sid];
+        // ⚠️ ally.skills 皆為「該傭兵已學會」的技能→一律可選；不可用 skillReqLv/reqEle 判可用性（那會依『目前玩家』職業誤判，使跨職業傭兵如幻術士的攻擊技全被 disabled）
+        let match = (kind === 'atk')
+            ? (sk.type === 'atk' && !sk.healSlot)
+            : ((sk.type === 'heal' && !sk.autoBuff && !['sk_antidote', 'sk_holy_light', 'sk_cancel'].includes(sid)) || (sk.type === 'atk' && sk.healSlot));
+        if (!match) return;
+        opts += `<option value="${sid}"${cur === sid ? ' selected' : ''}>${sk.n}</option>`;
+    });
+    return opts;
+}
+
+function renderSquadPanel() {
+    let panel = document.getElementById('squad-panel');
+    if (!panel) return;
+    if (!_autoCollapseInit) { _autoCollapseInit = true; try { if (_lsGet('fb5_automation_collapsed') === '1') _applyAutomationCollapse(true); } catch (e) {} }   // 首次套用收合偏好
+    let allies = (player && player.allies) ? player.allies.filter(Boolean) : [];
+    if (!allies.length) { panel.style.display = 'none'; _squadSig = ''; return; }
+    panel.style.display = '';
+    let sig = allies.map(a => a._slot + ':' + (a._allyName || '') + ':' + (a._downed ? 'D' : '') + ':' + (a.lv || 1)).join('|');   // 名單/倒地/等級變動才重建結構（升級即更新 Lv 顯示）
+    if (sig !== _squadSig) {
+        _squadSig = sig;
+        document.getElementById('squad-tab-team').innerHTML = allies.map(a => {
+            let s = a._slot;
+            if (a._downed) {   // 🤝 Phase 3：倒地→灰顯卡片＋復活鈕（復活卷軸·15秒冷卻；無卷軸只能回村免費復活。鈕文字每幀更新）
+                return `<div class="bg-slate-900/70 border border-red-900 rounded p-2 flex items-center justify-between gap-2" style="opacity:0.85;">
+                    <div class="text-sm"><span class="font-bold text-slate-400">${a._allyName}</span> <span class="text-slate-600 text-xs">Lv.${a.lv || 1}</span> <span class="text-red-400 font-bold">【倒地】</span></div>
+                    <button id="squad-revive-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#7f1d1d;border-color:#b91c1c;color:#fecaca;" onclick="reviveMercenary('${s}')">復活</button>
+                </div>`;
+            }
+            return `<div class="bg-slate-800/60 border border-slate-600 rounded p-2 flex flex-col gap-1">
+                <div class="flex justify-between items-center text-sm"><span class="font-bold text-amber-200">${a._allyName}</span><span class="text-slate-400 text-xs">Lv.${a.lv || 1}</span></div>
+                <div id="squad-status-${s}" class="text-xs" style="color:#fca5a5;line-height:1.2;"></div>
+                <div class="flex items-center gap-1"><span class="text-red-400 text-xs text-right" style="width:1.6rem;">HP</span><div class="bar-bg flex-1 !h-4"><div id="squad-hp-${s}" class="bar-fill bg-red-600" style="width:100%"></div><div id="squad-hp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0/0</div></div></div>
+                <div class="flex items-center gap-1"><span class="text-blue-400 text-xs text-right" style="width:1.6rem;">MP</span><div class="bar-bg flex-1 !h-4"><div id="squad-mp-${s}" class="bar-fill bg-blue-600" style="width:100%"></div><div id="squad-mp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0/0</div></div></div>
+                <div class="flex items-center gap-1"><span class="text-yellow-500 text-xs text-right" style="width:1.6rem;">EXP</span><div class="bar-bg flex-1 !h-4"><div id="squad-exp-${s}" class="bar-fill bg-yellow-500" style="width:0%"></div><div id="squad-exp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0%</div></div></div>
+            </div>`;
+        }).join('');
+        document.getElementById('squad-tab-skill').innerHTML = allies.map(a => {
+            let s = a._slot;
+            let hpPct = (a._healHpPct != null) ? a._healHpPct : 70;
+            return `<div class="bg-slate-800/60 border border-slate-600 rounded p-2 flex flex-col gap-1">
+                <div class="text-sm font-bold text-amber-200">${a._allyName} <span class="text-slate-500 text-xs">Lv.${a.lv || 1}</span></div>
+                <div class="flex items-center gap-1 text-xs"><span class="text-cyan-400 font-bold shrink-0" style="width:3rem;">攻擊技能</span><select class="flex-1 bg-slate-900 border border-slate-600 text-cyan-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyAtkSkill('${s}', this.value)">${_allySkillOptions(a, 'atk', a._atkSkill || '')}</select></div>
+                <div class="flex items-center gap-1 text-xs"><span class="text-green-400 font-bold shrink-0" style="width:3rem;">治癒魔法</span><select class="flex-1 bg-slate-900 border border-slate-600 text-green-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyHealSkill('${s}', this.value)">${_allySkillOptions(a, 'heal', a._healSkill || '')}</select></div>
+                <div class="flex items-center justify-end gap-1 text-xs text-slate-400">HP &lt; <input type="number" min="0" max="100" value="${hpPct}" class="w-12 bg-slate-900 border border-slate-600 text-center text-white rounded" onchange="setAllyHealHp('${s}', this.value)">% 施放治癒</div>
+            </div>`;
+        }).join('');
+        switchSquadTab(_squadTab);   // 重建後還原目前分頁與按鈕高亮
+    }
+    // 每幀更新血/魔/經驗條（不重建 DOM）
+    allies.forEach(a => {
+        let s = a._slot, el;
+        if (a._downed) {   // 🤝 倒地卡：更新復活鈕文字（冷卻倒數→卷軸數量→需卷軸）
+            let b = document.getElementById('squad-revive-' + s);
+            if (b) {
+                let cd = a._reviveCd || 0;
+                if (cd > 0) { b.textContent = '復活 ' + Math.ceil(cd / 10) + 's'; b.style.opacity = '0.45'; }
+                else { let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive'); let n = sc ? (sc.cnt || 0) : 0; b.textContent = n > 0 ? ('復活(卷軸×' + n + ')') : '需復活卷軸'; b.style.opacity = n > 0 ? '1' : '0.6'; }
+            }
+            return;   // 倒地卡無血條，跳過下面 hp/mp/exp 更新
+        }
+        if ((el = document.getElementById('squad-hp-' + s))) {
+            let mhp = Math.max(1, Math.floor(a.mhp || 1)), cur = Math.max(0, Math.floor(a.curHp || 0));
+            el.style.width = Math.max(0, (cur / mhp) * 100) + '%';
+            let t = document.getElementById('squad-hp-txt-' + s); if (t) t.innerText = cur + '/' + mhp;
+        }
+        if ((el = document.getElementById('squad-mp-' + s))) {
+            let mmp = Math.max(1, Math.floor(a.mmp || 1)), cur = Math.max(0, Math.floor(a.mp || 0));
+            el.style.width = Math.max(0, (cur / mmp) * 100) + '%';
+            let t = document.getElementById('squad-mp-txt-' + s); if (t) t.innerText = cur + '/' + mmp;
+        }
+        if ((el = document.getElementById('squad-exp-' + s))) {
+            let req = (typeof getExpReq === 'function') ? getExpReq(a.lv || 1) : 0;
+            let pct = (req > 0 && isFinite(req)) ? ((a.exp || 0) / req) * 100 : 0;
+            el.style.width = Math.min(100, Math.max(0, pct)) + '%';
+            let t = document.getElementById('squad-exp-txt-' + s); if (t) t.innerText = pct >= 100 ? '滿' : pct.toFixed(1) + '%';   // 不即時升級→累積超過一級顯「滿」（解雇可回收）
+        }
+        if ((el = document.getElementById('squad-status-' + s))) {   // 🤝 Phase4：傭兵異常狀態小字（無狀態時空白不佔版面）
+            let _ss = a.statuses || {}, _out = [];
+            [['stun', '暈眩'], ['freeze', '冰凍'], ['stone', '石化'], ['paralyze', '麻痺'], ['sleep', '沉睡'], ['silence', '沉默'], ['magicseal', '魔封'], ['poison', '中毒'], ['burn', '灼燒'], ['scald', '燙傷'], ['bleed', '出血'], ['slowAtk', '緩速']].forEach(p => { if ((_ss[p[0]] || 0) > 0) _out.push(p[1]); });
+            el.textContent = _out.length ? ('⚠ ' + _out.join('·')) : '';
+        }
+    });
+}
+
+function switchSquadTab(t) {
+    _squadTab = t;
+    ['team', 'skill'].forEach(id => {
+        let e = document.getElementById('squad-tab-' + id); if (e) e.classList.toggle('hidden', id !== t);
+        let b = document.getElementById('squad-tab-btn-' + id);
+        if (b) {
+            let on = (id === t);
+            b.style.background = on ? '#b45309' : '#334155';      // amber-700 / slate-700
+            b.style.borderColor = on ? '#f59e0b' : '#475569';     // amber-500 / slate-600
+            b.style.color = on ? '#ffffff' : '#cbd5e1';
+        }
+    });
+}
+
+function _findAlly(slot) { return (player.allies || []).find(a => a && String(a._slot) === String(slot)); }
+function setAllyAtkSkill(slot, val) { let a = _findAlly(slot); if (a) { a._atkSkill = val || ''; saveGame(); } }   // _atkSkill 即時生效（傭兵攻擊路徑直接讀 ally._atkSkill）
+function setAllyHealSkill(slot, val) { let a = _findAlly(slot); if (a) { a._healSkill = val || ''; saveGame(); } }   // _healSkill 儲存待 Phase 3 傭兵自動補血讀取
+function setAllyHealHp(slot, val) { let a = _findAlly(slot); if (a) { a._healHpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }
+
+// 自動化設定面板收合（只留標題）：收合時去掉 flex-1 改 0 0 auto，body 隱藏
+function _applyAutomationCollapse(collapsed) {
+    let panel = document.getElementById('automation-panel'), body = document.getElementById('automation-body'), arrow = document.getElementById('automation-collapse-arrow');
+    if (!panel || !body) return;
+    body.classList.toggle('hidden', collapsed);
+    panel.style.flex = collapsed ? '0 0 auto' : '';
+    if (arrow) arrow.textContent = collapsed ? '▶' : '▼';
+}
+function toggleAutomationCollapse() {
+    let body = document.getElementById('automation-body');
+    let collapsed = !(body && body.classList.contains('hidden'));
+    _applyAutomationCollapse(collapsed);
+    try { _lsSet('fb5_automation_collapsed', collapsed ? '1' : '0'); } catch (e) {}
 }

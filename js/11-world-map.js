@@ -1126,6 +1126,7 @@ function changeMap(force) {
         // 瞬間恢復所有 HP 與 MP
         player.hp = player.mhp;
         player.mp = player.mmp;
+        try { if (typeof reviveDownedMercsAtTown === 'function') reviveDownedMercsAtTown(); } catch (e) {}   // 🤝 Phase 3：回村/回城免費復活全體倒地傭兵
         // 🏰 城堡護衛：回城/回村補滿血並解除力竭
         if (player.castleGuard) { let _cg = player.castleGuard; if (_cg.mode === 'heal') { _cg.mp = _cg.maxMp; _cg._healAcc = 0; } else { _cg.hp = _cg.maxHp; } _cg.disabled = false; _cg._regenAcc = 0; }
         // 協力角色：進村莊一併回滿 MP（與玩家一致）

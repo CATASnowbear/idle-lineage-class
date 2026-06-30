@@ -85,7 +85,20 @@ function cubeTick() {
         if ((player._cubeCd[sid] = (player._cubeCd[sid] || sk.cube.iv) - 1) > 0) return;
         player._cubeCd[sid] = sk.cube.iv;
         let c = sk.cube;
-        if (c.kind === 'mp') { player.mp = Math.min(player.mmp, (player.mp || 0) + (c.val || 5)); return; }   // 立方：和諧（自身回MP，不需目標）
+        if (c.kind === 'mp') { player.mp = Math.min(player.mmp, (player.mp || 0) + (c.val || 5)); return; }   // 純回MP立方（保留·目前無技能使用）
+        if (c.kind === 'dmgmp') {   // 🔮 立方：和諧 → 對「當前目標」單體屬性傷害 ＋ 自身回MP（每觸發一次；回MP不需目標）
+            player.mp = Math.min(player.mmp, (player.mp || 0) + (c.val || 5));
+            let t = getTarget();
+            if (t && t.curHp > 0 && !t._dead) {
+                let d = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', t, 0, 1) * illuLvMult(player) * wpnEnFinalMult(player.eq && player.eq.wpn)));
+                d = illusionMagicDmg(d, true);   // 🔮 幻覺2/5回MP＋5/5二次傷害（比照立方dmg）
+                t.curHp -= d; t.justHit = (c.ele && c.ele !== 'none') ? c.ele : 'magic'; mobWake(t);
+                logCombat(`<span class="font-bold" style="color:#fb923c;text-shadow:0 0 6px #ea580c;">【${sk.n}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${d} 點傷害。`, 'dot', 'player');   // 🟢 立方傷害＝DoT(綠)、玩家來源
+                if (t.curHp <= 0) { let i = mapState.mobs.findIndex(x => x && x.uid === t.uid); if (i !== -1) killMob(i); }
+                renderMobs();
+            }
+            return;
+        }
         let live = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
         if (!live.length) return;
         if (c.kind === 'dmg') {
@@ -455,7 +468,7 @@ function castSkillInner(skId) {
                 let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr; if (t.st && (t.st.confuse > 0 || t.st.panic > 0)) effMr -= 10;
                 dmg = Math.max(1, Math.floor(dmg * (1 + (player.d.magicDmg || 0) / 16) * mrMult(Math.max(0, effMr))));
             }
-            dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player) * wpnEnFinalMult(player.eq.wpn)));   // 🔮 幻術士等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率（粉碎能量/骷髏毀壞/心靈破壞）
+            dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player) * wpnEnFinalMult(player.eq.wpn) * elementCounterMult(sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'none', t.e)));   // 🔮 幻術士等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率；⚔️ 屬性剋制(僅武器傷害技吃武器屬性)
             t.curHp -= dmg; t.justHit = sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'magic'; mobWake(t);
             if (sk.mpDmgPct && t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;   // 🔧 心靈破壞（魔法）：受一次魔法傷害後解除魔抗減半（與其他魔法路徑一致）
             logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'skill');
@@ -579,13 +592,11 @@ function castSkillInner(skId) {
                     let fixed = 0;
                     if(idx === dmgArray.length - 1) {
                         extraMagicDmg = (sk.dmgBase || 0) + player.d.extraMp;
-                        if(sk.ele) {
-                            if(isElementCounter(sk.ele, t.e)) fixed += 6;
-                        }
                     }
 
                     let d = Math.floor((core + extraMagicDmg) * mrFactor) - (t.dr || 0);
                     d = Math.max(1, d) + fixed;
+                    d = Math.max(1, Math.floor(d * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制：魔法剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
                     d = Math.floor(d * mageDmgMult);   // 法師一般攻擊魔法：最終傷害再乘上 (1.5 + 階級/20)
                     d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：攻擊技能最終傷害
                     if (player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) d = Math.floor(d * 2);   // 🏅 魔導精通：同屬性傷害魔法 ×2

@@ -48,7 +48,7 @@ const SPECIAL_AREA_BG = {   // 特殊地圖：逐張對應背景
     law_king_room: 'assets/area/軍王之室.jpg',      // 👑 法令軍王之室
     necro_king_room: 'assets/area/軍王之室.jpg',    // 👑 冥法軍王之室
     assassin_king_room: 'assets/area/軍王之室.jpg', // 👑 暗殺軍王之室
-    elder_room: 'assets/area/軍王之室.jpg',         // 🏛️ 格蘭肯神殿．長老之室（拉斯塔巴德新狩獵地圖·借用軍王之室背景）
+    elder_room: 'assets/area/長老之室.jpg',         // 🏛️ 格蘭肯神殿．長老之室（拉斯塔巴德新狩獵地圖·專屬背景）
     thebes_desert: 'assets/area/底比斯沙漠.jpg',   // 🏛️ 底比斯 沙漠（專屬背景）
     thebes_pyramid: 'assets/area/底比斯.jpg',      // 🏛️ 底比斯 金字塔內部（與祭壇共用底比斯背景）
     thebes_temple: 'assets/area/底比斯.jpg',        // 🏛️ 底比斯 歐西里斯祭壇（純BOSS房）
@@ -85,7 +85,7 @@ function applyAreaBackground() {
             }
             if (fbImg) { useSrc = fbImg.indexOf('/') >= 0 ? fbImg : `assets/background/${fbImg}`; useFit = AREA_BG_FIT.has(fbImg); }
         }
-        if (useSrc) { bv.style.backgroundImage = `url("${useSrc}")`; bv.style.backgroundSize = useFit ? 'contain' : ''; bv.classList.toggle('area-fit', useFit); bv.classList.add('has-bg'); }   // 🔧 條狀比例背景用 contain＋area-fit(框高鎖圖比例)、其餘清空 inline 回退 CSS 的 cover
+        if (useSrc) { bv.style.backgroundImage = `url("${useSrc}")`; bv.style.backgroundSize = useFit ? 'cover' : ''; bv.classList.toggle('area-fit', useFit); bv.classList.add('has-bg'); }   // 🖥️ 條狀比例背景改 cover＋area-fit(戰鬥框由 flex 吃滿地圖面板·背景滿版置中裁切)、其餘清空 inline 回退 CSS 的 cover
         else { bv.style.backgroundImage = ''; bv.style.backgroundSize = ''; bv.classList.remove('area-fit'); bv.classList.remove('has-bg'); }
     }
     let tv = document.getElementById('town-view');
@@ -901,7 +901,8 @@ function loadGame() {
         }
         
         updateClassPotionRows();
-        
+        try { if (typeof _renderAutoSellBtn === 'function') _renderAutoSellBtn(); } catch (e) {}   // 🗑️ 還原「自動賣出」按鈕點亮/變暗狀態（player.autoSellOn）
+
         state.running = true;
         // 自然恢復（每 16 秒）已由主迴圈 tick() 內的 state.ticks % 160 統一驅動，不再額外 setInterval。
         // 計時器統一由 startGameTimers() 註冊（內含去重），含每 5 分鐘自動存檔。

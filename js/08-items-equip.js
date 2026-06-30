@@ -129,6 +129,19 @@ function isElementCounter(e, te) {
            (e === 'wind'  && te === 'water') ||
            (e === 'water' && te === 'fire');
 }
+// ⚔️ 屬性剋制傷害倍率（物理＋魔法通用·取代舊的 +6/+9/+12 固定加值）：
+//   攻方屬性剋制守方  → ×1.4（火打地/地打風/風打水/水打火）
+//   攻方被守方剋制    → ×0.6（火打水/水打風/風打地/地打火）
+//   無屬性(none/normal/light/holy/magic/空) 或非剋制關係 → ×1.0
+//   atkEle＝攻擊方元素、defEle＝目標(怪物) t.e。供所有傷害site呼叫（單一真相）。
+const ELEM_COUNTER_UP = 1.4, ELEM_COUNTER_DOWN = 0.6;
+function elementCounterMult(atkEle, defEle) {
+    if (!atkEle || atkEle === 'none' || atkEle === 'normal' || atkEle === 'light' || atkEle === 'holy' || atkEle === 'magic') return 1;
+    if (!defEle || defEle === 'none' || defEle === 'normal') return 1;
+    if (isElementCounter(atkEle, defEle)) return ELEM_COUNTER_UP;   // 攻方剋守方
+    if (isElementCounter(defEle, atkEle)) return ELEM_COUNTER_DOWN;  // 攻方被守方剋
+    return 1;
+}
 
 function getItemColor(item) {
     let d = DB.items[item.id];
@@ -977,10 +990,7 @@ function renderStatusEffects() {
     { let _polyDisp = player._setPoly || ((player.buffs.poly>0 && player.poly) ? player.poly : null);
       if(_polyDisp) buffs.push(`<span class="${_polyDisp.c} font-bold">變身:${_polyDisp.n}</span>`); }
 
-    // 協力角色顯示
-    if(player.allies && player.allies.length) {
-        player.allies.forEach(a => { if(a){ let _mp = (a.cls === 'mage' || a.cls === 'elf') ? ` <span class="text-blue-300">MP ${Math.floor(a.mp||0)}</span>` : ''; buffs.push(`<span class="text-emerald-300 font-bold">協力：${allyName(a)}</span>${_mp}`); } });
-    }
+    // 🤝 協力傭兵已改由「協力傭兵隊伍」面板(#squad-panel)顯示 HP/MP/EXP/狀態，移除此處「狀態」欄的重複「協力：XX」條目
     // 👇 補上夥伴與誘捕狀態的顯示（可同時多種夥伴，數字=持有項圈數量，為1不顯示）
     if(player.partners && player.partners.length) {
         player.partners.forEach(nm => {
@@ -1123,7 +1133,8 @@ function _updateUIImpl() {
     let pct = player.lv >= 100 ? 100 : (nxtE > 0 && isFinite(nxtE) ? (player.exp / nxtE) * 100 : 0);
     document.getElementById('txt-exp').innerText = `${pct.toFixed(2)}%`;
     document.getElementById('bar-exp').style.width = `${Math.min(100, pct)}%`;
-    
+    try { if (typeof renderSquadPanel === 'function') renderSquadPanel(); } catch (e) {}   // 🤝 協力傭兵隊伍面板：每幀同步血/魔/經驗條（名單變動才重建結構）
+
     if (_respec) {   // 🕯️ 回憶蠟燭配點重置中：六大屬性顯示「Lv1 基礎 + 草稿配點」（確認後才真正套用）
         let _b = createBase[player.cls];
         ['str','dex','con','int','wis','cha'].forEach(s => { let el = document.getElementById('dt-'+s); if (el) el.innerText = _b[s] + _respec.draft[s]; });

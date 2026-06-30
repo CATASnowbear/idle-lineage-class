@@ -28,14 +28,17 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=d79d0a4b43">
+    <link rel="stylesheet" href="css/style.css?v=d8fcc81cfd">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
-<body class="h-screen w-screen flex items-center justify-center p-4">
+<body class="h-screen w-screen overflow-hidden">
+
+    <!-- 🖥️ 固定 1920×1080 設計舞台：整個 UI 置於此舞台內，由 fitStage() 依視窗大小等比 scale-to-fit（1080p=1×、1440p≈1.33×、4K=2×），大解析度全螢幕等比放大、版面不重排。VFX/提示/游標光點掛在 body（舞台外）→ 維持視窗座標、與舞台縮放相容。 -->
+    <div id="app-stage">
 
     <!-- 創角畫面 -->
     <!-- 👇 修改 1：將寬度放大為 max-w-5xl 以容納三欄排版 -->
-    <div id="creation-screen" class="w-[1000px] panel p-8 flex flex-col gap-6 z-50 absolute shadow-2xl" style="background: rgba(42, 44, 46, 0.78); backdrop-filter: blur(6px);">
+    <div id="creation-screen" class="w-[1000px] panel p-8 flex flex-col gap-6 z-50 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-2xl" style="background: rgba(42, 44, 46, 0.78); backdrop-filter: blur(6px);">
         <div class="text-center border-b border-slate-700 pb-4">
             <h1 class="text-4xl font-bold text-yellow-400 mb-2">放置天堂 - 以血為盟</h1>
             <p class="text-base text-slate-400">創造您的角色並開始冒險</p>
@@ -125,7 +128,7 @@
     </div>
 
     <!-- 遊戲主畫面 -->
-    <div id="game-screen" class="hidden w-full h-full max-w-[1600px] flex gap-4">
+    <div id="game-screen" class="hidden flex gap-4">
         <!-- 📱 手機版置頂常駐 HP/MP 細條（桌機 display:none） -->
         <div id="mobile-vitals">
             <div class="mv-bars">
@@ -154,9 +157,22 @@
                 </div>
             </div>
 
+            <!-- 🤝 協力傭兵隊伍面板（Phase 1：隊伍/技能設定分頁；無傭兵時自動隱藏，不佔版面） -->
+            <div id="squad-panel" class="panel" style="display:none;">
+                <div class="panel-header text-center">協力傭兵隊伍</div>
+                <div class="p-3 flex flex-col gap-2">
+                    <div class="flex gap-2">
+                        <button id="squad-tab-btn-team" class="flex-1 py-1 text-sm font-bold rounded border" style="background:#334155;border-color:#475569;color:#cbd5e1;" onclick="switchSquadTab('team')">隊伍</button>
+                        <button id="squad-tab-btn-skill" class="flex-1 py-1 text-sm font-bold rounded border" style="background:#334155;border-color:#475569;color:#cbd5e1;" onclick="switchSquadTab('skill')">技能設定</button>
+                    </div>
+                    <div id="squad-tab-team" class="flex flex-col gap-2" style="max-height:260px;overflow-y:auto;"></div>
+                    <div id="squad-tab-skill" class="hidden flex flex-col gap-2" style="max-height:260px;overflow-y:auto;"></div>
+                </div>
+            </div>
+
             <div id="automation-panel" class="panel flex-1 overflow-hidden flex flex-col">
-                <div class="panel-header text-center">自動化設定</div>
-                <div class="p-4 text-base flex flex-col gap-4 overflow-y-auto">
+                <div class="panel-header flex items-center justify-between" style="cursor:pointer;user-select:none;" onclick="toggleAutomationCollapse()"><span class="flex-1 text-center">自動化設定</span><span id="automation-collapse-arrow" class="text-sm" style="padding:0 0.25rem;">▼</span></div>
+                <div id="automation-body" class="p-4 text-base flex flex-col gap-4 overflow-y-auto">
                     <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 flex flex-col gap-2">
                         <div class="flex items-center justify-between gap-3">
                             <label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-sfx-on" class="w-4 h-4" onchange="try{setSfxOn(this.checked)}catch(e){}"><span class="text-sm text-amber-200 font-bold">🔊 戰鬥音效</span></label>
@@ -207,18 +223,14 @@
                         <div class="col-span-2 flex justify-between items-center border-t border-slate-700 pt-2 mt-1"><label class="cursor-pointer flex items-center gap-2"><input type="checkbox" id="set-auto-buy-arrow" class="w-4 h-4" checked> <span class="text-orange-300">弓箭耗盡時自動購買 1000 銀箭</span></label></div>
 						<div id="auto-buff-skills" class="col-span-2 grid grid-cols-2 gap-1 mt-1 border-t border-slate-600 pt-2"></div>
                     </div>
-                    
-                    <div class="mt-auto flex gap-2">
-                        <button onclick="exportSave()" class="btn w-1/2 py-3 bg-indigo-700 hover:bg-indigo-600 border-indigo-500 text-lg">匯出進度</button>
-                        <button onclick="saveGame()" class="btn w-1/2 py-3 bg-emerald-700 hover:bg-emerald-600 border-emerald-500 text-lg">儲存遊戲</button>
-                    </div>
+                    <!-- 匯出/存檔 已移至右上角按鈕區（3×4） -->
                 </div>
             </div>
         </div>
 
         <!-- 中間：地圖與日誌 -->
         <div id="col-center" class="flex-1 flex flex-col gap-4">
-            <div class="panel">
+            <div id="map-view-panel" class="panel">
                 <div class="panel-header flex justify-between items-center">
     <span class="text-xl flex items-center gap-4">冒險地圖 <span id="status-alerts" class="text-sm font-normal"></span> <span id="siege-timer" class="hidden text-base font-bold text-red-300 anim-flash"></span></span>
     
@@ -262,6 +274,8 @@
                 </div>
             </div>
 
+            <!-- 📜 日誌列：戰鬥日誌(左) / 系統與物品日誌(右) 並排，各佔一半寬 -->
+            <div id="log-row" class="flex gap-4">
             <div id="combat-log-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
                 <div class="panel-header text-slate-100 text-lg border-b border-red-900/40 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                     <span class="shrink-0">戰鬥日誌</span>
@@ -289,6 +303,7 @@
                 <!-- 🔒 系統與物品日誌捲動鎖定提示（同戰鬥日誌：向上捲動鎖定刷新、捲回底部自動解除） -->
                 <button id="sys-log-unlock" onclick="sysLogToBottom()" class="hidden absolute left-1/2 -translate-x-1/2 bottom-2 z-10 px-3 py-1 text-xs font-bold rounded-full shadow-lg bg-amber-700/90 hover:bg-amber-600 border border-amber-400 text-amber-50">🔒 已鎖定捲動 ▾ 回到最新</button>
             </div>
+            </div><!-- /#log-row -->
         </div>
 
         <!-- 右側：清單面板 -->
@@ -300,9 +315,14 @@
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('weapons', this)">武器</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('armors', this)">防具</button>
                 <button class="btn text-base py-2 font-bold px-0" onclick="switchTab('items', this)">道具</button>
+                <!-- 第三排：統計 / 收藏 / 一鍵賣出 -->
                 <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #565d68 0%, #6b7280 26%, #3f4651 48%, #5a6270 72%, #313740 100%); color: #f1f5f9; border-color: #6b7280;" onclick="switchTab('audit', this)">統計</button>
-                <button id="btn-sort-inv" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" onclick="sortInventory()">一鍵排列</button>
                 <button id="btn-collection" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #4a2f0c 0%, #b3850e 28%, #3f2a0c 52%, #9a720c 76%, #2e2008 100%); color: #fde68a; border-color: #d4a017;" onclick="openCollectionPanel()">收藏</button>
+                <button id="btn-autosell" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #4a2c0a 0%, #c2620e 28%, #3f2608 52%, #a8550c 76%, #2e1c06 100%); color: #fed7aa; border-color: #ea580c;" onclick="toggleAutoSell()">自動賣出</button>
+                <!-- 第四排：匯出 / 存檔 / 一鍵排列 -->
+                <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #312e81 0%, #4f46e5 28%, #28236b 52%, #4338ca 76%, #1e1b4b 100%); color: #c7d2fe; border-color: #6366f1;" onclick="exportSave()">匯出</button>
+                <button class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #064e3b 0%, #059669 28%, #053f30 52%, #047857 76%, #042f24 100%); color: #a7f3d0; border-color: #10b981;" onclick="saveGame()">存檔</button>
+                <button id="btn-sort-inv" class="btn text-base py-2 font-bold px-0" style="background: linear-gradient(135deg, #0c4a5e 0%, #0e7490 28%, #0a3d4d 52%, #11657e 76%, #093440 100%); color: #a5f3fc; border-color: #0891b2;" onclick="sortInventory()">一鍵排列</button>
             </div>
 
             <div id="tab-content-panel" class="panel flex-1 flex flex-col overflow-hidden relative">
@@ -425,20 +445,43 @@
         </div>
     </div>
 
-<script src="js/00-data.js?v=d1f4f0cf9b"></script>
-<script src="js/01-drops-config.js?v=d9bca19033"></script>
+    </div><!-- /#app-stage -->
+
+    <script>
+    /* 🖥️ 等比縮放：固定 1920×1080 設計舞台依視窗大小 scale-to-fit（保持 16:9 等比、置中、超寬/超高處 letterbox）。1080p=1×、1440p≈1.33×、4K=2×→大解析度全螢幕等比放大、版面零重排。 */
+    (function () {
+      var DW = 1920, DH = 1080;
+      function fitStage() {
+        var st = document.getElementById('app-stage'); if (!st) return;
+        var vw = window.innerWidth, vh = window.innerHeight;
+        var s = Math.min(vw / DW, vh / DH);
+        st.style.transform = 'scale(' + s + ')';
+        st.style.left = ((vw - DW * s) / 2) + 'px';
+        st.style.top = ((vh - DH * s) / 2) + 'px';
+      }
+      window.fitStage = fitStage;
+      window.addEventListener('resize', fitStage);
+      window.addEventListener('orientationchange', fitStage);
+      window.addEventListener('load', fitStage);
+      if (document.readyState !== 'loading') fitStage();
+      else document.addEventListener('DOMContentLoaded', fitStage);
+    })();
+    </script>
+
+<script src="js/00-data.js?v=4e37de553e"></script>
+<script src="js/01-drops-config.js?v=ac1438ac8f"></script>
 <script src="js/02-stats-recompute.js?v=1dda2fc2b9"></script>
-<script src="js/03-combat-core.js?v=0ac2502d65"></script>
-<script src="js/04-combat-attack.js?v=7f9644e826"></script>
-<script src="js/05-kill-progression.js?v=510086ae1c"></script>
-<script src="js/06-status-allies.js?v=7adf27183e"></script>
-<script src="js/07-skills-cast.js?v=3655277535"></script>
-<script src="js/08-items-equip.js?v=d524ee6503"></script>
-<script src="js/09-vfx-render.js?v=7e60e8d6e6"></script>
-<script src="js/10-ui-tabs.js?v=cc8be023ed"></script>
-<script src="js/11-world-map.js?v=0d21726909"></script>
-<script src="js/12-npc-quests.js?v=db17f6449f"></script>
-<script src="js/13-shop-save.js?v=0575a68329"></script>
+<script src="js/03-combat-core.js?v=160133e61b"></script>
+<script src="js/04-combat-attack.js?v=b7ad14f761"></script>
+<script src="js/05-kill-progression.js?v=1783f55eaf"></script>
+<script src="js/06-status-allies.js?v=6d97c6b917"></script>
+<script src="js/07-skills-cast.js?v=89d30b95e5"></script>
+<script src="js/08-items-equip.js?v=6a8d4c6a5e"></script>
+<script src="js/09-vfx-render.js?v=1146541fc5"></script>
+<script src="js/10-ui-tabs.js?v=14f0aac58c"></script>
+<script src="js/11-world-map.js?v=cdad7b986d"></script>
+<script src="js/12-npc-quests.js?v=7b9a4503d7"></script>
+<script src="js/13-shop-save.js?v=6068f67d0c"></script>
 <script src="js/14-craft-pandora.js?v=86a08e2a17"></script>
 <script src="js/15-cards.js?v=6bbbcd0762"></script>
 <script src="js/16-equip-book.js?v=efb39e48df"></script>

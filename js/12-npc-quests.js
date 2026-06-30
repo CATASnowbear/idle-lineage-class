@@ -40,7 +40,7 @@ function whItemSubCat(id){
     let d = DB.items[id]; if(!d) return 'other';
     if(d.eff === 'card') return 'card';
     if(d.type === 'skillbk') return 'skill';
-    if(d.type === 'scroll') return 'scroll';
+    if(d.type === 'scroll' || /^scroll_/.test(id)) return 'scroll';   // 🔧 強化卷軸(對武器/盔甲/飾品施法·scroll_weapon/armor/acc 及祝福/詛咒變體)無 type 欄位 → 以 id 前綴歸「卷軸」而非「其他」（純倉庫分類·不動 type 避免影響強化/useItem 派發）
     if(d.type === 'quest' || /^quest_/.test(id)) return 'quest';
     if(!_whCraftMatIds) _whBuildCraftMatIds();
     if(_whCraftMatIds[id] || /^mat_/.test(id) || d.type === 'etc') return 'craft';   // type:'etc' 幾乎全為製作材料(聖地遺物/黑血痕/黑魔法粉等)

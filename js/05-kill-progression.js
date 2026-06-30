@@ -13,6 +13,7 @@ function auditReset() {
     _audit.gold0 = (typeof player !== 'undefined' && player) ? (player.gold || 0) : 0;
     _audit.exp = 0; _audit.kills = 0; _audit.scrollWpn = 0; _audit.scrollArm = 0;
     _audit.watch.forEach(t => _audit.watchCnt[t] = 0);
+    if (typeof _dpsReset === 'function') _dpsReset();   // 🎯 DPS 統計同步歸零（換地圖/重置）
     renderAuditTab();
 }
 function auditTrackKill(mob) {
@@ -59,6 +60,29 @@ function renderAuditTab() {
         let c = _audit.watchCnt[t] || 0;
         return `<div class="flex justify-between items-center bg-slate-800/60 rounded px-2 py-1"><span>🎯 ${t}：<b class="${c>0?'text-green-400':'text-slate-300'}">${c}</b> 個</span><button onclick="auditRemoveIdx(${i})" class="btn px-2 py-0.5 text-xs bg-red-900 border-red-700 text-red-200">移除</button></div>`;
     }).join('') : '<div class="text-slate-500 text-sm">尚無追蹤目標，於下方輸入物品名稱（模糊比對）新增。</div>';
+    // 🎯 DPS 統計：玩家／每個傭兵／召喚／夥伴（本圖累積傷害÷觀測秒數），水平長條圖
+    let _dpsSecs = Math.max(0.001, (Date.now() - _audit.start) / 1000);
+    let _dpsRows = [{ name: '玩家', dps: (_dps.player || 0) / _dpsSecs, color: '#38bdf8' }];   // 玩家＝天藍
+    if (typeof player !== 'undefined' && player && Array.isArray(player.allies)) {
+        player.allies.forEach(a => {
+            if (!a) return;
+            let k = a._slot != null ? String(a._slot) : (a._allyName || '');
+            let rec = _dps.allies[k];
+            let nm = a._allyName || (typeof allyName === 'function' ? allyName(a) : '傭兵');
+            _dpsRows.push({ name: '傭兵·' + nm, dps: (rec ? rec.dmg : 0) / _dpsSecs, color: '#fbbf24' });   // 每個傭兵一條（琥珀）
+        });
+    }
+    if ((_dps.summon || 0) > 0) _dpsRows.push({ name: '召喚', dps: _dps.summon / _dpsSecs, color: '#c084fc' });   // 召喚＝紫（有輸出才顯示）
+    if ((_dps.pet || 0) > 0) _dpsRows.push({ name: '夥伴', dps: _dps.pet / _dpsSecs, color: '#4ade80' });        // 夥伴＝綠（有輸出才顯示）
+    let _dpsMax = Math.max(1, ..._dpsRows.map(r => r.dps));
+    let _dpsHtml = _dpsRows.map(r => {
+        let pct = Math.max(2, Math.round(r.dps / _dpsMax * 100));
+        return `<div class="flex items-center gap-2">`
+            + `<span class="shrink-0 text-slate-300 text-xs" style="width:88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${r.name}">${r.name}</span>`
+            + `<div class="flex-1 bg-slate-900 rounded h-4 overflow-hidden"><div style="width:${pct}%;height:100%;background:${r.color};transition:width .3s;"></div></div>`
+            + `<span class="shrink-0 font-bold text-right text-xs" style="width:60px;color:${r.color};">${Math.round(r.dps).toLocaleString()}</span>`
+            + `</div>`;
+    }).join('');
     el.innerHTML = `
     <div class="flex flex-col gap-3 text-sm">
         <div class="flex items-center justify-between">
@@ -79,6 +103,10 @@ function renderAuditTab() {
             <div class="text-amber-300 font-bold mb-1">強化卷軸掉落</div>
             <div class="flex justify-between"><span>⚔️ 對武器施法的卷軸</span><b class="text-rose-300">${_audit.scrollWpn}</b></div>
             <div class="flex justify-between"><span>🛡️ 對盔甲施法的卷軸</span><b class="text-blue-300">${_audit.scrollArm}</b></div>
+        </div>
+        <div class="border-t border-slate-700 pt-2">
+            <div class="text-emerald-300 font-bold mb-2">DPS 統計 <span class="text-slate-500 text-xs font-normal">（本圖每秒輸出·各傭兵獨立）</span></div>
+            <div class="flex flex-col gap-1.5">${_dpsHtml}</div>
         </div>
         <div class="border-t border-slate-700 pt-2">
             <div class="text-cyan-300 font-bold mb-1">自訂掉落追蹤</div>
@@ -161,6 +189,21 @@ function killMob(idx) {
     if(!_hideKillMsg) logCombat(`擊敗了 <span class="${getMobColor(mob.lv)}">${mob.n}</span>！`, 'player-heavy');  // 👈 新增
     player.exp += Math.floor(mob.exp * getExpGainMult(player.lv) * (player.classicMode ? 0.5 : 1) * (1 + dollFieldVal('expBonus') / 100));   // 🎮 經典模式：經驗值減半；🪆 魔法娃娃 expBonus%
     checkLvUp();
+    // 🤝 協力傭兵經驗平分：每名非倒地傭兵各得「以自身等級計算」的 MERC_EXP_SHARE（不減玩家）；經驗滿即「自動升級＋重算戰力（即時變強）」。_expGained 記受雇期間賺到的總量供解雇 delta-merge 回寫。
+    if (player.allies && player.allies.length && mob.exp) {
+        let _cm = player.classicMode ? 0.5 : 1;
+        player.allies.forEach(a => {
+            if (!a || a._downed) return;
+            let _gain = Math.floor(mob.exp * getExpGainMult(a.lv || 1) * _cm * MERC_EXP_SHARE);
+            if (_gain <= 0) return;
+            a.exp = (a.exp || 0) + _gain;
+            a._expGained = (a._expGained || 0) + _gain;
+            let _up = 0;
+            while ((a.lv || 1) < 100 && a.exp >= getExpReq(a.lv)) { a.exp -= getExpReq(a.lv); a.lv++; if (a.lv >= 50) a.bonus = (a.bonus || 0) + 1; _up++; }   // 比照 checkLvUp 升級曲線
+            if ((a.lv || 1) >= 100) a.exp = 0;
+            if (_up > 0) { try { if (typeof _allyLevelRecompute === 'function') _allyLevelRecompute(a); } catch (e) {} logCombat(`<span class="text-yellow-300 font-bold">協力傭兵 ${a._allyName} 升級了！目前 Lv.${a.lv}</span>`, 'mercenary'); try { renderSquadPanel(); } catch (e) {} }
+        });
+    }
     // 精神(WIS)：擊殺敵人時立即額外恢復 MP
     { let mpKill = getWisMpOnKill(player.d.wis); if (mpKill > 0 && player.mp < player.mmp) player.mp = Math.min(player.mmp, player.mp + mpKill); }
     

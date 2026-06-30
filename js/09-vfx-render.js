@@ -373,6 +373,16 @@ if (typeof castSkill === 'function' && !castSkill._vfxWrapped) {
     castSkill._vfxWrapped = true;
 }
 
+// 🎲 怪物視覺散佈：依 uid 決定論偽隨機(FNV-1a)→每隻怪在版位上加位移＋輕微縮放，看起來「隨機出沒」而非整齊前後排。
+//    純視覺·不影響戰鬥/目標/特效命中：transform 套在整張 .mob-target 上→點擊熱區與 VFX(getBoundingClientRect) 皆隨之移動。
+//    同一隻怪存活期間 uid 不變→位置固定不抖；死亡換新 uid 才換位置(營造隨機出沒)。頭目(boss-slot/boss-zoom)不散佈、維持置中。
+function _mobScatter(uid) {
+    let h = 2166136261 >>> 0, su = '' + uid;
+    for (let i = 0; i < su.length; i++) { h ^= su.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+    let a = (h & 1023) / 1023, b = ((h >>> 10) & 1023) / 1023, c = ((h >>> 20) & 1023) / 1023;
+    let dx = Math.round((a * 2 - 1) * 60), dy = Math.round((b * 2 - 1) * 34), sc = (0.88 + c * 0.24).toFixed(3);
+    return `transform:translate(${dx}px,${dy}px);--jit-scale:${sc};`;
+}
 function _renderMobsImpl() {
     if(state.ff) return; // 補跑期間不刷新畫面
     _initMobListGuard();
@@ -411,7 +421,9 @@ function _renderMobsImpl() {
             let _statRow = !_showMobStatus ? '' : `${(m.bleeds && m.bleeds.length) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;" title="出血層數">🩸×${m.bleeds.length}</span>` : ''}${(m._burstPoison && m._burstPoison.left > 0) ? `<span class="text-[11px] font-bold" style="display:inline-flex;align-items:center;line-height:1;color:#a3e635;" title="猛爆劇毒：每秒100固定傷害（5秒）">💥毒</span>` : ''}${(m._bluntShow && state.ticks < m._bluntShow) ? `<span class="text-[11px] font-bold text-amber-300" style="display:inline-flex;align-items:center;line-height:1;" title="鈍擊：攻擊延遲中">🔨鈍</span>` : ''}${(m.hardSkin > 0) ? `<span class="text-[11px] font-bold text-stone-300" style="display:inline-flex;align-items:center;line-height:1;" title="硬皮值：額外物理減傷（魔法不減），可用鈍器/重擊消磨">🛡${m.hardSkin}</span>` : ''}`;
 
             let _hpBar = !_showMobHp ? '' : `<div class="mob-hp-bar flex justify-center mb-1" style="height:6px;"><div style="width:50px;height:5px;background:#475569;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#ef4444;width:${Math.max(0, Math.min(100, Math.round((m.curHp / (m.hp || 1)) * 100)))}%;"></div></div></div>`;
-            _slotHtmls[_k] = `<div class="mob-target ${act}${_rowCls}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" data-uid="${m.uid}" onclick="setTarget(${i})">
+            let _isBossUnit = BOSS_BIG_MAPS.includes(mapState.current) || m.boss;   // 🎲 頭目不散佈(維持置中大圖)
+            let _scat = _isBossUnit ? '' : ` style="${_mobScatter(m.uid)}"`;
+            _slotHtmls[_k] = `<div class="mob-target ${act}${_rowCls}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" data-uid="${m.uid}" onclick="setTarget(${i})"${_scat}>
                         <div class="flex justify-center text-sm mb-1 mob-name">
                             <span class="${getMobNameClass(m)}">${m.n}</span>
                         </div>

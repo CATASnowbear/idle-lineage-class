@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.4.65';
+const GAME_VERSION = 'v2.5.0';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -1020,8 +1020,8 @@ const DB = {
         // ===== 🏛️ 古代/古老裝備（威頓村 客盧亞 製作）=====
         "armguard_archer": { n: "古代神射臂甲", type: "arm", slot: "shield", ac: 0, mhp: 80, req: "all", safe: 0, p: 100000, gachaWeight: 0, armguard: { stat: "rangedDmg", base: 1, th: [1, 2, 3] }, d: "古代神射手綁縛拉弦之臂的護甲，仍留有他百步穿楊的氣度（裝於副手，可與雙手武器並用）。HP+80、遠距離傷害+1；強化達 +5/+7/+9 時遠距離傷害改為 +2/+3/+4（取最高階、非累加）。每強化+1，HP+10。" },
         "armguard_fighter": { n: "古代鬥士臂甲", type: "arm", slot: "shield", ac: 0, resFire: 5, resWater: 5, resEarth: 5, resWind: 5, req: "all", safe: 0, p: 100000, gachaWeight: 0, armguard: { stat: "meleeDmg", base: 1, th: [1, 2, 3] }, d: "古代競技場鬥士磨礪近身搏殺的臂甲，刻滿了無數場生死搏鬥的痕跡（裝於副手，可與雙手武器並用）。全屬性抗性+5、近距離傷害+1；強化達 +5/+7/+9 時近距離傷害改為 +2/+3/+4（取最高階、非累加）。每強化+1，HP+10。" },
-        "wpn_old_sword": { n: "古老的劍", type: "wpn", dmgS: 35, dmgL: 20, hit: 5, dmgBonus: 0, spd: 1.0, req: "knight,elf,dark", safe: 0, p: 15000, gachaWeight: 0, noEnhance: true, finalMult: 1.5, d: "塵封已久的古代單手劍，劍身雖舊，鋒芒卻不減當年。反擊、居合、最終傷害×1.5；無法強化。" },
-        "wpn_old_greatsword": { n: "古老的巨劍", type: "wpn", w2h: true, dmgS: 27, dmgL: 45, hit: 3, dmgBonus: 3, spd: 0.8, req: "knight", safe: 0, p: 15000, gachaWeight: 0, eff: "cleave", noEnhance: true, finalMult: 1.5, d: "古老戰場上遺落的雙手巨劍，沉甸甸的劍身仍能一掃千軍。切割、最終傷害×1.5；無法強化。" },
+        "wpn_old_sword": { n: "古老的劍", type: "wpn", dmgS: 35, dmgL: 20, hit: 5, dmgBonus: 0, spd: 1.0, req: "knight,elf,dark", safe: 0, p: 15000, gachaWeight: 0, noEnhance: true, finalMult: 2, d: "塵封已久的古代單手劍，劍身雖舊，鋒芒卻不減當年。反擊、居合、最終傷害×2；無法強化。" },
+        "wpn_old_greatsword": { n: "古老的巨劍", type: "wpn", w2h: true, dmgS: 27, dmgL: 45, hit: 3, dmgBonus: 3, spd: 0.8, req: "knight", safe: 0, p: 15000, gachaWeight: 0, eff: "cleave", noEnhance: true, finalMult: 2, d: "古老戰場上遺落的雙手巨劍，沉甸甸的劍身仍能一掃千軍。切割、最終傷害×2；無法強化。" },
         "wpn_old_xbow": { n: "古老的弩槍", type: "wpn", isBow: true, ranged: true, oneHand: true, rapidfire: 90, dmgS: 3, dmgL: 3, hit: 5, dmgBonus: 2, spd: 0.9, req: "elf,dark", safe: 6, p: 15000, gachaWeight: 0, d: "古代工匠巧製的單手弩槍，是有史以來第一把可單手持握的弓。連射90%；可同時裝備盾牌或臂甲。" },
         "wpn_ancient_spear": { n: "古代神之槍", type: "wpn", w2h: true, legend: true, dmgS: 27, dmgL: 30, hit: 3, dmgBonus: 5, spd: 1.0, req: "knight", safe: 6, p: 465000, gachaWeight: 0, eff: "pierce", pierceChance: 90, d: "傳說由古代神祇親手持握的雙手神槍，槍尖所向無可阻擋。穿透90%。" },
         "wpn_ancient_axe": { n: "古代神之斧", type: "wpn", legend: true, dmgS: 25, dmgL: 28, hit: 3, dmgBonus: 8, spd: 1.2, req: "warrior", safe: 6, p: 465000, gachaWeight: 0, d: "古代神祇腰間配掛的單手神斧，劈下時連神明也為之低首。鈍擊。" },
@@ -2150,7 +2150,7 @@ const DB = {
         "sk_elf_windshot": { n: "風之神射", type: "buff", tier: 3, reqE: 30, mp: 15, dur: 1200, reqEle: "wind", d: { rangedHit: 5 } },
         "sk_elf_winddash": { n: "風之疾走", type: "buff", tier: 3, reqE: 30, mp: 20, dur: 1200, reqEle: "wind", d: { er: 10 } },
         "sk_elf_earthguard": { n: "大地防護", type: "buff", tier: 3, reqE: 30, mp: 15, dur: 1200, reqEle: "earth", d: { ac: 4 } },
-        "sk_elf_groundtrap": { n: "地面障礙", type: "atk", tier: 3, reqE: 30, mp: 20, dmgType: "magic", reqEle: "earth", status: { kind: "slow", pbase: 150, dur: 30 } },
+        "sk_elf_groundtrap": { n: "地面障礙", type: "atk", tier: 3, reqE: 30, mp: 20, dmgType: "magic", reqEle: "earth", target: "all", status: { kind: "slow", pbase: 150, dur: 30 } },   // 🤝 Phase4：改為全體緩速
         "sk_elf_watervital": { n: "水之元氣", type: "buff", tier: 3, reqE: 30, mp: 1, dur: 64, reqEle: "water", noRefresh: true, waterVital: true, msg: "水之元氣環繞著你。" },   // 🔧 buff 期間內「下次」受到治癒術（玩家自身瞬間治癒，不含持續回復HoT）時恢復量加倍、觸發後7秒冷卻（見 waterVitalHeal）；noRefresh：效果結束才可再施放
 
         // 四階 (Lv 40)
@@ -2216,7 +2216,7 @@ const DB = {
         "sk_illu_avatar":    { n: "幻覺：化身", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 50, dur: 64, d: { extraDmg: 10 }, dmgTakenReduce: 10, msg: "你化身為幻象的存在。" },
         "sk_illu_panic":     { n: "恐慌", type: "atk", tier: 4, reqI: 40, mp: 30, hpCost: 30, dmgType: "magic", ele: "none", status: { kind: "panic", pbase: 100, dur: 64 }, noRecastStatus: "panic", panicMsg: true },
         "sk_illu_insight":   { n: "洞察", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 60, dur: 640, d: { str: 1, dex: 1, con: 1, int: 1, wis: 1 }, msg: "你的感官變得無比敏銳。" },
-        "sk_illu_cube_harmony":{ n: "立方：和諧", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 0, hpCost: 25, dur: 20, cube: { iv: 10, kind: "mp", val: 5 }, msg: "和諧立方在你周身旋轉，引動魔力。" },
+        "sk_illu_cube_harmony":{ n: "立方：和諧", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 0, hpCost: 25, dur: 20, cube: { iv: 10, kind: "dmgmp", dice: [1, 25], ele: "fire", val: 5 }, msg: "和諧立方在你周身旋轉，引動魔力。" },   // 🔮 每秒：對當前目標 1D25 火傷 ＋ 自身回 5 MP
         "sk_illu_pain":      { n: "疼痛的歡愉", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 0, hpCost: 40, dur: 64, painReflect: true, msg: "你迎向疼痛，化痛楚為反擊之力。" },
         // ================= 【龍騎士 龍魔法】（reqDk = 龍騎士需求等級；一階15/二階30/三階45；多數消耗 HP） =================
         // —— 一階龍魔法（Lv15）——
