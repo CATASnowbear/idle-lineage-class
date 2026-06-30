@@ -249,9 +249,46 @@
       return devMobile || mql.matches;
     }
 
+    // 🚀 大背包戰鬥頓挫修正(手機):renderTabs 會「重建整個背包列」,戰鬥中每殺一隻就被呼叫一次(force=true)。
+    //   背包大時每次重建很貴(實測 1000 件約 13ms,手機更久),而戰鬥畫面時背包是 display:none 看不到
+    //   → 純白做工(display:none 只省『畫』,省不掉這段 JS 重建,已實測證實)。
+    //   ① 背包沒開(非 mview-bag)→ 跳過重建、記 dirty;切到背包/設定頁時由 setView 補建一次。
+    //   ② 背包開著(mview-bag)→ 短節流(leading+trailing,250ms):連續掉寶的多次重建併一次,
+    //      自己的操作(賣/裝/用,不在連續掉寶窗內)立即重建、近即時。
+    //   桌機(detectMobile=false)完全走原版、零改動。原作哪天改成「背包隱藏時不重建」這段即可移除。
+    var _flushDeferredTabs = function () {};
+    (function () {
+      if (typeof window.renderTabs !== 'function' || window.renderTabs.__mBagDefer) return;
+      var origRT = window.renderTabs;
+      var THROTTLE_MS = 250, SELSEL = '#tab-weapons,#tab-armors,#tab-items,#tab-equip,#tab-skill,#item-modal';
+      var dirty = false, lastRun = -1e9, trail = null;
+      function now() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+      function bagOpen() { return document.body.classList.contains('mview-bag'); }
+      function selOpen() { var ae = document.activeElement; try { return !!(ae && ae.tagName === 'SELECT' && ae.closest && ae.closest(SELSEL)); } catch (e) { return false; } }
+      function schedTrail(delay) { if (!trail) trail = setTimeout(function () { trail = null; if (dirty) run([true]); }, delay); }
+      function run(args) {
+        if (selOpen()) { dirty = true; schedTrail(200); return; }   // 下拉開著時不重建(會把它關掉)→ 比照 afk-fixes select-guard,延後
+        dirty = false; lastRun = now(); return origRT.apply(window, args || [true]);
+      }
+      var wrapped = function () {
+        if (!detectMobile()) return origRT.apply(this, arguments);
+        if (!bagOpen()) { dirty = true; return; }                  // 戰鬥/設定畫面看不到背包 → 跳過,記 dirty
+        var t = now();
+        if (t - lastRun >= THROTTLE_MS) return run(arguments);     // 節流窗外 → 立即(自己的操作即時)
+        dirty = true; schedTrail(THROTTLE_MS - (t - lastRun));     // 窗內(連續掉寶)→ 併入 trailing
+      };
+      wrapped.__mBagDefer = true;
+      window.renderTabs = wrapped;
+      _flushDeferredTabs = function (toBattle) {
+        if (toBattle) { if (trail) { clearTimeout(trail); trail = null; } return; }   // 進戰鬥畫面:取消待補(留 dirty,下次開背包再補),不重建看不到的東西
+        if (dirty) { if (trail) { clearTimeout(trail); trail = null; } run([true]); }  // 切到背包/設定:立刻補最新一份
+      };
+    })();
+
     function setView(v) {
       document.body.classList.remove('mview-battle', 'mview-config', 'mview-bag');
       document.body.classList.add('mview-' + v);
+      try { _flushDeferredTabs(v === 'battle'); } catch (e) {}   // 離開戰鬥→補建延後的背包;進戰鬥→取消待補(見上方修正)
       var kids = nav.children;
       for (var i = 0; i < kids.length; i++) {
         kids[i].classList.toggle('m-active', kids[i].getAttribute('data-v') === v);
