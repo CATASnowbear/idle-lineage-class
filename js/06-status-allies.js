@@ -266,7 +266,7 @@ function buildAlly(slotN) {
     ally.exp = 0;   // 🤝 當前等級的經驗進度（升級時歸零再累積）
     ally._expGained = 0;   // 🤝 受雇期間「賺到的經驗總量」（含已被即時升級消耗的）→ 解雇時 delta-merge 加回該存檔角色（多開安全）
     ally._atkSkill = (ally.config && ally.config.selAtkSkill) || '';   // 攻擊技能選擇（快照；法師施法 / 妖精三重矢）
-    ally._healSkill = (ally.config && ally.config.selHealSkill) || '';   // 🤝 治癒魔法選擇（快照預設，可於隊伍面板改）·Phase 3 傭兵自動補血讀取
+    ally._healSkill = '';   // 🤝 v2.6.53 用戶選A：招募「不自動繼承治癒技」→傭兵預設攻擊優先（不再因來源角色有設治癒魔法就一直自動補血、把攻擊技/攻擊魔法回合吃光）。想要傭兵補血→於隊伍面板「治癒魔法」下拉手動指定(setAllyHealSkill·即時生效)。⚠️只影響「新招募」：已在隊傭兵的 _healSkill 早存於存檔·buildAlly 只在招募跑·不受影響（原：(ally.config&&ally.config.selHealSkill)||''）
     ally._convertSkill = (ally.config && ally.config.selConvertSkill) || '';   // 🔄 v2.6.4 轉換技能選擇（快照·可於隊伍面板改）：type:'convert' 或 立方和諧
     ally._healHpPct = 70;   // 🤝 治癒施放 HP% 門檻預設（可於隊伍面板改）
     ally.mp = ally.mmp;   // 召喚時滿魔
@@ -525,6 +525,14 @@ function allyCastMagic(ally, sk) {
                     });
                 }
             }
+        }
+    }
+    // 🆕 v2.6.52 修「複製法師／回魔武器傭兵 藍量永遠見底」：傭兵每回合只做「一個」動作(施法 or 普攻)，一直施法就從不觸發武器 on-hit 回魔(玩家是普攻＋施法並行·普攻每擊持續回魔→本體一放招就回滿)。故施法後補「回魔類武器特效」：瑪那魔杖(mp_drain)/惡魔王魔杖(mpOnHit) 命中回 MP、共鳴法器(int/60 免費光箭回魔)。只補回魔·不套其餘傷害 proc(魔擊/月光/娃娃免費魔法·避免遞迴與失衡)。迴響(echo)為免費再施放·不重複觸發。
+    if (!ally._echoing) {
+        let _wi = ally.eq && ally.eq.wpn, _w = _wi ? DB.items[_wi.id] : null;
+        if (_w) {
+            if (_w.eff === 'mp_drain' || _w.mpOnHit) { let _en = capWpnEn(_wi.en); ally.mp = Math.min(ally.mmp || 0, (ally.mp || 0) + 1 + Math.max(0, _en - 6)); }   // 命中回 MP（同 allyWeaponProcs·同玩家 1+max(0,強化-6)）
+            if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(_wi.id) && !ally.classicMode && Math.random() < ((d.int || 0) / 60)) { let _rt = _allyProcTarget(getTarget()); if (_rt) allyProcLightArrow(ally, _rt); }   // 共鳴：int/60 免費光箭回魔（同 allyWeaponProcs 965）
         }
     }
     renderMobs();
@@ -1612,7 +1620,13 @@ function allyMaintainBuffs(ally) {
         for (let sid of ally.skills) {
             let sk = DB.skills[sid];
             if (!_isMercSelfBuff(sk, sid)) continue;
-            if ((ally.buffs[sid] || 0) > 0) continue;   // 已生效（含 noRefresh 語意）
+            // 🆕 v2.6.50 用戶要求：傭兵輔助法術「以主要玩家為判斷依據」→ 主玩家身上已有此輔助狀態就不施放、沒有才施放。
+            //    (player.buffs 與 ally.buffs 皆以技能 id 為鍵·同一輔助 buff 可直接比對；加速另有 buffs.haste 具名鍵·含藥水加速一併判定)
+            if (typeof player !== 'undefined' && player && player.buffs) {
+                if ((player.buffs[sid] || 0) > 0) continue;                  // 主玩家已有同一輔助法術的 buff → 不放
+                if (sk.haste && (player.buffs.haste || 0) > 0) continue;     // 主玩家已處於加速狀態（含藥水加速）→ 不放加速類
+            }
+            if ((ally.buffs[sid] || 0) > 0) continue;   // 已生效（含 noRefresh 語意）；保留自身守衛避免同一秒重複施放/MP 空轉
             let w = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
             if (sk.reqWpn === 'w2h' && (!w || !w.w2h)) continue;
             if (sk.reqWpnMelee && (!w || w.isBow || w.ranged)) continue;
