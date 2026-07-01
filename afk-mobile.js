@@ -16,6 +16,17 @@
 
   var MQ = '(max-width: 768px)';
 
+  // 🎛️ 網址參數 ?mobscale=X:即時調手機戰鬥怪物圖大小(X=倍率,1=目前預設;上方 mob-img-inner 的 scale 會再乘它)。
+  //   設在 :root 的 --afk-mobscale。方便現場調到滿意的值再回報,不必每次改 code 重部署。桌機也讀但無 CSS 用到→無害。
+  (function readMobScale() {
+    try {
+      var v = new URLSearchParams(location.search).get('mobscale');
+      if (v == null) return;
+      var n = parseFloat(v);
+      if (isFinite(n) && n > 0 && n <= 20) document.documentElement.style.setProperty('--afk-mobscale', String(n));
+    } catch (e) {}
+  })();
+
   function init() {
     var gs = document.getElementById('game-screen');
     if (!gs) { console.warn('[AFK-mobile] 找不到 #game-screen,手機版停用。'); return; }
@@ -734,11 +745,11 @@
       /* 怪名手機一律不顯示(使用者指定):連鎖定/被打的目標也不顯示 */
       'body.m-mobile #battle-view .mob-name{display:none !important;}',
       /* 🔍 矮戰鬥框(=圖片高度)裡格子很小、怪物圖只剩 ~19px→放大 grid 景深倍率讓怪物大顆一點(使用者指定「單獨放大、
-         但不要超出背景」)。卡片/圖框 overflow:visible 讓放大的圖露出;整個戰鬥框 overflow:hidden 在圖片高度處收邊,
-         故倍率取「放大後仍落在 219px 內」(含散佈位移)的保守值→不會被切、不超出背景。 */
+         但不要超出背景」)。卡片/圖框 overflow:visible 讓放大的圖露出;整個戰鬥框 overflow:hidden 在圖片高度處收邊。
+         🎛️ 倍率再乘一個可調變數 --afk-mobscale(預設 1),由網址參數 ?mobscale=X 設定→方便現場調怪物大小(見下方 readMobScale)。 */
       'body.m-mobile #battle-view.area-fit .mob-target,body.m-mobile #battle-view.area-fit .mob-img-wrap{overflow:visible !important;}',
-      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner{transform:scale(calc(3.5 * var(--jit-scale,1))) !important;}',
-      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(4 * var(--jit-scale,1))) !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner{transform:scale(calc(3.5 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(4 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
