@@ -45,7 +45,7 @@
         .list-item { padding: 0.75rem; border-bottom: 1px solid #334155; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; width: 100%;}
         .list-item:hover { background: #334155; }
         .set-active { background: #451a03 !important; border: 1px solid #b45309 !important; }   /* 🔧 舊套裝改琥珀金（綠色讓給席琳套裝） */
-        .mob-target { padding: 0.75rem; border: 2px solid #334155; border-radius: 0.5rem; background: #0f172a; cursor: pointer; flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: all 0.2s; height: 224px; overflow: hidden;}
+        .mob-target { padding: 0.75rem; border: 2px solid #334155; border-radius: 0.5rem; background: #0f172a; cursor: default; flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: all 0.2s; height: 224px; overflow: hidden;}   /* 🔧 v2.5.9：怪物卡不再是可點擊按鈕(移除 onclick=setTarget)→游標改 default；目標改全自動(getTarget)、保留 .active 紅框顯示當前自動目標與 hover 顯示怪名 */
         .mob-target.active { border-color: #ef4444; background: #450a0a; }
         /* 🪆 魔法娃娃游標：裝備娃娃時(body.has-doll-cursor 由 applyDollCursor 切換)，連可點擊處(.btn/.list-item/.mob-target/.cf-pill/Tailwind cursor-pointer 等)也維持娃娃游標、不變回手指箭頭。* 繼承 body 的內聯娃娃游標；專案無任何 cursor !important 故此 !important 必勝。 */
         body.has-doll-cursor * { cursor: inherit !important; }
@@ -107,7 +107,7 @@
         #battle-view.has-bg .mob-target.active .mob-img-inner { filter: drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 7px #ef4444); }   /* 🔴 紅色鎖定光暈只套在「怪物圖」上(沿輪廓)，不影響名字/徽章/狀態 */
         #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊「上緣」、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。怪物卡填滿框高、怪物圖改彈性填中段隨高度縮放(名稱/血量/異常徽章固定不裁) */
-        #battle-view.area-fit { display: flex; align-items: flex-end; background-position: center; overflow: hidden; }   /* 🖥️ 戰鬥框加大(吃滿地圖面板)·背景改 cover 滿版置中(見 js/13)；怪物列(#mob-list)靠「下緣」站立(align-items:flex-end)→上方大片背景、下方怪物站在地面 */
+        #battle-view.area-fit:not(.hidden) { display: flex; align-items: flex-end; background-position: center; overflow: hidden; }   /* 🖥️ 戰鬥框加大(吃滿地圖面板)·背景改 cover 滿版置中(見 js/13)；怪物列(#mob-list)靠「下緣」站立(align-items:flex-end)→上方大片背景、下方怪物站在地面。⚠️v2.6.0 加 :not(.hidden)：安全區 battle-view 帶 .hidden 時本規則(1,1,0)不得蓋過 .hidden(0,1,0) 而露出狩獵圖 */
         #battle-view.area-fit #mob-list { height: auto; aspect-ratio: 1920 / 580; max-height: 100%; }   /* 🎯 怪物站立帶＝還原原始條狀比例(1920/580·與框加大前一致)→怪物大小/前後排景深/特效命中位置全部對回；超高框時 max-height 夾住、其餘高度留給背景 */
         #battle-view.area-fit #mob-list:has(.boss-slot) { height: 100%; aspect-ratio: auto; }   /* 🐉 龍窟頭目(boss-slot)維持填滿整框大圖、不套站立帶 */
         /* 🎯 v2.4.85 五怪「2 排站位」：框夠高→下排 3 隻(前排·較大·靠下)＋上排 2 隻(後排·略小·靠上)，各約佔背景一半高、吃滿整框。

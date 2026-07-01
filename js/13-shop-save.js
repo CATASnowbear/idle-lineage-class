@@ -70,7 +70,9 @@ function applyAreaBackground() {
     let cur = mapState.current, cat = mapCategoryOf(cur);
     let ov = a => `linear-gradient(rgba(15,23,42,${a}), rgba(15,23,42,${a}))`;
     let bv = document.getElementById('battle-view');
-    if (bv) {
+    if (bv && cur.startsWith('town_')) {   // 🏙️ v2.6.0：安全區(town_)戰鬥框恆隱藏、絕不套狩獵背景。必須清掉 area-fit/has-bg——否則 CSS `#battle-view.area-fit{display:flex}`(1,1,0) 會蓋過 `.hidden`(0,1,0) 使隱藏的戰鬥框又顯示、露出與安全區同名的狩獵圖(如象牙塔/傲慢之塔安全區顯示名＝有同名 assets/area/<名>.jpg)。
+        bv.style.backgroundImage = ''; bv.style.backgroundSize = ''; bv.classList.remove('area-fit'); bv.classList.remove('has-bg');
+    } else if (bv) {
         let fbImg = SPECIAL_AREA_BG[cur] || CATEGORY_AREA_BG[cat] || null;   // 既有設定圖(fallback)：特殊地圖逐張優先，否則依分類(野外/地監/攻城)
         let useSrc = null, useFit = false;
         // 🆕 優先尋找「同名地圖圖檔」assets/area/[地圖名稱].jpg：存在才用、找不到才退回 fallback。瀏覽器無法同步判斷檔案是否存在→非同步探測＋快取(首訪先顯示 fallback、載入成功後切換)
