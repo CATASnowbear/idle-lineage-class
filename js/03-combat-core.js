@@ -117,6 +117,14 @@ function _initMobListGuard() {   // 在 #mob-list(穩定父節點·只換其 inn
         if (uid !== _hoverMobUid) { _hoverMobUid = uid; _applyHoverName(); }
     });
     ml.addEventListener('mouseleave', () => { if (_hoverMobUid !== null) { _hoverMobUid = null; _applyHoverName(); } });   // 真正離開整個怪物列才清(不受內部重繪影響)
+    ml.addEventListener('click', e => {   // 🖱️ v2.6.46 點擊怪物卡＝手動指定攻擊目標(依 uid 找 index·僅活怪)。setTarget 後 getTarget 只在該目標死亡/消失才自動改鎖→手動鎖定會維持到目標死亡。委派於穩定父節點·跨重繪存活。
+        let card = e.target.closest && e.target.closest('.mob-target');
+        if (!card) return;
+        let uid = card.getAttribute('data-uid');
+        if (!uid) return;   // 空格(無 data-uid·pointer-events:none)→略過
+        let idx = mapState.mobs.findIndex(m => m && String(m.uid) === String(uid) && !m._dead);
+        if (idx >= 0 && idx !== mapState.targetIdx) setTarget(idx);
+    });
     let release = () => { if (!_mobPointerDown) return; _mobPointerDown = false; if (_mobRebuildPending) { _mobRebuildPending = false; setTimeout(() => _renderMobsImpl(), 0); } };   // 放開後(讓 click→setTarget 先在存活節點上觸發)再補一次重繪
     document.addEventListener('pointerup', release);
     document.addEventListener('pointercancel', release);

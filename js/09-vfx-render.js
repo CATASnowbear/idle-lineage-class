@@ -92,6 +92,36 @@ function _vfxImpact(cx, cy, ele, big) {
         ).onfinish = () => sp.remove();
     }
 }
+// 🎯 v2.6.45 怪物圖「視覺中心」偵測：怪物 PNG 多為方形畫布、實體繪於下方(腳貼底·上方透明)→死亡爆裂/傷害數字若錨在方框幾何中心(0.45~0.5)會浮在怪物「上方」。
+//   改抓「不透明像素邊界框」的中心＝真正的怪物身體中心(實測多在 0.68~0.81 縱向)。縮到 96px 掃 alpha(便宜)＋依 src 快取(同種怪只算一次)。
+//   ⚠️file:// 下 canvas.getImageData 會 taint(SecurityError)→退回常數 {vc:0.66,hc:0.5}(仍遠優於 0.45)並快取避免每次重試；GitHub/https 同源可正常逐圖精算。
+let _mobAnchorCache = {};
+function _mobImgAnchor(imgEl) {
+    let fallback = { vc: 0.66, hc: 0.5 };
+    try {
+        if (!imgEl) return fallback;
+        let key = imgEl.currentSrc || imgEl.src;
+        if (!key) return fallback;
+        if (_mobAnchorCache[key]) return _mobAnchorCache[key];
+        if (!imgEl.complete || !imgEl.naturalWidth) return fallback;   // 尚未載入→先用 fallback、不快取(下次重試)
+        let cw = Math.min(imgEl.naturalWidth, 96), ch = Math.min(imgEl.naturalHeight, 96);
+        let cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
+        let ctx = cv.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(imgEl, 0, 0, cw, ch);
+        let d;
+        try { d = ctx.getImageData(0, 0, cw, ch).data; }
+        catch (e) { _mobAnchorCache[key] = fallback; return fallback; }   // file:// taint→快取 fallback 停止重試
+        let minX = cw, maxX = -1, minY = ch, maxY = -1;
+        for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+            if (d[(y * cw + x) * 4 + 3] > 16) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+        }
+        if (maxY < 0) { _mobAnchorCache[key] = fallback; return fallback; }   // 全透明→fallback
+        let res = { vc: (minY + maxY) / 2 / ch, hc: (minX + maxX) / 2 / cw };
+        _mobAnchorCache[key] = res;
+        return res;
+    } catch (e) { return fallback; }
+}
+
 // 擊殺粒子爆裂：在 killMob 標記死亡後、重繪前呼叫（此時格子 DOM 仍在）
 function vfxKill(mob) {
     try {
@@ -102,7 +132,9 @@ function vfxKill(mob) {
         let box = slot.querySelector('.mob-img-inner') || slot.querySelector('.mob-img-wrap') || slot;   // 🎯 v2.6.41 VFX 錨定「圖層 .mob-img-inner」(帶 translateY/scale·getBoundingClientRect 反映實際位置) 而非「容器 .mob-img-wrap」→修 v2.6.39 單排景深(後排上移30px/前排放大1.55)後 死亡殘影/擊殺特效/傷害數字 錯位
         let r = box.getBoundingClientRect();
         if (r.width === 0) return;
-        let cx = r.left + r.width / 2, cy = r.top + r.height * 0.45;
+        let _anc = _mobImgAnchor(box.querySelector('img'));   // 🎯 v2.6.45 錨到怪物實體視覺中心(非方框中心)→爆裂/數字落在怪身上
+        let bcx = r.left + r.width / 2, bcy = r.top + r.height / 2;   // 方框幾何中心(殘影全圖覆蓋用)
+        let cx = r.left + r.width * _anc.hc, cy = r.top + r.height * _anc.vc;   // 怪物身體中心(爆裂環/核心/粒子用)
         _vfxLastKillRect = { left: r.left, top: r.top, width: r.width, height: r.height };   // 供稀有掉落閃光定位
         let layer = _vfxLayer();
         // 🩸 致命一擊的傷害數字：死怪在下一幀渲染前已被 settleDeadMobs 移除→渲染側 HP-delta 抓不到，故在此(格子 DOM 仍在)補顯示，使龍騎士等「一/二擊秒殺」也看得到傷害
@@ -111,7 +143,7 @@ function vfxKill(mob) {
           let _kbig = mob._vfxBig; mob._vfxBig = false;   // 'crit'|'heavy'：致命擊的爆擊/重擊旗標仍在(渲染未重設)
           if (_kdmg > 0 && layer.childElementCount < 200) {
               let _kele = (mob.justHit && mob.justHit !== true) ? mob.justHit : 'normal';
-              _vfxNumber(cx + (Math.random() * 26 - 13), r.top + r.height * 0.40, _kdmg, _kele, _kbig);
+              _vfxNumber(cx + (Math.random() * 26 - 13), r.top + r.height * Math.max(0.12, _anc.vc - 0.30), _kdmg, _kele, _kbig);   // 🎯 v2.6.45 數字浮於怪身上方(相對身體中心·非固定 0.40 方框位)
           }
         }
         let color = mob.boss ? '#ffd54f' : '#ff8a5c';
@@ -123,8 +155,9 @@ function vfxKill(mob) {
                 if (_img && _img.src && _img.naturalWidth !== 0) {
                     let gh = document.createElement('img');
                     gh.className = 'vfx-ghost'; gh.src = _img.src;
-                    gh.style.left = cx + 'px'; gh.style.top = (r.top + r.height / 2) + 'px';
+                    gh.style.left = bcx + 'px'; gh.style.top = bcy + 'px';   // 殘影＝整張圖複製→定位方框中心以完整覆蓋原圖(對齊)
                     gh.style.width = r.width + 'px'; gh.style.height = r.height + 'px';
+                    gh.style.transformOrigin = (_anc.hc * 100).toFixed(1) + '% ' + (_anc.vc * 100).toFixed(1) + '%';   // 🎯 v2.6.45 放大自「怪物身體中心」擴散(非方框中心)→白閃由怪身發散
                     layer.appendChild(gh);
                     gh.animate(
                         [ { transform: 'translate(-50%,-50%) scale(1)', opacity: .85, filter: 'brightness(2.6) saturate(.25)' },

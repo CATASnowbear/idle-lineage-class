@@ -53,6 +53,7 @@
         .set-active { background: #451a03 !important; border: 1px solid #b45309 !important; }   /* 🔧 舊套裝改琥珀金（綠色讓給席琳套裝） */
         .mob-target { padding: 0.75rem; border: 2px solid #334155; border-radius: 0.5rem; background: #0f172a; cursor: default; flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; transition: all 0.2s; height: 224px; overflow: hidden;}   /* 🔧 v2.5.9：怪物卡不再是可點擊按鈕(移除 onclick=setTarget)→游標改 default；目標改全自動(getTarget)、保留 .active 紅框顯示當前自動目標與 hover 顯示怪名 */
         .mob-target.active { border-color: #ef4444; background: #450a0a; }
+        .mob-target[data-uid] { cursor: pointer; }   /* 🖱️ v2.6.46 填有怪物的卡片可點擊指定攻擊目標→游標改 pointer(空格無 data-uid 不套)；圖片 pointer-events:none 使點擊落在卡片→委派 click 讀 data-uid setTarget */
         /* 🪆 魔法娃娃游標：裝備娃娃時(body.has-doll-cursor 由 applyDollCursor 切換)，連可點擊處(.btn/.list-item/.mob-target/.cf-pill/Tailwind cursor-pointer 等)也維持娃娃游標、不變回手指箭頭。* 繼承 body 的內聯娃娃游標；專案無任何 cursor !important 故此 !important 必勝。 */
         body.has-doll-cursor * { cursor: inherit !important; }
         /* 例外：文字輸入框保留打字游標(text)、停用元素保留禁用提示(not-allowed)——皆非「手指箭頭」、保留其辨識度 */
@@ -120,10 +121,14 @@
         /* 🎯 五怪站位（⚠️v2.6.39 用戶要求：取消隨機出沒＋恢復整齊「前排三個・後排兩個(後排較高)」＋怪變大）：
            v2.4.85~v2.6.38 曾用 2 排 grid(上下排各半高)——但狩獵區改 1920/580 條狀(v2.6.37)後每格僅 ~87px，被名稱/徽章/血條等固定列擠到怪圖只剩 ~13px(極小)。
            改回「單排站立帶(flex)」＝每隻怪吃滿條狀帶全高→怪圖 ~4-5× 大(13px→~69px)。DOM 順序 [front0,back3,front1,back4,front2](js/09 _order)於 flex 由左至右＝前,後,前,後,前 交錯；
-           前排(.mob-front·flex1.2 較寬)放大 1.55×(填滿帶·約頭目 1.78 的 87%·仍 <頭目)；後排(.mob-back·flex0.8 較窄)縮 1.02× 並 translateY 上移 30px＝「較高較遠」的景深(用比較高表示)。頭目 boss-zoom＝1.78(不變·恆最大)。3 格地圖(龍窟/攻城/裂痕)無 .mob-back→走下方單排規則。 */
+           ⚠️v2.6.44 用戶要求「前後排統一大小＝取原前排1.55與後排1.02的平均1.285×」：前後排 scale 皆 1.285×，僅保留 translateY 位置差(後排 -30px 較高·前排 +2px)＝景深只靠位置不靠大小。頭目 boss-zoom＝1.78(不變·恆最大·仍 >1.285)。3 格地圖(龍窟/攻城/裂痕)無 .mob-back→走下方單排規則。 */
         #battle-view.area-fit #mob-list:has(.mob-back) { display: flex; align-items: flex-end; height: auto; aspect-ratio: 1920 / 580; max-height: 100%; }
-        #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner { transform: translateY(-30px) scale(1.02); transform-origin: bottom center; }   /* 後排：上移 30px＋略縮→較高較遠 */
-        #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(2px) scale(1.55); transform-origin: bottom center; }   /* 前排：放大 1.55×(填滿帶·<頭目 1.78) */
+        #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner { transform: translateY(-30px) scale(1.285); transform-origin: bottom center; }   /* 後排：上移 30px＋統一大小 1.285×→較高較遠(僅位置差·大小同前排) */
+        #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(2px) scale(1.285); transform-origin: bottom center; }   /* 前排：統一大小 1.285×＝原前1.55與後1.02平均(<頭目 1.78) */
+        /* ⚠️v2.6.44：怪名列固定單行→前後排「保留名稱高度」一致，怪圖區(.mob-img-wrap flex:1)吸收的剩餘高度才會等高＝前後排怪圖 base 尺寸相同，配合上方統一 1.285× 即渲染同大小。
+           不加此列時：後排欄較窄(flex0.8)使長名折成兩行、多吃 ~20px→怪圖區被壓縮→後排怪偏小(即使 scale 相同)。單行溢出由 .mob-target overflow:hidden 收邊、span 補 ellipsis。僅套 5 怪前後排版面。 */
+        #battle-view.area-fit #mob-list:has(.mob-back) .mob-name { white-space: nowrap; overflow: hidden; }
+        #battle-view.area-fit #mob-list:has(.mob-back) .mob-name > span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         /* 單排站立帶(3 格地圖·無 .mob-back)非頭目怪：套隨機大小變化(位置散佈由 .mob-target 的 inline transform 負責) */
         #battle-view.area-fit #mob-list:not(:has(.mob-back)) .mob-target:not(.boss-slot):not(.boss-zoom) .mob-img-inner { transform: scale(var(--jit-scale, 1)); transform-origin: bottom center; }
         #battle-view.area-fit .mob-target { height: 100%; min-height: 0; }

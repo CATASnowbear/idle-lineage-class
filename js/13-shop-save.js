@@ -551,6 +551,7 @@ function startGame() {
     player.traditionalMode = !!(document.getElementById('create-traditional-toggle') && document.getElementById('create-traditional-toggle').checked);   // 🏛️ 傳統模式：依創角開關決定（與經典獨立·可單開或＋經典·此角色永久生效）
     player.name = null;   // 預設未取名，狀態欄顯示「點擊取名」，玩家可點擊命名
     player.enSeed = 'es' + uid() + uid();   // 🎲 強化決定論種子（創角產生一次、存進存檔永久固定）：讓強化成敗由種子決定、不可用 save/load 刷
+    player.expMigV = 1;   // ⚠️ v2.6.47 新角色天生在新經驗刻度→標記為「免遷移」，避免日後升到 Lv50+ 時被 loadGame 的一次性經驗遷移誤放大
 
     let b = createBase[curCreate.cls];
     player.base = { str: b.str+curCreate.str, dex: b.dex+curCreate.dex, con: b.con+curCreate.con, int: b.int+curCreate.int, wis: b.wis+curCreate.wis, cha: b.cha+curCreate.cha };
@@ -817,6 +818,21 @@ function loadGame() {
         if (player.eq.arrow === undefined) player.eq.arrow = null; // 相容舊存檔
         // 相容舊存檔：手套曾被錯存於 eq.glove（單數），搬移到正確的 gloves 欄位
         if (player.eq.glove) { if (!player.eq.gloves) player.eq.gloves = player.eq.glove; delete player.eq.glove; }
+
+        // ⚠️ v2.6.47 一次性經驗刻度遷移（修「更新後經驗條看似歸零」）：v2.6.40 取消打怪經驗遞減、改把「高等升級需求」放大 ×2~×1024，
+        //    但既有存檔的 per-level 經驗未同步放大 → 經驗條%＝exp/getExpReq(lv) 從舊制比例暴跌（Lv90 半滿→0.05%）看似歸零（數值其實還在）。
+        //    這裡把「舊制殘留經驗」等比放大到新刻度，讓經驗條%回到改制前比例；同時修正經典模式死亡扣經驗（需求×10%）因刻度不符而把小殘留一次扣光的問題。
+        //    安全設計：① 只遷移「明顯是舊制殘留」的 exp（< 舊固定需求 EXP_MIG_OLD_BASE；舊制 Lv49+ 未升級的 exp 必 < 此值）→ 改制後才練出的大數值不動；
+        //             ② 放大後夾在「不足以升級」(< getExpReq(lv))→ 絕不因遷移白升等；③ 版本戳 player.expMigV 保證每檔只跑一次（新角色於 startGame 已標記，永不遷移）。
+        if (!player.expMigV) {
+            const EXP_MIG_OLD_BASE = 36065092;   // v2.6.40 前 Lv49+ 的固定升級需求（＝EXP_T[49]，新制 getExpReq 的未放大基準）
+            let _mlv = player.lv || 1;
+            if (_mlv >= 50 && _mlv < 100 && (player.exp || 0) > 0 && player.exp < EXP_MIG_OLD_BASE) {
+                let _factor = Math.round(getExpReq(_mlv) / EXP_MIG_OLD_BASE);   // 2,4,8,…,1024（整數·精確）
+                if (_factor > 1) player.exp = Math.min(Math.floor(player.exp * _factor), getExpReq(_mlv) - 1);   // 夾在「不足以升級」→ 不白升等
+            }
+            player.expMigV = 1;   // 標記本檔已遷移（存檔時固化·跨載入不重跑）
+        }
 
         // 🔧 架構#6：集中式預設值合併（放在所有「轉換型」遷移之後，作為缺漏欄位的統一保底）。
         // 日後新增欄位只需登錄於 SAVE_DEFAULTS；上方逐項 if(undefined) 為歷史遷移，不必再增列。
