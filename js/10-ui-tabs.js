@@ -304,8 +304,8 @@ function onAwakenToggle(sid) {
 function endAutoBuffNow(sid) {
     let sk = DB.skills[sid]; if (!sk) return false;
     let ended = false;
-    if (sk.type === 'heal' && sk.autoBuff) {   // HoT 治癒（體力回復術/生命的祝福）：清掉持續回復
-        if (player.hot && (player.hot.skId === sid || player.hot.skId == null)) { player.hot = null; ended = true; }
+    if (sk.type === 'heal' && sk.autoBuff) {   // HoT 治癒（體力回復術/生命的祝福）：清掉該技能的團隊持續回復（全隊一併停止該 HoT）
+        if (player.hots && player.hots[sid]) { delete player.hots[sid]; ended = true; }
     } else {   // 一般 buff 技能（立方/火牢/冰雪颶風/日光/暗隱/力盔敏盔/覺醒…）：歸零該增益計時
         if ((player.buffs[sid] || 0) > 0) { player.buffs[sid] = 0; ended = true; }
     }
@@ -1324,8 +1324,9 @@ function sortInventory() {
 }
 
 // 一鍵賣出所有已勾為廢品的武器/防具/飾品（鎖定者不會被賣，因鎖定時已自動取消勾選）
-// ⏲️ 自動賣出廢品：由主迴圈 tick（每 60 秒）呼叫；賣掉所有標示為廢品(且非鎖定/可販售)的物品。無廢品→靜默不洗版。
-function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」立即賣（無廢品時給提示）；不帶參數＝主迴圈自動賣(靜默)
+// ⏲️ 自動賣出廢品：由主迴圈 tick（每 10 秒·JUNK_AUTOSELL_TICKS）呼叫；賣掉所有標示為廢品(且非鎖定/可販售)的物品。無廢品→靜默不洗版。
+//    ⚡ 2026-07-01 效能：自動路徑（manual 未帶）賣出後「不 saveGame」——避免每 10 秒都壓縮整包存檔；賣掉的廢品/金幣靠其他既有存檔點(頭目擊殺/換地圖/裝備/操作/手動存檔)落地，崩潰重載最多回到未賣狀態(廢品仍在→下輪重標再賣·自癒)。手動「一鍵賣出」仍立即 saveGame。
+function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」立即賣(並存檔)；不帶參數＝主迴圈自動賣(靜默·不存檔)
     if (!player || !Array.isArray(player.inv)) return;
     let toSell = player.inv.filter(i => {
         let d = DB.items[i.id];
@@ -1341,10 +1342,10 @@ function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」
     renderTabs();
     updateUI();
     if(_grantSold) { calcStats(); renderSkillSelects(); }
-    saveGame();
+    if(manual) saveGame();   // ⚡ 只有手動「一鍵賣出」才立即存檔；自動賣出不 saveGame（避免每 10 秒壓縮整包存檔·靠其他存檔點落地）
 }
 
-// 🗑️ 自動賣出開關（右上角按鈕）：點亮＝開啟自動賣出(每 3 分鐘)；點一下變暗、文字「停止賣出」並暫停。狀態存 player.autoSellOn(預設開·undefined 視為開)，隨存檔持久化。
+// 🗑️ 自動賣出開關（右上角按鈕）：點亮＝開啟自動賣出(每 10 秒)；點一下變暗、文字「停止賣出」並暫停。狀態存 player.autoSellOn(預設開·undefined 視為開)，隨存檔持久化。
 function toggleAutoSell() {
     if (!player) return;
     player.autoSellOn = (player.autoSellOn === false);   // false→true(開)；true/undefined→false(停)
@@ -1357,7 +1358,7 @@ function _renderAutoSellBtn() {
     b.textContent = on ? '自動賣出' : '停止賣出';
     b.style.opacity = on ? '' : '0.4';            // 變暗＝停止
     b.style.filter = on ? '' : 'grayscale(0.85)';
-    b.title = on ? '自動賣出已開啟（每 3 分鐘賣出標記為廢品的物品）。點一下暫停。' : '自動賣出已停止。點一下重新開啟。';
+    b.title = on ? '自動賣出已開啟（每 10 秒賣出標記為廢品的物品）。點一下暫停。' : '自動賣出已停止。點一下重新開啟。';
 }
 function toggleLock(uid) {
     let item = player.inv.find(i => i.uid === uid);
@@ -1415,6 +1416,8 @@ function _allySkillOptions(ally, kind, cur) {
         // ⚠️ ally.skills 皆為「該傭兵已學會」的技能→一律可選；不可用 skillReqLv/reqEle 判可用性（那會依『目前玩家』職業誤判，使跨職業傭兵如幻術士的攻擊技全被 disabled）
         let match = (kind === 'atk')
             ? (sk.type === 'atk' && !sk.healSlot)
+            : (kind === 'convert')
+            ? (sk.type === 'convert' || sid === 'sk_illu_cube_harmony')   // 🔄 轉換技能欄：type:'convert'（魂體/心靈/魔力奪取）＋ 立方和諧
             : ((sk.type === 'heal' && !sk.autoBuff && !['sk_antidote', 'sk_holy_light', 'sk_cancel'].includes(sid)) || (sk.type === 'atk' && sk.healSlot));
         if (!match) return;
         opts += `<option value="${sid}"${cur === sid ? ' selected' : ''}>${sk.n}</option>`;
@@ -1434,12 +1437,12 @@ function renderSquadPanel() {
         _squadSig = sig;
         document.getElementById('squad-tab-team').innerHTML = allies.map(a => {
             let s = a._slot;
-            if (a._downed) {   // 🤝 Phase 3：倒地→灰顯卡片＋兩種復活鈕（返生術：消耗MP·無冷卻立即；復活卷軸：死亡15秒後。鈕文字/可用狀態每幀更新）
+            if (a._downed) {   // 🤝 Phase 3：倒地→灰顯卡片。返生術＝手動鈕（消耗MP·無冷卻立即）；復活卷軸＝v2.6.6 改自動（15秒冷卻結束身上有卷軸即自動使用），此處只顯示狀態文字（不可點）。每幀更新。
                 return `<div class="bg-slate-900/70 border border-red-900 rounded p-2 flex items-center justify-between gap-2" style="opacity:0.85;">
                     <div class="text-sm"><span class="font-bold text-slate-400">${a._allyName}</span> <span class="text-slate-600 text-xs">Lv.${a.lv || 1}</span> <span class="text-red-400 font-bold">【倒地】</span></div>
-                    <div class="flex gap-1 shrink-0">
+                    <div class="flex items-center gap-1 shrink-0">
                         <button id="squad-rez-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#1e3a8a;border-color:#3b82f6;color:#bfdbfe;" onclick="reviveMercenary('${s}','rez')">返生術</button>
-                        <button id="squad-revive-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#7f1d1d;border-color:#b91c1c;color:#fecaca;" onclick="reviveMercenary('${s}','scroll')">卷軸</button>
+                        <span id="squad-revive-${s}" class="py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#3f1d1d;border-color:#7f1d1d;color:#fca5a5;cursor:default;" title="倒地 15 秒後，若身上有復活卷軸將自動使用。">卷軸</span>
                     </div>
                 </div>`;
             }
@@ -1454,13 +1457,18 @@ function renderSquadPanel() {
         document.getElementById('squad-tab-skill').innerHTML = allies.map(a => {
             let s = a._slot;
             let hpPct = (a._healHpPct != null) ? a._healHpPct : 70;
-            let safePct = (a._hpSafePct != null) ? a._hpSafePct : 0;
+            let potPct = (a._potHpPct != null) ? a._potHpPct : ((a._hpSafePct != null) ? a._hpSafePct : 0);
+            let skillPct = (a._hpSkillPct != null) ? a._hpSkillPct : ((a._hpSafePct != null) ? a._hpSafePct : 0);
+            let mpPct = (a._castMpPct != null) ? a._castMpPct : 0;   // 🆕 v2.6.27 施法MP門檻
             return `<div class="bg-slate-800/60 border border-slate-600 rounded p-2 flex flex-col gap-1">
                 <div class="text-sm font-bold text-amber-200">${a._allyName} <span class="text-slate-500 text-xs">Lv.${a.lv || 1}</span></div>
-                <div class="flex items-center gap-1 text-xs"><span class="text-cyan-400 font-bold shrink-0" style="width:3rem;">攻擊技能</span><select class="flex-1 bg-slate-900 border border-slate-600 text-cyan-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyAtkSkill('${s}', this.value)">${_allySkillOptions(a, 'atk', a._atkSkill || '')}</select></div>
-                <div class="flex items-center gap-1 text-xs"><span class="text-green-400 font-bold shrink-0" style="width:3rem;">治癒魔法</span><select class="flex-1 bg-slate-900 border border-slate-600 text-green-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyHealSkill('${s}', this.value)">${_allySkillOptions(a, 'heal', a._healSkill || '')}</select></div>
-                <div class="flex items-center justify-end gap-1 text-xs text-slate-400">HP &lt; <input type="number" min="0" max="100" value="${hpPct}" class="w-12 bg-slate-900 border border-slate-600 text-center text-white rounded" onchange="setAllyHealHp('${s}', this.value)">% 施放治癒</div>
-                <div class="flex items-center justify-end gap-1 text-xs text-amber-400" title="HP 安全線：低於此％時，喝隊長設定的藥水回血，並暫停施放消耗 HP 的技能（退回普攻）。0 = 關閉。">HP &lt; <input type="number" min="0" max="100" value="${safePct}" class="w-12 bg-slate-900 border border-amber-700 text-center text-white rounded" onchange="setAllyHpSafe('${s}', this.value)">% 喝藥水/停耗HP技</div>
+                <div class="flex items-center gap-1 text-xs"><span class="text-cyan-400 font-bold shrink-0" style="width:3rem;">攻擊技能</span><select class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-cyan-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyAtkSkill('${s}', this.value)">${_allySkillOptions(a, 'atk', a._atkSkill || '')}</select><span class="shrink-0 flex items-center text-blue-300 whitespace-nowrap" title="MP％ 高於此值才施放攻擊技（0 = 不限）。">MP&gt;<input type="number" min="0" max="100" value="${mpPct}" class="w-10 bg-slate-900 border border-blue-700 text-center text-white rounded" onchange="setAllyCastMp('${s}', this.value)">%</span></div>
+                <div class="flex items-center gap-1 text-xs"><span class="text-green-400 font-bold shrink-0" style="width:3rem;">治癒魔法</span><select class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-green-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyHealSkill('${s}', this.value)">${_allySkillOptions(a, 'heal', a._healSkill || '')}</select><span class="shrink-0 flex items-center text-green-300 whitespace-nowrap" title="HP％ 低於此值才施放治癒。">HP&lt;<input type="number" min="0" max="100" value="${hpPct}" class="w-10 bg-slate-900 border border-green-700 text-center text-white rounded" onchange="setAllyHealHp('${s}', this.value)">%</span></div>
+                <div class="flex items-center gap-1 text-xs"><span class="text-purple-400 font-bold shrink-0" style="width:3rem;">轉換技能</span><select class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-purple-300 px-1 py-1 rounded text-xs outline-none" onchange="setAllyConvertSkill('${s}', this.value)">${_allySkillOptions(a, 'convert', a._convertSkill || '')}</select></div>
+                <div class="flex items-stretch gap-1 text-xs">
+                    <span class="flex-1 flex items-center justify-center gap-0.5 text-amber-400 bg-slate-900/40 border border-amber-800 rounded py-0.5" title="低於此％時，喝隊長設定的藥水回血。0 = 關閉。">HP&lt;<input type="number" min="0" max="100" value="${potPct}" class="w-10 bg-slate-900 border border-amber-700 text-center text-white rounded" onchange="setAllyPotHp('${s}', this.value)">%喝水</span>
+                    <span class="flex-1 flex items-center justify-center gap-0.5 text-rose-400 bg-slate-900/40 border border-rose-800 rounded py-0.5" title="低於此％時，暫停施放消耗 HP 的技能（龍騎士 HP 技／轉換技能／立方和諧），退回普攻。0 = 關閉。">HP&lt;<input type="number" min="0" max="100" value="${skillPct}" class="w-10 bg-slate-900 border border-rose-700 text-center text-white rounded" onchange="setAllyHpSkill('${s}', this.value)">%停技</span>
+                </div>
             </div>`;
         }).join('');
         switchSquadTab(_squadTab);   // 重建後還原目前分頁與按鈕高亮
@@ -1480,10 +1488,10 @@ function renderSquadPanel() {
                 rb.title = !learned ? '尚未學會返生術' : (player.dead ? '你已死亡' : ((player.mp || 0) >= cost ? ('立即復活（消耗 ' + cost + ' MP·無冷卻）') : ('MP 不足（需 ' + cost + '）')));
             }
             let b = document.getElementById('squad-revive-' + s);
-            if (b) {
+            if (b) {   // 🎫 v2.6.6：卷軸改自動（狀態顯示·不可點）。倒數中→顯示自動復活秒數；冷卻結束無卷軸→提示補卷軸即自動復活（返生術可手動立即）。
                 let cd = a._reviveCd || 0;
-                if (cd > 0) { b.textContent = '卷軸 ' + Math.ceil(cd / 10) + 's'; b.style.opacity = '0.45'; b.title = '復活卷軸須死亡 15 秒後才能使用'; }
-                else { let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive'); let n = sc ? (sc.cnt || 0) : 0; b.textContent = n > 0 ? ('卷軸×' + n) : '無卷軸'; b.style.opacity = n > 0 ? '1' : '0.6'; b.title = n > 0 ? '使用復活卷軸復活' : '沒有復活卷軸'; }
+                if (cd > 0) { b.textContent = '自動 ' + Math.ceil(cd / 10) + 's'; b.style.opacity = '0.7'; b.title = '倒地 15 秒後，若身上有復活卷軸將自動使用（返生術可手動立即復活）。'; }
+                else { let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive'); let n = sc ? (sc.cnt || 0) : 0; b.textContent = n > 0 ? ('卷軸×' + n) : '無卷軸'; b.style.opacity = n > 0 ? '1' : '0.6'; b.title = n > 0 ? '冷卻結束，將自動使用復活卷軸復活。' : '身上無復活卷軸；補充後將自動復活（或用返生術立即復活）。'; }
             }
             return;   // 倒地卡無血條，跳過下面 hp/mp/exp 更新
         }
@@ -1528,8 +1536,11 @@ function switchSquadTab(t) {
 function _findAlly(slot) { return (player.allies || []).find(a => a && String(a._slot) === String(slot)); }
 function setAllyAtkSkill(slot, val) { let a = _findAlly(slot); if (a) { a._atkSkill = val || ''; saveGame(); } }   // _atkSkill 即時生效（傭兵攻擊路徑直接讀 ally._atkSkill）
 function setAllyHealSkill(slot, val) { let a = _findAlly(slot); if (a) { a._healSkill = val || ''; saveGame(); } }   // _healSkill 儲存待 Phase 3 傭兵自動補血讀取
+function setAllyConvertSkill(slot, val) { let a = _findAlly(slot); if (a) { a._convertSkill = val || ''; saveGame(); } }   // 🔄 v2.6.4 轉換技能（type:'convert'／立方和諧）：即時生效（allyCubeTick/轉換施放路徑直接讀 ally._convertSkill）
 function setAllyHealHp(slot, val) { let a = _findAlly(slot); if (a) { a._healHpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }
-function setAllyHpSafe(slot, val) { let a = _findAlly(slot); if (a) { a._hpSafePct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🍶🛡️ HP 安全線：低於此%→喝隊長藥水＋暫停耗HP技能；0=關閉
+function setAllyPotHp(slot, val) { let a = _findAlly(slot); if (a) { a._potHpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🍶 v2.6.4 喝藥水門檻（獨立·低於此%→喝隊長藥水；0=關閉）
+function setAllyHpSkill(slot, val) { let a = _findAlly(slot); if (a) { a._hpSkillPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🛡️ v2.6.4 停耗HP技門檻（獨立·低於此%→暫停龍騎HP技/轉換技/立方和諧；0=關閉）
+function setAllyCastMp(slot, val) { let a = _findAlly(slot); if (a) { a._castMpPct = Math.max(0, Math.min(100, parseInt(val) || 0)); saveGame(); } }   // 🆕 v2.6.27 施法MP門檻（MP% 高於此才施放攻擊技·0=不限·allyActWithSkillGate 讀 allyCastMpPct）
 
 // 自動化設定面板收合（只留標題）：收合時去掉 flex-1 改 0 0 auto，body 隱藏
 function _applyAutomationCollapse(collapsed) {

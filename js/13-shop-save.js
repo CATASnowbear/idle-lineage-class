@@ -557,7 +557,7 @@ function startGame() {
     player.lv = 1; player.exp = 0; player.gold = 1000;
     player.inv = []; player.eq = { wpn: null, helm: null, armor: null, shield: null, cloak: null, tshirt: null, gloves: null, boots: null, ring1: null, ring2: null, ring3: null, ring4: null, amulet: null, ear1: null, ear2: null, belt: null }; player.junkPrefs = {};
     player.skills = [];
-    player.summon = null; player.charmed = null; player.manualCd = {}; player.hot = null; player.elfEle = null; player.buffs = { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0 };
+    player.summon = null; player.charmed = null; player.manualCd = {}; player.hot = null; player.hots = {}; player.elfEle = null; player.buffs = { haste: 0, brave: 0, blue: 0, cautious: 0, elfcookie: 0, poly: 0, shield: 0 };
     
     ['set-haste', 'set-brave', 'set-blue', 'set-cautious', 'set-poly', 'set-auto-buy-pot', 'set-auto-buy-arrow'].forEach(id => {
         let el = document.getElementById(id);
@@ -798,6 +798,7 @@ function loadGame() {
         if(player.bloodPledge === undefined) player.bloodPledge = null;   // 相容舊存檔：血盟陣營（null/esti/tros）
         if(player.name === undefined) player.name = null;   // 相容舊存檔：未取名則狀態欄顯示「點擊取名」
         if(!player.blessings || typeof player.blessings !== 'object') player.blessings = {};   // 相容舊存檔：盟主祝福
+        if(!player.blessingAuto || typeof player.blessingAuto !== 'object') player.blessingAuto = {};   // 🩸 v2.6.24 盟主祝福「切換式自動續期」開關（每祝福 bool·舊存檔預設全關）
         // 相容舊存檔：屬性詞綴舊版僅為 true/false，新版需為 12 種代碼之一；非法值一律清除（視為普通武器）
         let _normAttr = (i) => { if (i && !getAttrAffix(i.attr)) i.attr = false; };
         player.inv.forEach(_normAttr);

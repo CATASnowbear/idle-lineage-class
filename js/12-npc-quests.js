@@ -459,8 +459,9 @@ function renderPledgeNPC(div, faction) {
         let cards = Object.keys(BLESSING_DEFS).map(key => {
             let def = BLESSING_DEFS[key];
             let active = player.blessings && player.blessings[key] > Date.now();
-            return `<button class="btn text-left ${active ? 'bg-amber-700 border-amber-400' : 'bg-amber-900/70 hover:bg-amber-800 border-amber-600'} py-2 px-2.5 flex flex-col gap-0.5 leading-tight" onclick="activateBlessing('${key}')">
-                <div class="font-bold text-amber-100 text-sm">${def.n}</div>
+            let auto = !!(player.blessingAuto && player.blessingAuto[key]);   // 🩸 v2.6.24 切換式自動續期狀態
+            return `<button class="btn text-left ${auto ? 'bg-amber-700 border-amber-400' : (active ? 'bg-amber-800/80 border-amber-500' : 'bg-amber-900/70 hover:bg-amber-800 border-amber-600')} py-2 px-2.5 flex flex-col gap-0.5 leading-tight" onclick="toggleBlessingAuto('${key}')">
+                <div class="font-bold text-amber-100 text-sm flex items-center justify-between gap-1"><span>${def.n}</span><span class="text-[10px] font-normal ${auto ? 'text-green-300' : 'text-slate-500'}">自動續期 ${auto ? '🔁 開' : '關'}</span></div>
                 <div class="text-[11px] text-slate-300">${def.desc}</div>
                 <div class="text-[10px] ${active ? 'text-green-300' : 'text-slate-500'}">${blessingRemainText(key)}</div>
             </button>`;
@@ -476,8 +477,8 @@ function renderPledgeNPC(div, faction) {
                     <button class="btn bg-red-800 hover:bg-red-700 border-red-500 text-red-100 py-3 px-3 font-bold flex-1 leading-tight flex flex-col items-center justify-center gap-0.5" onclick="openSiegeSelect('${faction}')"><span class="text-base">⚔ 攻城戰</span><span class="text-[10px] text-red-300 font-normal">選擇要攻打的城池</span></button>
                     <button class="btn bg-amber-700 hover:bg-amber-600 border-amber-400 text-amber-50 py-3 px-3 font-bold flex-1 leading-tight flex flex-col items-center justify-center gap-0.5" onclick="claimSiegeReward('${faction}')"><span class="text-base">🏆 領賞</span><span class="text-[10px] text-amber-200 font-normal">攻城後領取</span></button>
                 </div>
-                <div class="text-center text-amber-300 font-bold text-base">交出王族搜索狀，獲取盟主的祝福</div>
-                <div class="text-center text-slate-400 text-xs">持有王族搜索狀：<span class="text-green-400 font-bold">${warrant}</span> 張（每項消耗 1 張；已生效可再選以刷新）</div>
+                <div class="text-center text-amber-300 font-bold text-base">切換式自動續期：時間到自動扣王族搜索狀續期</div>
+                <div class="text-center text-slate-400 text-xs">持有王族搜索狀：<span class="text-green-400 font-bold">${warrant}</span> 張（點一下切換；開啟時未生效即扣 1 張啟用，到期自動扣 1 張續 24h，沒得扣或關閉即止）</div>
                 <div class="grid grid-cols-2 gap-2">${cards}</div>
                 ${player.cls === 'royal' ? '<div class="text-center text-amber-400/70 text-xs mt-1">👑 王族世代效忠，無法退出血盟。</div>' : `<button class="btn bg-red-950 hover:bg-red-900 border-red-700 text-red-300 py-1.5 px-4 text-sm rounded mt-1 mx-auto" onclick="leavePledge('${faction}')">退出血盟</button>`}
             </div>
@@ -516,26 +517,35 @@ function siegeComingSoon(label) {
     alert((label || '此') + '功能尚未開放，敬請期待！');
 }
 
-// 交出 1 張王族搜索狀，獲得（或刷新）盟主祝福，持續 24 小時（只受時間影響，不因攻城/死亡消失）
-function activateBlessing(key) {
-    if (!BLESSING_DEFS[key]) return;
-    // 僅在「剩餘時間不到 4 小時」時才能消耗王族搜索狀刷新；剩餘超過 4 小時則不消耗、不刷新
-    let remainMs = ((player.blessings && player.blessings[key]) || 0) - Date.now();
-    if (remainMs >= 4 * 3600 * 1000) {
-        let h = Math.floor(remainMs / 3600000), m = Math.floor((remainMs % 3600000) / 60000);
-        alert(`「${BLESSING_DEFS[key].n}」剩餘時間還有 ${h} 小時 ${m} 分（超過 4 小時），尚無法刷新，不會消耗王族搜索狀。\n（剩餘不到 4 小時才能刷新）`);
-        return;
-    }
-    let idx = player.inv.findIndex(i => i.id === 'new_item_241');
-    if (idx === -1 || player.inv[idx].cnt <= 0) {
-        alert('你沒有王族搜索狀，無法換取盟主的祝福。\n（擊敗血盟敵人可必定取得）');
-        return;
-    }
+// 🩸 v2.6.24 消耗 1 張王族搜索狀（背包）：成功回 true。供切換式祝福啟用/tick 自動續期共用。
+function _blessingConsumeWarrant() {
+    let idx = player.inv.findIndex(i => i.id === 'new_item_241' && i.cnt > 0);
+    if (idx === -1) return false;
     player.inv[idx].cnt -= 1;
     if (player.inv[idx].cnt <= 0) player.inv.splice(idx, 1);
-    if (!player.blessings) player.blessings = {};
-    player.blessings[key] = Date.now() + 24 * 3600 * 1000;   // 24 小時（已生效則刷新）
-    logSys(`你交出 1 張 王族搜索狀，獲得盟主的祝福：<span class="text-amber-300 font-bold">${BLESSING_DEFS[key].n}</span>（持續 24 小時）。`);
+    return true;
+}
+// 🩸 v2.6.24 盟主祝福改「切換式自動續期」：點一下切換該祝福的自動續期。
+//   開：若尚未生效→立即扣 1 張王族搜索狀啟用 24 小時；已生效→僅開啟自動續期（不扣）。到期由 tick（js/03）自動扣 1 張續 24 小時，直到沒得扣（自動關）或手動關。
+//   關：停止自動續期；目前剩餘時效自然跑完（不浪費已付的王族搜索狀）。
+function toggleBlessingAuto(key) {
+    if (!BLESSING_DEFS[key]) return;
+    if (!player.blessingAuto || typeof player.blessingAuto !== 'object') player.blessingAuto = {};
+    if (!player.blessings || typeof player.blessings !== 'object') player.blessings = {};
+    if (!player.blessingAuto[key]) {   // → 開啟
+        let active = (player.blessings[key] || 0) > Date.now();
+        if (!active) {
+            if (!_blessingConsumeWarrant()) { alert('你沒有王族搜索狀，無法啟用盟主的祝福。\n（擊敗血盟敵人可必定取得）'); return; }
+            player.blessings[key] = Date.now() + 24 * 3600 * 1000;
+            logSys(`你交出 1 張 王族搜索狀，啟用盟主的祝福：<span class="text-amber-300 font-bold">${BLESSING_DEFS[key].n}</span>（自動續期・持續 24 小時）。`);
+        } else {
+            logSys(`盟主的祝福：<span class="text-amber-300 font-bold">${BLESSING_DEFS[key].n}</span> 已開啟自動續期（到期自動扣 1 張王族搜索狀）。`);
+        }
+        player.blessingAuto[key] = true;
+    } else {   // → 關閉
+        player.blessingAuto[key] = false;
+        logSys(`盟主的祝福：<span class="text-amber-300 font-bold">${BLESSING_DEFS[key].n}</span> 已關閉自動續期（剩餘時效跑完後不再續）。`);
+    }
     calcStats();
     renderTabs();
     updateUI();

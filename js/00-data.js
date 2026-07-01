@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.6.1';
+const GAME_VERSION = 'v2.6.43';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -179,23 +179,26 @@ function _saveUnwrap(raw) {
   return { payload: raw, signed: false, ok: true };
 }
 const EXP_T = [0, 125, 175, 200, 250, 546, 1105, 1695, 2465, 3439, 4641, 6095, 7825, 9855, 12209, 14911, 17985, 21455, 25345, 29679, 34481, 40033, 45585, 51935, 58849, 66351, 74465, 83215, 92625, 102719, 113521, 125055, 137345, 150415, 164289, 178991, 194545, 210975, 228305, 246559, 265761, 285935, 307105, 329817, 352529, 729360, 1508416, 3495263, 9912189, 36065092];
-function getExpReq(lv) { return lv >= 100 ? Infinity : (lv >= 49 ? 36065092 : EXP_T[lv]); }
-// 高等級打怪經驗衰減（依玩家當前等級）：50~69 ×1/2、70~74 ×1/4、75~78 ×1/8、79 ×1/16、
-// 80~81 ×1/32、82~83 ×1/64、84~85 ×1/128、86 ×1/256、87~89 ×1/512、90~99 ×1/1024、100滿等不獲得
-function getExpGainMult(lv) {
-    if (lv >= 100) return 0;
-    if (lv >= 90)  return 1/1024;
-    if (lv >= 87)  return 1/512;   // 87~89
-    if (lv >= 86)  return 1/256;   // 86
-    if (lv >= 84)  return 1/128;   // 84~85
-    if (lv >= 82)  return 1/64;    // 82~83
-    if (lv >= 80)  return 1/32;    // 80~81
-    if (lv >= 79)  return 1/16;    // 79
-    if (lv >= 75)  return 1/8;     // 75~78
-    if (lv >= 70)  return 1/4;     // 70~74
-    if (lv >= 50)  return 1/2;     // 50~69
-    return 1;
+// ⚠️v2.6.40 用戶改制（為避免傭兵經驗值計算錯誤）：取消「高等打怪經驗遞減」→ getExpGainMult 恆全額(1)；改成「高等升級需求經驗變高」→ getExpReq 分段放大。
+//   需求值＝原 flat 基準 36065092 ×(原遞減倍率倒數)：50~69×2、70~74×4、75~78×8、79×16、80~81×32、82~83×64、84~85×128、86×256、87~89×512、90~99×1024。
+//   淨升級速度與舊制相同（獲得×需求 抵銷），但「獲得經驗」為全額不再乘分數（傭兵/玩家皆然）；死亡懲罰(getExpReq×0.1)以「打怪時間」計亦不變。
+//   ⚠️既有高等角色的存檔 exp 不遷移：升級需求變 2×~1024× → XP 條 % 會顯示變低，但每殺獲得同步變全額→補回速度加倍、實質公平、無資料遺失。
+function getExpReq(lv) {
+    if (lv >= 100) return Infinity;
+    if (lv >= 90)  return 36930654208;   // 90~99  (×1024)
+    if (lv >= 87)  return 18465327104;   // 87~89  (×512)
+    if (lv >= 86)  return 9232663552;    // 86     (×256)
+    if (lv >= 84)  return 4616331776;    // 84~85  (×128)
+    if (lv >= 82)  return 2308165888;    // 82~83  (×64)
+    if (lv >= 80)  return 1154082944;    // 80~81  (×32)
+    if (lv >= 79)  return 577041472;     // 79     (×16)
+    if (lv >= 75)  return 288520736;     // 75~78  (×8)
+    if (lv >= 70)  return 144260368;     // 70~74  (×4)
+    if (lv >= 50)  return 72130184;      // 50~69  (×2)
+    if (lv >= 49)  return 36065092;      // 49（原 flat 基準·未遞減段）
+    return EXP_T[lv];
 }
+function getExpGainMult(lv) { return lv >= 100 ? 0 : 1; }   // ⚠️v2.6.40 取消高等經驗遞減（恆全額）；滿等(100)仍不獲得。遞減效果改由 getExpReq 提高需求承擔。
 
 const DB = {
         items: {
@@ -608,7 +611,7 @@ const DB = {
         "scroll_poly": { n: "變形卷軸", type: "scroll", req: "all", p: 1300, c: "text-gray-300", d: "根據玩家等級改變外觀與能力，持續1800秒", eff: "poly", dur: 1800, gachaWeight: 0 },
         "scroll_magicbarrier": { n: "魔法卷軸(魔法屏障)", type: "scroll", req: "all", p: 1500, c: "text-cyan-300", d: "使用後獲得「魔法屏障」狀態，持續16秒；成功抵擋一次技能傷害後3秒內無法再次施放（自然到期或取消則無冷卻）", eff: "magicbarrier", gachaWeight: 0 },
         "scroll_teleport": { n: "瞬間移動卷軸", type: "scroll", req: "all", p: 82, c: "text-sky-300", d: "使用後發動傳送術", eff: "teleport_scroll", gachaWeight: 0 },
-        "scroll_revive": { n: "復活卷軸", type: "scroll", req: "all", p: 1000, c: "text-yellow-300", d: "持有死亡後可選擇原地復活，冷卻15秒", gachaWeight: 0 },
+        "scroll_revive": { n: "復活卷軸", type: "scroll", req: "all", p: 1000, c: "text-yellow-300", d: "持有死亡後可選擇原地復活，冷卻15秒；倒地傭兵於死亡 15 秒後也會自動消耗此卷軸原地復活。", gachaWeight: 0 },
         "item_blueflute": { n: "藍色長笛", p: 1, c: "text-blue-300", d: "試煉所需的材料。", gachaWeight: 0 },   // 🔧 試煉材料統一藍色
         "item_ancientkey": { n: "古代鑰匙", p: 1, c: "text-blue-300", d: "試煉所需的材料。", gachaWeight: 0 },   // 🔧 試煉材料統一藍色
         "item_nightvision": { n: "夜之視野", p: 1, c: "text-blue-300", d: "凝視黑暗也不失方向的祕術之眼，試煉所需的材料。", gachaWeight: 0 },
@@ -1152,7 +1155,7 @@ const DB = {
         "bk_elf_mirror": { type: "skillbk", n: "精靈水晶(鏡反射)", p: 16000, sk: "sk_elf_mirror", gachaWeight: 1, d: "習得「鏡反射」（輔助・增益・持續16秒）：受到魔法傷害時，有（精神）% 機率（每 1 點精神 +1%）對施法目標造成與自身所受傷害等量的必中固定傷害。" },
         "bk_elf_earthshield": { type: "skillbk", n: "精靈水晶(大地屏障)", p: 30000, sk: "sk_elf_earthshield", gachaWeight: 10 },
         "bk_elf_lifespring": { type: "skillbk", n: "精靈水晶(生命之泉)", p: 30000, sk: "sk_elf_lifespring", gachaWeight: 10 },
-        "bk_elf_earthbless": { type: "skillbk", n: "精靈水晶(大地的祝福)", p: 30000, sk: "sk_elf_earthbless", gachaWeight: 10 },
+        "bk_elf_earthbless": { type: "skillbk", n: "精靈水晶(大地的祝福)", p: 30000, sk: "sk_elf_earthbless", gachaWeight: 10, d: "習得「大地的祝福」（增益・大地屬性）。施放後全隊（玩家＋所有傭兵）防禦(AC)-7，持續 1200 秒。可學等級 40。消耗 MP 35。" },
 
         "bk_elf_summon2": { type: "skillbk", n: "精靈水晶(召喚強力屬性精靈)", p: 60000, sk: "sk_elf_summon2", gachaWeight: 1 },
         "bk_elf_lifebless": { type: "skillbk", n: "精靈水晶(生命的祝福)", p: 60000, sk: "sk_elf_lifebless", gachaWeight: 5 },
@@ -1164,8 +1167,8 @@ const DB = {
         "bk_elf_attrfire": { type: "skillbk", n: "精靈水晶(屬性之火)", p: 16000, sk: "sk_elf_attrfire", gachaWeight: 1, d: "習得「屬性之火」（五階精靈魔法・火屬性・增益）。持續 320 秒內，一般攻擊有 30% 機率造成 1.5 倍傷害；效果結束後才能再次施放。" },
         "bk_elf_preciseshot": { type: "skillbk", n: "精靈水晶(精準射擊)", p: 16000, sk: "sk_elf_preciseshot", gachaWeight: 1, d: "習得「精準射擊」（五階精靈魔法・風屬性・輔助・增益）。持續 64 秒內，一般攻擊的最高命中率可提升至 100%；效果結束後才能再次施放。消耗 MP 15。" },
         "bk_elf_stormshot": { type: "skillbk", n: "精靈水晶(暴風神射)", p: 60000, sk: "sk_elf_stormshot", gachaWeight: 1 },
-        "bk_elf_steelguard": { type: "skillbk", n: "精靈水晶(鋼鐵防護)", p: 60000, sk: "sk_elf_steelguard", gachaWeight: 1 },
-        "bk_elf_watervital": { type: "skillbk", n: "精靈水晶(水之元氣)", p: 4000, sk: "sk_elf_watervital", gachaWeight: 10, d: "習得「水之元氣」（三階精靈魔法・水屬性・增益）。持續 64 秒內，下次受到治癒術治癒時恢復量加倍（持續回復 HoT 不計），觸發後 7 秒冷卻；效果結束後才能再次施放。" },
+        "bk_elf_steelguard": { type: "skillbk", n: "精靈水晶(鋼鐵防護)", p: 60000, sk: "sk_elf_steelguard", gachaWeight: 1, d: "習得「鋼鐵防護」（增益・大地屬性）。施放後全隊（玩家＋所有傭兵）受到的傷害減少 5%，持續 1200 秒。可學等級 50。消耗 MP 30。" },
+        "bk_elf_watervital": { type: "skillbk", n: "精靈水晶(水之元氣)", p: 4000, sk: "sk_elf_watervital", gachaWeight: 10, d: "習得「水之元氣」（三階精靈魔法・水屬性・增益）。持續 64 秒內，全隊（玩家＋所有傭兵）下次受到治癒術治癒時恢復量加倍（持續回復 HoT 不計・全隊共用一次），觸發後 7 秒冷卻；效果結束後才能再次施放。" },
         // ===== 黑暗精靈水晶（黑暗妖精魔法，賽帝亞販售；潘朵拉抽不到） =====
         "bk_dark_str":       { type: "skillbk", n: "黑暗精靈水晶(力量提升)", p: 500,   sk: "sk_dark_str",       gachaWeight: 0 },
         "bk_dark_mrup":      { type: "skillbk", n: "黑暗精靈水晶(影之防護)", p: 500,   sk: "sk_dark_mrup",      gachaWeight: 0 },
@@ -1183,21 +1186,21 @@ const DB = {
         "bk_dark_double":    { type: "skillbk", n: "黑暗精靈水晶(雙重破壞)", p: 12500, sk: "sk_dark_double",    gachaWeight: 10 },
         "bk_dark_armorbreak":{ type: "skillbk", n: "黑暗精靈水晶(破壞盔甲)", p: 12500, sk: "sk_dark_armorbreak", gachaWeight: 1 },
         // ===== 記憶水晶（幻術士法術，史菲爾販售）=====
-        "mem_ogre":       { type: "skillbk", n: "記憶水晶(幻覺：歐吉)", p: 1800,  sk: "sk_illu_ogre",       gachaWeight: 0 },
+        "mem_ogre":       { type: "skillbk", n: "記憶水晶(幻覺：歐吉)", p: 1800,  sk: "sk_illu_ogre",       gachaWeight: 0, d: "習得「幻覺：歐吉」（增益）。施放後全隊（玩家＋所有傭兵）額外傷害+4、額外命中+4，持續 64 秒。可學等級 10。消耗 MP 20。" },
         "mem_confuse":    { type: "skillbk", n: "記憶水晶(混亂)",       p: 1800,  sk: "sk_illu_confuse",    gachaWeight: 0 },
         "mem_cube_burn":  { type: "skillbk", n: "記憶水晶(立方：燃燒)", p: 1800,  sk: "sk_illu_cube_burn",  gachaWeight: 0 },
         "mem_crush":      { type: "skillbk", n: "記憶水晶(粉碎能量)",   p: 1800,  sk: "sk_illu_crush",      gachaWeight: 0 },
         "mem_mirror":     { type: "skillbk", n: "記憶水晶(鏡像)",       p: 1800,  sk: "sk_illu_mirror",     gachaWeight: 0 },
         "mem_focus":      { type: "skillbk", n: "記憶水晶(專注)",       p: 4800,  sk: "sk_illu_focus",      gachaWeight: 0 },
-        "mem_lich":       { type: "skillbk", n: "記憶水晶(幻覺：巫妖)", p: 4800,  sk: "sk_illu_lich",       gachaWeight: 0 },
+        "mem_lich":       { type: "skillbk", n: "記憶水晶(幻覺：巫妖)", p: 4800,  sk: "sk_illu_lich",       gachaWeight: 0, d: "習得「幻覺：巫妖」（增益）。施放後全隊（玩家＋所有傭兵）魔法傷害+2，持續 64 秒。可學等級 20。消耗 MP 20。" },
         "mem_mindbreak":  { type: "skillbk", n: "記憶水晶(心靈破壞)",   p: 4800,  sk: "sk_illu_mindbreak",  gachaWeight: 20 },
         "mem_cube_quake": { type: "skillbk", n: "記憶水晶(立方：地裂)", p: 4800,  sk: "sk_illu_cube_quake", gachaWeight: 20 },
         "mem_skullbreak": { type: "skillbk", n: "記憶水晶(骷髏毀壞)",   p: 4800,  sk: "sk_illu_skullbreak", gachaWeight: 0 },
         "mem_fantasy":    { type: "skillbk", n: "記憶水晶(幻想)",       p: 10800, sk: "sk_illu_fantasy",    gachaWeight: 10 },
-        "mem_golem":      { type: "skillbk", n: "記憶水晶(幻覺：鑽石高崙)", p: 10800, sk: "sk_illu_golem",  gachaWeight: 1 },
+        "mem_golem":      { type: "skillbk", n: "記憶水晶(幻覺：鑽石高崙)", p: 10800, sk: "sk_illu_golem",  gachaWeight: 1, d: "習得「幻覺：鑽石高崙」（增益）。施放後全隊（玩家＋所有傭兵）防禦(AC)-10，持續 64 秒。可學等級 30。消耗 MP 30、HP 25。" },
         "mem_cube_shock": { type: "skillbk", n: "記憶水晶(立方：衝擊)", p: 10800, sk: "sk_illu_cube_shock", gachaWeight: 0 },
         "mem_endure":     { type: "skillbk", n: "記憶水晶(耐力)",       p: 10800, sk: "sk_illu_endure",     gachaWeight: 0 },
-        "mem_avatar":     { type: "skillbk", n: "記憶水晶(幻覺：化身)", p: 43200, sk: "sk_illu_avatar",     gachaWeight: 1 },
+        "mem_avatar":     { type: "skillbk", n: "記憶水晶(幻覺：化身)", p: 43200, sk: "sk_illu_avatar",     gachaWeight: 1, d: "習得「幻覺：化身」（增益）。施放後全隊（玩家＋所有傭兵）額外傷害+10、受到所有傷害減少 3%，持續 64 秒。可學等級 40。消耗 MP 50。" },
         "mem_panic":      { type: "skillbk", n: "記憶水晶(恐慌)",       p: 43200, sk: "sk_illu_panic",      gachaWeight: 10 },
         "mem_insight":    { type: "skillbk", n: "記憶水晶(洞察)",       p: 43200, sk: "sk_illu_insight",    gachaWeight: 10 },
         "mem_cube_harmony":{ type: "skillbk", n: "記憶水晶(立方：和諧)", p: 43200, sk: "sk_illu_cube_harmony", gachaWeight: 1 },
@@ -1844,6 +1847,7 @@ const DB = {
             npcs: [
                 { id: "npc_suvan", n: "須凡", title: "雜貨商人", type: "shop", d: "海音城歸入麾下後，須凡在港邊開張——攻下海音城後開放的雜貨商。" },
                 { id: "npc_wh_heine", n: "哈金", title: "倉庫", type: "warehouse", d: "哈金守著海音城的倉庫，替你存放物品與金幣，四個存檔角色共用。" },
+                { id: "npc_ally_heinec", n: "傭兵公會", title: "協力", type: "ally", d: "傭兵公會替你牽起命運的絲線，召喚其他存檔位的角色一起作戰。" },
                 { id: "npc_heine_guard", n: "海音神官隊長", title: "城堡治療", type: "castleguard", d: "海音神官隊長以聖光庇佑同袍，雇用神官在你 HP 低於設定門檻時，每 5 秒為你施放治癒術。" },
                 { id: "npc_esti", n: "依詩蒂", title: "血盟", type: "pledge", d: "依詩蒂低聲訴說著血盟的古老誓言，為你尋找以血為盟的夥伴。" },
                 { id: "npc_tros", n: "特羅斯", title: "血盟", type: "pledge", d: "特羅斯握劍而立，為你尋找以血為盟的夥伴。" },
@@ -2170,7 +2174,7 @@ const DB = {
         "sk_elf_flamesoul": { n: "烈焰之魂", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1280, reqEle: "fire", noRefresh: true },   // 🔧 持續內近距離一般攻擊武器擲骰必定最大值（見 getPhysicalDmg）；noRefresh：效果結束才可再施放
         "sk_elf_stormshot": { n: "暴風神射", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "wind", d: { rangedDmg: 6, rangedHit: 3 } },
         "sk_elf_preciseshot": { n: "精準射擊", type: "buff", tier: 5, reqE: 50, mp: 15, dur: 64, reqEle: "wind", noRefresh: true, preciseShot: true, msg: "你的目光變得無比銳利，攻擊精準無比。" },   // 🏹 持續內一般攻擊擲骰1由必定未命中→必定命中（最高命中率可達100%·見 getPhysicalDmg）；noRefresh：效果結束才可再施放
-        "sk_elf_steelguard": { n: "鋼鐵防護", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "earth", d: { ac: 10 } },
+        "sk_elf_steelguard": { n: "鋼鐵防護", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 1200, reqEle: "earth", teamDmgReducePct: 5 },   // 🛡️ v2.6.5：效果改為「受到傷害 -5%·全隊生效」（玩家＋全體傭兵·由 teamDmgReduceMult 讀取；不再給 AC）
         "sk_elf_attrfire": { n: "屬性之火", type: "buff", tier: 5, reqE: 50, mp: 20, dur: 320, reqEle: "fire", noRefresh: true, attrFireBuff: true, msg: "屬性之火在你的攻擊中燃燒。" },   // 🔧 一般攻擊30%機率傷害×1.5（見 playerAttack，與燃燒鬥志同效）；noRefresh：效果結束才可再施放
         "sk_elf_physboost": { n: "體能激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "earth", noRefresh: true, loadFreeRegen: true, msg: "體能激發，負重之下仍能調息。" },   // 🔧 負重狀態仍可自然恢復HP/MP（見 regenTick / hasLoadFreeRegen）；noRefresh：效果結束才可再施放
         "sk_elf_energyboost": { n: "能量激發", type: "buff", tier: 5, reqE: 50, mp: 30, dur: 960, reqEle: "fire", noRefresh: true, loadFreeRegen: true, msg: "能量激發，負重之下仍能調息。" },   // 🔧 同體能激發，火屬性版本
@@ -2213,7 +2217,7 @@ const DB = {
         "sk_illu_cube_shock":{ n: "立方：衝擊", type: "buff", label: "增益", tier: 3, reqI: 30, mp: 55, dur: 20, d: { resWind: 30 }, cube: { iv: 50, kind: "mrdown", dur: 4 }, msg: "衝擊立方在你周身旋轉。" },
         "sk_illu_endure":    { n: "耐力", type: "buff", label: "增益", tier: 3, reqI: 30, mp: 25, dur: 600, d: { dr: 2 }, msg: "你的意志化為堅韌的耐力。" },
         // 四階幻術
-        "sk_illu_avatar":    { n: "幻覺：化身", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 50, dur: 64, d: { extraDmg: 10 }, dmgTakenReduce: 10, msg: "你化身為幻象的存在。" },
+        "sk_illu_avatar":    { n: "幻覺：化身", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 50, dur: 64, d: { extraDmg: 10 }, dmgTakenReduce: 3, msg: "你化身為幻象的存在。" },   // 🔮 v2.6.7：受傷減免 10%→3%，且改全隊生效（走 teamDmgReduceMult）；額外傷害+10 亦全隊生效（幻覺全隊光環·見 alliesTick 注入）
         "sk_illu_panic":     { n: "恐慌", type: "atk", tier: 4, reqI: 40, mp: 30, hpCost: 30, dmgType: "magic", ele: "none", status: { kind: "panic", pbase: 100, dur: 64 }, noRecastStatus: "panic", panicMsg: true },
         "sk_illu_insight":   { n: "洞察", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 60, dur: 640, d: { str: 1, dex: 1, con: 1, int: 1, wis: 1 }, msg: "你的感官變得無比敏銳。" },
         "sk_illu_cube_harmony":{ n: "立方：和諧", type: "buff", label: "增益", tier: 4, reqI: 40, mp: 0, hpCost: 25, dur: 20, cube: { iv: 10, kind: "dmgmp", dice: [1, 25], ele: "fire", val: 5 }, msg: "和諧立方在你周身旋轉，引動魔力。" },   // 🔮 每秒：對當前目標 1D25 火傷 ＋ 自身回 5 MP

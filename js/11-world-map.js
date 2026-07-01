@@ -882,24 +882,25 @@ function ismaelCursedExchange(kind) {
     updateUI();
     let el = document.getElementById('interaction-content'); if (el) renderIsmaelExchange(el);
 }
-// ===== 克里斯特：施法卷軸 + 金幣 → 賦予祝福卷軸 =====
+// ===== 克里斯特：施法卷軸 + 金幣 → 賦予祝福卷軸（🆕 可選兌換數量，共用試煉兌換的 trial-qty 數量列；數量取「輸入值」與「可負擔上限」較小者） =====
 function kristaExchange(kind) {
+    let GOLD = 1000000;
+    let want = (typeof trialQtyVal === 'function') ? trialQtyVal() : 1;   // 🔢 共用數量選擇器（trial-qty·−/＋/全部）
     if (kind === 'uncurse') {
-        let UNCURSE_GOLD = 1000000;   // 🔧 兌換條件新增 100 萬金幣
-        if ((player.gold || 0) < UNCURSE_GOLD) { logSys(`<span class="text-red-400">金幣不足（需 ${UNCURSE_GOLD.toLocaleString()}）。</span>`); return; }
-        if (pledgeCountItem('scroll_weapon_b') < 1 || pledgeCountItem('scroll_armor_b') < 1) {
-            logSys(`<span class="text-red-400">需要 1 張 祝福的 對武器施法的卷軸 與 1 張 祝福的 對盔甲施法的卷軸。</span>`); return;
+        let haveW = questCountId('scroll_weapon_b'), haveA = questCountId('scroll_armor_b');   // 🗄️ 含倉庫（背包＋倉庫合併計數）
+        let maxAff = Math.min(haveW, haveA, Math.floor((player.gold || 0) / GOLD));
+        if (maxAff < 1) {
+            if ((player.gold || 0) < GOLD) logSys(`<span class="text-red-400">金幣不足（需 ${GOLD.toLocaleString()}）。</span>`);
+            else logSys(`<span class="text-red-400">需要 1 張 祝福的 對武器施法的卷軸 與 1 張 祝福的 對盔甲施法的卷軸。</span>`);
+            return;
         }
-        player.gold -= UNCURSE_GOLD;
-        let leftW = 1, leftA = 1;
-        for (let it of player.inv) {
-            if (it.id === 'scroll_weapon_b' && leftW > 0) { let t = Math.min(it.cnt, leftW); it.cnt -= t; leftW -= t; }
-            if (it.id === 'scroll_armor_b'  && leftA > 0) { let t = Math.min(it.cnt, leftA); it.cnt -= t; leftA -= t; }
-        }
-        player.inv = player.inv.filter(it => it.cnt > 0);
-        gainItem('new_item_uncurse', 1, true, true);
+        let n = Math.min(want, maxAff);
+        player.gold -= GOLD * n;
+        questConsumeId('scroll_weapon_b', n);   // 🗄️ 背包優先，不足扣共用倉庫（whConsumeId 內部自存倉庫）
+        questConsumeId('scroll_armor_b', n);
+        gainItem('new_item_uncurse', n, true, true);
         renderTabs(); updateUI(); saveGame();
-        logSys(`花費 ${UNCURSE_GOLD.toLocaleString()} 金幣 ＋ 1 張 祝福的 對武器施法的卷軸 ＋ 1 張 祝福的 對盔甲施法的卷軸，換得 1 張 <span class="text-cyan-200 font-bold">解除詛咒的卷軸</span>。`);
+        logSys(`花費 ${(GOLD * n).toLocaleString()} 金幣 ＋ ${n} 張 祝福的 對武器施法的卷軸 ＋ ${n} 張 祝福的 對盔甲施法的卷軸，換得 ${n} 張 <span class="text-cyan-200 font-bold">解除詛咒的卷軸</span>。`);
         let _eu = document.getElementById('interaction-content'); if (_eu) renderKristaExchange(_eu);
         return;
     }
@@ -909,33 +910,38 @@ function kristaExchange(kind) {
         acc: { scroll: 'scroll_acc',    need: 5,   out: 'new_item_bless_acc', nm: '對飾品施法的卷軸', outNm: '賦予飾品祝福卷軸' },
     }[kind];
     if (!cfg) return;
-    let GOLD = 1000000;
-    if ((player.gold || 0) < GOLD) { logSys(`<span class="text-red-400">金幣不足（需 ${GOLD.toLocaleString()}）。</span>`); return; }
-    if (pledgeCountItem(cfg.scroll) < cfg.need) { logSys(`<span class="text-red-400">${cfg.nm} 不足 ${cfg.need} 張（目前 ${pledgeCountItem(cfg.scroll)} 張）。</span>`); return; }
-    player.gold -= GOLD;
-    let left = cfg.need;
-    for (let it of player.inv) { if (it.id === cfg.scroll && left > 0) { let take = Math.min(it.cnt, left); it.cnt -= take; left -= take; } }
-    player.inv = player.inv.filter(it => it.cnt > 0);
-    gainItem(cfg.out, 1, true, true);
+    let have = questCountId(cfg.scroll);   // 🗄️ 含倉庫
+    let maxAff = Math.min(Math.floor(have / cfg.need), Math.floor((player.gold || 0) / GOLD));
+    if (maxAff < 1) {
+        if ((player.gold || 0) < GOLD) logSys(`<span class="text-red-400">金幣不足（需 ${GOLD.toLocaleString()}）。</span>`);
+        else logSys(`<span class="text-red-400">${cfg.nm} 不足 ${cfg.need} 張（目前 ${have} 張）。</span>`);
+        return;
+    }
+    let n = Math.min(want, maxAff);
+    player.gold -= GOLD * n;
+    questConsumeId(cfg.scroll, cfg.need * n);   // 🗄️ 背包優先，不足扣共用倉庫（whConsumeId 內部自存倉庫）
+    gainItem(cfg.out, n, true, true);
     renderTabs(); updateUI(); saveGame();
-    logSys(`花費 ${GOLD.toLocaleString()} 金幣與 ${cfg.need} 張 ${cfg.nm}，換得 1 張 <span class="text-purple-300 font-bold">${cfg.outNm}</span>。`);
+    logSys(`花費 ${(GOLD * n).toLocaleString()} 金幣與 ${cfg.need * n} 張 ${cfg.nm}，換得 ${n} 張 <span class="text-purple-300 font-bold">${cfg.outNm}</span>。`);
     let _e = document.getElementById('interaction-content'); if (_e) renderKristaExchange(_e);
 }
 function renderKristaExchange(el) {
     let row = (kind, scroll, need, nm, outNm) => `
         <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
-            <div class="text-sm text-slate-200 leading-relaxed">100 萬金幣 ＋ ${need} 張 <span class="text-sky-300">${nm}</span> → 1 張 <span class="text-purple-300 font-bold">${outNm}</span><br><span class="text-xs text-slate-400">持有：${pledgeCountItem(scroll)} 張</span></div>
+            <div class="text-sm text-slate-200 leading-relaxed">100 萬金幣 ＋ ${need} 張 <span class="text-sky-300">${nm}</span> → 1 張 <span class="text-purple-300 font-bold">${outNm}</span><br><span class="text-xs text-slate-400">持有（含倉庫）：${questCountId(scroll)} 張</span></div>
             <button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-2 px-4 font-bold shrink-0" onclick="kristaExchange('${kind}')">兌換</button>
         </div>`;
     el.innerHTML = `
         <div class="flex flex-col gap-3 p-1">
             <div class="text-slate-300 text-sm leading-relaxed">克里斯特：把施法卷軸與金幣交給我，我能煉成『賦予祝福卷軸』。</div>
             <div class="text-sm">你的金幣：<span class="text-yellow-400 font-bold">${(player.gold||0).toLocaleString()}</span></div>
+            ${(typeof trialQtyBar === 'function') ? trialQtyBar() : ''}
+            <div class="text-xs text-slate-400 -mt-2">兌換數量會自動以「可負擔上限（卷軸／金幣）」為準，各項共用上方數量。</div>
             ${row('wpn','scroll_weapon',100,'對武器施法的卷軸','賦予武器祝福卷軸')}
             ${row('arm','scroll_armor',100,'對盔甲施法的卷軸','賦予盔甲祝福卷軸')}
             ${row('acc','scroll_acc',5,'對飾品施法的卷軸','賦予飾品祝福卷軸')}
             <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
-                <div class="text-sm text-slate-200 leading-relaxed">100 萬金幣 ＋ 1 張 <span class="text-yellow-300">祝福的 對武器施法的卷軸</span> ＋ 1 張 <span class="text-yellow-300">祝福的 對盔甲施法的卷軸</span> → 1 張 <span class="text-cyan-200 font-bold">解除詛咒的卷軸</span><br><span class="text-xs text-slate-400">持有：${pledgeCountItem('scroll_weapon_b')} / ${pledgeCountItem('scroll_armor_b')} 張</span></div>
+                <div class="text-sm text-slate-200 leading-relaxed">100 萬金幣 ＋ 1 張 <span class="text-yellow-300">祝福的 對武器施法的卷軸</span> ＋ 1 張 <span class="text-yellow-300">祝福的 對盔甲施法的卷軸</span> → 1 張 <span class="text-cyan-200 font-bold">解除詛咒的卷軸</span><br><span class="text-xs text-slate-400">持有（含倉庫）：${questCountId('scroll_weapon_b')} / ${questCountId('scroll_armor_b')} 張</span></div>
                 <button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-2 px-4 font-bold shrink-0" onclick="kristaExchange('uncurse')">兌換</button>
             </div>
         </div>`;

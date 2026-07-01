@@ -1,14 +1,15 @@
-function summonAttack(sm) {
+function summonAttack(sm, owner) {
+    owner = owner || player;   // 🩸 v2.6.25 owner 參數化：owner=player（預設·玩家召喚）或 ally（傭兵召喚）；讀 owner.d.cha/lv/mastery/eq，killMob 仍歸真隊長（不換身）
     if(!sm) return;
     let t = getTarget(); if(!t) return;
-    let cha = player.d.cha || 0;
+    let cha = (owner.d && owner.d.cha) || 0;
     let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
 
     // === 迷魅術：被迷魅怪物（單次攻擊，額外獲得 =魅力 的命中與傷害）===
     if(sm.skId === 'sk_charm') {
-        let hv = Math.max(1, Math.min(20, player.lv + sm.hitBonus + cha - t.lv + mobEffAC(t) + (hasSummonCtrlRing() ? 5 : 0)));   // 🔧 召喚控制戒指：召喚物命中+5
+        let hv = Math.max(1, Math.min(20, owner.lv + sm.hitBonus + cha - t.lv + mobEffAC(t) + (hasSummonCtrlRing(owner) ? 5 : 0)));   // 🔧 召喚控制戒指：召喚物命中+5
         let r = roll(1, 20);
-        if(!((r === 20) || (r !== 1 && hv >= r) || (r === 19 && hasSummonCtrlRing()))) { logCombat(`${sm.n} 的攻擊未命中。`, 'miss'); return; }
+        if(!((r === 20) || (r !== 1 && hv >= r) || (r === 19 && hasSummonCtrlRing(owner)))) { logCombat(`${sm.n} 的攻擊未命中。`, 'miss'); return; }
         let dmg = Math.max(1, roll(sm.dmgDice[0], sm.dmgDice[1]) + cha - (t.dr || 0));
         t.justHit = 'normal'; t.curHp -= dmg; mobWake(t);
         logCombat(`<span class="text-purple-300">${sm.n}</span> 攻擊 <span class="${getMobColor(t.lv)}">${t.n}</span>，造成 ${dmg} 點傷害。`, 'player');
@@ -21,24 +22,24 @@ function summonAttack(sm) {
     // 🔧 召喚「數量」(段數/隻數) 以魅力 60 封頂；超過 60 只提升下方的傷害與命中，不再增加數量
     let chaCnt = Math.min(60, cha);
     let hits = (sm.kind === 'melee') ? Math.max(1, Math.floor(chaCnt / 6))
-        : ((hasMastery('e_spirit') && (sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2')) ? Math.min(7, 1 + Math.floor(chaCnt / 10)) : 1);
+        : (((owner.mastery === 'e_spirit') && (sm.skId === 'sk_elf_summon' || sm.skId === 'sk_elf_summon2')) ? Math.min(7, 1 + Math.floor(chaCnt / 10)) : 1);
     let hitLvOff = sm.hitLvOff || 0;
     // 🏅 召喚精通：造屍術/召喚術的「傷害與命中判定魅力」改為 魅力×1.2（攻擊段數仍依原魅力）
-    let chaEff = (hasMastery('m_summon') && (sm.skId === 'sk_zombie' || sm.skId === 'sk_summon')) ? cha * 1.2 : cha;
+    let chaEff = ((owner.mastery === 'm_summon') && (sm.skId === 'sk_zombie' || sm.skId === 'sk_summon')) ? cha * 1.2 : cha;
     for(let i = 0; i < hits; i++) {
         if(t.curHp <= 0) break;
-        // 命中值 = 玩家等級 + 偏移 + 魅力 - 目標等級 + 目標AC（d20）
-        let hv = Math.max(1, Math.min(20, player.lv + hitLvOff + chaEff - t.lv + mobEffAC(t) + (hasSummonCtrlRing() ? 5 : 0)));   // 🔧 召喚控制戒指：召喚物命中+5
+        // 命中值 = 召喚者等級 + 偏移 + 魅力 - 目標等級 + 目標AC（d20）
+        let hv = Math.max(1, Math.min(20, owner.lv + hitLvOff + chaEff - t.lv + mobEffAC(t) + (hasSummonCtrlRing(owner) ? 5 : 0)));   // 🔧 召喚控制戒指：召喚物命中+5
         let r = roll(1, 20);
-        if(!((r === 20) || (r !== 1 && hv >= r) || (r === 19 && hasSummonCtrlRing()))) { logCombat(`${sm.n} 的攻擊未命中。`, 'miss'); continue; }
+        if(!((r === 20) || (r !== 1 && hv >= r) || (r === 19 && hasSummonCtrlRing(owner)))) { logCombat(`${sm.n} 的攻擊未命中。`, 'miss'); continue; }
         let dmg;
         if(sm.kind === 'ranged') {
-            let flat = Math.floor(cha * player.lv / (sm.elemScale || 20));   // 屬性精靈：魅力 x (等級/scale)
+            let flat = Math.floor(cha * owner.lv / (sm.elemScale || 20));   // 屬性精靈：魅力 x (等級/scale)
             dmg = summonElementDamage(sm.dmgDice, sm.ele, t, flat);
             t.justHit = sm.ele !== 'none' ? sm.ele : 'magic';
         } else {
             let flatBase = chaEff / (sm.dmgDiv || 5);                          // 近戰固定加成基底 = 魅力/dmgDiv（🏅 召喚精通 ×1.2）
-            let flat = sm.dmgLvDiv ? Math.floor(flatBase * (1 + player.lv / sm.dmgLvDiv)) : Math.floor(flatBase);   // 造屍術等具 dmgLvDiv：再乘上 (1+玩家等級/dmgLvDiv)
+            let flat = sm.dmgLvDiv ? Math.floor(flatBase * (1 + owner.lv / sm.dmgLvDiv)) : Math.floor(flatBase);   // 造屍術等具 dmgLvDiv：再乘上 (1+召喚者等級/dmgLvDiv)
             dmg = Math.max(1, roll(sm.dmgDice[0], sm.dmgDice[1]) + flat - (t.dr || 0) - mobHardSkin(t));   // 🔧 硬皮：額外物理減傷（召喚物近戰；但不消磨硬皮值）
             t.justHit = 'normal';
         }
@@ -48,20 +49,21 @@ function summonAttack(sm) {
     if(t.curHp <= 0 && idx !== -1) killMob(idx);
     else renderMobs();
 }
-function summonTick(sm, clearFn) {
+function summonTick(sm, clearFn, owner) {
+    owner = owner || player;   // 🩸 v2.6.25 owner 參數化（傭兵召喚共用）
     if(!sm) return;
-    if(state.ticks >= sm.endTick || (sm.skId && (player.buffs[sm.skId] || 0) <= 0)) {
+    if(state.ticks >= sm.endTick || (sm.skId && ((owner.buffs && owner.buffs[sm.skId]) || 0) <= 0)) {
         logCombat(`<span class="text-purple-300">${sm.n}</span> 消失了。`, 'magic');
         clearFn(); return;
     }
-    if(--sm.cd <= 0) { sm.cd = sm.interval; summonAttack(sm); }
+    if(--sm.cd <= 0) { sm.cd = sm.interval; summonAttack(sm, owner); }
     // 觸發技：每 5 秒(50 tick)判定一次，傷害 = roll(骰子)+魅力
     if(sm.proc) {
         if(--sm.proc.cdCur <= 0) {
             sm.proc.cdCur = sm.proc.cd;
             let t = getTarget();
             if(t && Math.random() < sm.proc.p) {
-                let cha = player.d.cha || 0;
+                let cha = (owner.d && owner.d.cha) || 0;
                 let pd = summonElementDamage(sm.proc.dmgDice, sm.proc.ele, t, cha, Math.max(1, Math.floor(cha / 6)));   // 觸發技：(roll+魅力) x floor(魅力/6)
                 t.curHp -= pd; t.justHit = sm.proc.ele !== 'none' ? sm.proc.ele : 'magic';
                 logCombat(`${sm.n} 發動 ${sm.proc.name}，額外造成 ${pd} 點傷害。`, 'magic');
@@ -86,8 +88,8 @@ function cubeTick() {
         player._cubeCd[sid] = sk.cube.iv;
         let c = sk.cube;
         if (c.kind === 'mp') { player.mp = Math.min(player.mmp, (player.mp || 0) + (c.val || 5)); return; }   // 純回MP立方（保留·目前無技能使用）
-        if (c.kind === 'dmgmp') {   // 🔮 立方：和諧 → 對「當前目標」單體屬性傷害 ＋ 自身回MP（每觸發一次；回MP不需目標）
-            player.mp = Math.min(player.mmp, (player.mp || 0) + (c.val || 5));
+        if (c.kind === 'dmgmp') {   // 🔮 立方：和諧 → 對「當前目標」單體屬性傷害 ＋ 回全隊MP（每觸發一次；回MP不需目標）
+            teamRecoverMp(c.val || 5);   // 🔮 v2.6.4：回全隊 MP（玩家＋全體非倒地傭兵）
             let t = getTarget();
             if (t && t.curHp > 0 && !t._dead) {
                 let d = Math.max(1, Math.floor(summonElementDamage(c.dice, c.ele || 'none', t, 0, 1) * illuLvMult(player) * wpnEnFinalMult(player.eq && player.eq.wpn)));
@@ -116,38 +118,41 @@ function cubeTick() {
 }
 // 🔮 幻術精通（i_illusion）：持有 幻覺：歐吉/巫妖/鑽石高崙 增益時，產生對應幻象一同攻擊
 //   歐吉：每2秒 3D20+(智力/5)×(1+等級/10) 近戰，命中=等級+10-怪等+智力+怪AC；巫妖：每3秒 同骰魔法必中受MR；鑽石高崙：每1秒 2D20+(智力/5)×(1+等級/5) 近戰，命中+20，10%冰矛圍籬
-function illuSummonTick() {
-    if (player.dead || !state.running || player.mastery !== 'i_illusion') return;
+function illuSummonTick(owner) {
+    owner = owner || player;   // 🩸 v2.6.26 owner 參數化：owner=player 或 i_illusion 傭兵(ally)
+    if ((owner === player ? player.dead : owner._downed) || !state.running || owner.mastery !== 'i_illusion') return;
     const MAP = {
         sk_illu_ogre:  { iv: 20, dice: [3, 20], div: 10, kind: 'melee', hitOff: 10, n: '歐吉' },
         sk_illu_lich:  { iv: 30, dice: [3, 20], div: 10, kind: 'magic', n: '巫妖' },
         sk_illu_golem: { iv: 10, dice: [2, 20], div: 5,  kind: 'melee', hitOff: 20, n: '鑽石高崙', iceLance: true }
     };
-    player._illuCd = player._illuCd || {};
-    let d = player.d;
+    owner._illuCd = owner._illuCd || {};
+    let d = owner.d || {};
     for (let sid in MAP) {
-        if ((player.buffs[sid] || 0) <= 0) { player._illuCd[sid] = 0; continue; }
+        // 🩸 v2.6.26 玩家：需該幻覺 buff 生效；傭兵：學過該技即產生幻象（stat aura 由隊長 teamIlluAura 提供·故不吃自身 buff·避免雙套）
+        let _active = (owner === player) ? ((owner.buffs[sid] || 0) > 0) : !!(owner.skills && owner.skills.includes(sid));
+        if (!_active) { owner._illuCd[sid] = 0; continue; }
         let c = MAP[sid];
-        if ((player._illuCd[sid] = (player._illuCd[sid] || c.iv) - 1) > 0) continue;
-        player._illuCd[sid] = c.iv;
+        if ((owner._illuCd[sid] = (owner._illuCd[sid] || c.iv) - 1) > 0) continue;
+        owner._illuCd[sid] = c.iv;
         let t = getTarget(); if (!t || t.curHp <= 0) continue;
-        let base = roll(c.dice[0], c.dice[1]) + Math.floor((d.int || 0) / 5) * (1 + player.lv / c.div);
+        let base = roll(c.dice[0], c.dice[1]) + Math.floor((d.int || 0) / 5) * (1 + owner.lv / c.div);
         let dmg;
         if (c.kind === 'magic') {
             let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr; if (t.st && (t.st.confuse > 0 || t.st.panic > 0)) effMr -= 10;
             dmg = Math.max(1, Math.floor(base * mrMult(Math.max(0, effMr))));   // 巫妖：必中、受MR
         } else {
-            let hv = Math.max(1, Math.min(20, player.lv + c.hitOff - t.lv + (d.int || 0) + mobEffAC(t)));
+            let hv = Math.max(1, Math.min(20, owner.lv + c.hitOff - t.lv + (d.int || 0) + mobEffAC(t)));
             let r = roll(1, 20);
             if (!(r === 20 || (r !== 1 && hv >= r))) { logCombat(`<span class="text-purple-300 font-bold">【幻覺：${c.n}】</span> 的攻擊未命中。`, 'miss', 'summon'); continue; }
             dmg = Math.max(1, Math.floor(base) - (t.dr || 0));
         }
-        dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player)));   // 🔮 幻覺召喚物：幻術士等級加成 ×(1+等級/50)
+        dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(owner)));   // 🔮 幻覺召喚物：幻術士等級加成 ×(1+等級/50)
         t.curHp -= dmg; t.justHit = (c.kind === 'magic') ? 'magic' : 'none'; mobWake(t);
         logCombat(`<span class="text-purple-300 font-bold">【幻覺：${c.n}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'magic', 'summon');
         let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid);
         if (t.curHp <= 0) { if (idx !== -1) killMob(idx); continue; }
-        if (c.iceLance && Math.random() < 0.10 && typeof witchIceLance === 'function') witchIceLance();   // 鑽石高崙：10% 冰矛圍籬
+        if (c.iceLance && Math.random() < 0.10) { if (owner === player) { if (typeof witchIceLance === 'function') witchIceLance(); } else if (typeof allyWitchIceLance === 'function') { allyWitchIceLance(owner); } }   // 鑽石高崙：10% 冰矛圍籬（傭兵走 allyWitchIceLance）
         renderMobs();
     }
 }
@@ -327,34 +332,28 @@ function castSkillInner(skId) {
     //（先前掛體力回復術時 healSk 被鎖至 HoT 結束，最長 15 秒無法自動解毒；淨化施放也會反過來吃掉治癒冷卻、延後補血）
     if(sk.type === 'heal' && !sk.hot && !sk.valDice) {
         if((player.cds.purifySk || 0) > 0) return false;
-        // 僅在「有對應可解除的負面狀態」時才施放：解毒術→中毒；聖潔之光→石化/麻痺；魔法相消術→暈眩/冰凍/石化/中毒/麻痺
-        let _purifyOk = (skId === 'sk_antidote') ? (player.statuses.poison > 0)
-            : (skId === 'sk_holy_light') ? (player.statuses.stone > 0 || player.statuses.paralyze > 0)
-            : (skId === 'sk_cancel') ? (player.statuses.freeze > 0 || player.statuses.stone > 0 || player.statuses.poison > 0 || player.statuses.paralyze > 0 || player.statuses.burn > 0 || player.statuses.scald > 0)
-            : true;
-        if(!_purifyOk) return false;   // 無對應負面狀態：不施放、不耗 MP
+        // 🆕 v2.6.28 淨化改「團隊清除」→ v2.6.29 改「一次只解一人·優先主要玩家」：施法者(玩家自己)受 石化/冰凍/暈眩/麻痺/沉睡/沉默/魔封 時無法使用；否則解隊列首位(玩家排首→傭兵)有可解狀態者一人。
+        let _dk = (skId === 'sk_antidote') ? ['poison']
+            : (skId === 'sk_holy_light') ? ['stone', 'paralyze']
+            : (skId === 'sk_cancel') ? ['freeze', 'stone', 'poison', 'paralyze', 'burn', 'scald'] : null;
+        if(!_dk) { player.mp -= cost; player.cds.purifySk = getAutoCastInterval(); logCombat(`施放 ${sk.n}。${sk.msg || ''}`, 'heal'); return true; }   // 非淨化 heal（保底·理論上無此類）
+        if(dispelCasterBlocked(player.statuses)) return false;   // 🆕 自己硬控/沉默/魔封→無法使用
+        let _tgt = teamCleanseOne(_dk);   // 🆕 v2.6.29 一次只解一人·優先主要玩家
+        if(!_tgt) return false;           // 隊伍(含自己)無對應可解狀態：不施放、不耗 MP
         player.mp -= cost;
-        if(skId === 'sk_cancel') {
-            player.statuses.freeze = 0; player.statuses.stone = 0; player.statuses.poison = 0; player.statuses.paralyze = 0; player.statuses.burn = 0; player.statuses.scald = 0;
-        } else if(skId === 'sk_antidote') {
-            player.statuses.poison = 0;
-        } else if(skId === 'sk_holy_light') {
-            player.statuses.stone = 0; player.statuses.paralyze = 0;
-        }
         player.cds.purifySk = getAutoCastInterval();
-        logCombat(`施放 ${sk.n}。${sk.msg || ''}`, 'heal');
+        logCombat(`施放 ${sk.n}，解除了 ${_dispelTargetName(_tgt)} 的負面狀態。${sk.msg || ''}`, 'heal');
         return true;
     }
 
     if(sk.type === 'heal' && player.cds.healSk <= 0) {
         // 體力回復術 / 生命的祝福：HoT 持續回復
         if(sk.hot) {
-            if(player.hot && player.hot.ticksLeft > 0) return false;  // 已在持續中，不重複施放
+            if(player.hots && player.hots[skId] && player.hots[skId].ticksLeft > 0) return false;  // 🍃 該技能團隊 HoT 已在持續中→不重複(防自動施放洗版/耗MP)；不同技能(生命的祝福/體力回復術)可並存、同技能後放取代先放
             player.mp -= cost;
-            player.hot = { skId: skId, valDice: sk.valDice, healDice: sk.healDice, healBase: sk.healBase, tier: sk.tier, interval: sk.hot.interval, ticksLeft: sk.hot.ticks,
-                           cd: sk.hot.interval, skName: sk.n, msg: sk.msg };   // 🔧 skId：供「取消打勾立即結束」精準比對是哪個 HoT
-            player.cds.healSk = getAutoCastInterval();  // 🔧 HoT 不再把共用治癒冷卻鎖到結束：重複施放已由上方 player.hot 守衛擋住；長鎖會餓死其他自動治癒（高級治癒術/生命之泉等）
-            logCombat(`施放 ${sk.n}，開始持續回復 HP。`, 'heal');
+            applyTeamHot(skId, sk, player.d);   // 🍃 施放時全隊(玩家＋全體傭兵)持續回復
+            player.cds.healSk = getAutoCastInterval();  // 🔧 HoT 不再把共用治癒冷卻鎖到結束：重複施放已由上方守衛擋住；長鎖會餓死其他自動治癒（高級治癒術/生命之泉等）
+            logCombat(`施放 ${sk.n}，全隊開始持續回復 HP。`, 'heal');
             return true;
         }
         // 一般瞬間治癒
@@ -703,6 +702,14 @@ function castSkillInner(skId) {
     return false;
 }
 
+// 🍃 團隊 HoT（生命的祝福 / 體力回復術）單一真相：施放時登錄「全隊持續回復」到 player.hots[skId]。
+//   ・player.hots 為 dict(skId→HoT 實例)→不同技能可並存；同 skId 後放覆蓋先放（取代/刷新）。
+//   ・dStats＝施法者衍生值(玩家 player.d 或傭兵 ally.d)→spCoef 由施法者魔法傷害決定；每 interval 於 js/03 tick 對「玩家＋全體非倒地傭兵」各回復一次。
+function applyTeamHot(skId, sk, dStats) {
+    if (!player.hots) player.hots = {};
+    let mDmg = (dStats && dStats.magicDmg) || 0;
+    player.hots[skId] = { skId: skId, healDice: sk.healDice, healBase: sk.healBase, valDice: sk.valDice, magicDmg: mDmg, spCoef: 1 + (3 * mDmg / 16), interval: sk.hot.interval, ticksLeft: sk.hot.ticks, cd: sk.hot.interval, skName: sk.n, msg: sk.msg };
+}
 function autoActions() {
     let hpPct = (player.hp / player.mhp) * 100;
     let mpPct = (player.mp / player.mmp) * 100;
@@ -816,19 +823,7 @@ function autoActions() {
     }
 }
 
-// 🔧 行動不能（石化/冰凍/暈眩/麻痺/沉睡）期間的自救：仍嘗試自動施放「魔法相消術／聖潔之光」解除負面狀態。
-//    沉默/魔法封印中無法施展魔法（靜默跳過、不洗版）；其餘條件（勾選/負重/MP/冷卻/有可解狀態）由 castSkill 內部把關。
-//    相消術涵蓋石化/麻痺/冰凍等，啟用時優先且足夠（與 autoActions「相消已涵蓋解毒/聖潔之光則跳過」一致）；
-//    未啟用相消術時，聖潔之光（解石化/麻痺）亦走此自救路徑。解毒術不納入：中毒不會行動不能、平時即可自動施放。
-function tryEmergencyDispel() {
-    if(!state.running || player.dead) return;
-    if((player.d.loadTier||0) >= 2) return;                                          // 負重 82%+：暫停所有技能自動施放（與 autoCastSpells/autoActions 一致）
-    if(player.statuses.silence > 0 || player.statuses.magicseal > 0) return;         // 沉默/魔法封印：無法施展魔法（靜默跳過，避免洗版）
-    let cancelChk = document.getElementById('auto-sk-sk_cancel');
-    if(cancelChk && cancelChk.checked && player.skills.includes('sk_cancel')) { castSkill('sk_cancel'); return; }   // 魔法相消術已涵蓋石化/麻痺/冰凍等
-    let holyChk = document.getElementById('auto-sk-sk_holy_light');
-    if(holyChk && holyChk.checked && player.skills.includes('sk_holy_light')) castSkill('sk_holy_light');           // 聖潔之光：解石化/麻痺；castSkill 內 _purifyOk 守衛僅在有可解狀態時施放
-}
+// 🆕 v2.6.28 移除「行動不能中自救淨化」（tryEmergencyDispel）：改為硬控(石化/冰凍/暈眩/麻痺/沉睡)中無法施放淨化，由自由隊員(玩家/傭兵)幫全隊解除（見 castSkillInner heal 分支 + allyTryDispel + teamCleanseStatus）。
 
 // 自動施放攻擊/治癒法術的基礎間隔：2 秒(20 tick)，並受攻速倍率(加速/勇敢藥水/精靈餅乾/變身)影響
 function getAutoCastInterval() {

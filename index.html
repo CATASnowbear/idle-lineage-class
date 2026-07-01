@@ -28,7 +28,7 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=512f37f9db">
+    <link rel="stylesheet" href="css/style.css?v=2c3ad50bd2">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
 <body class="h-screen w-screen overflow-hidden">
@@ -125,6 +125,8 @@
 
         <!-- 🏷️ 版本號（由 js/14 window.onload 依 GAME_VERSION 填入；此處 v2.4.0 僅為 JS 失效時的後備文字） -->
         <div id="login-version" class="text-center text-sm text-slate-300 font-medium tracking-wide select-none mt-1">v2.4.0</div>
+        <!-- ⚖️ 免責聲明（版號下方·非官方同人作品·無營利意圖） -->
+        <div id="login-disclaimer" class="text-center text-xs text-slate-500 leading-relaxed mx-auto px-4 mt-2" style="max-width:28rem;">本遊戲為非官方免費同人作品，絕無營利意圖；遊戲內圖片與音樂版權歸原權利方 NCSOFT 所有，其餘程式為獨立開發，嚴禁商業販售。</div>
     </div>
 
     <!-- 遊戲主畫面 -->
@@ -463,20 +465,20 @@
     })();
     </script>
 
-<script src="js/00-data.js?v=e2fea9bc88"></script>
-<script src="js/01-drops-config.js?v=ac1438ac8f"></script>
+<script src="js/00-data.js?v=7eb093563d"></script>
+<script src="js/01-drops-config.js?v=a54b98c63e"></script>
 <script src="js/02-stats-recompute.js?v=1dda2fc2b9"></script>
-<script src="js/03-combat-core.js?v=e4b4b4e76e"></script>
-<script src="js/04-combat-attack.js?v=2e696f24f2"></script>
-<script src="js/05-kill-progression.js?v=1783f55eaf"></script>
-<script src="js/06-status-allies.js?v=21e0a829c3"></script>
-<script src="js/07-skills-cast.js?v=89d30b95e5"></script>
+<script src="js/03-combat-core.js?v=84afb84955"></script>
+<script src="js/04-combat-attack.js?v=5ec36fb12e"></script>
+<script src="js/05-kill-progression.js?v=04f57e49f7"></script>
+<script src="js/06-status-allies.js?v=8f4b2c1cdb"></script>
+<script src="js/07-skills-cast.js?v=227c18ca05"></script>
 <script src="js/08-items-equip.js?v=6a8d4c6a5e"></script>
-<script src="js/09-vfx-render.js?v=b0200f9bc0"></script>
-<script src="js/10-ui-tabs.js?v=fa245e60b8"></script>
-<script src="js/11-world-map.js?v=cdad7b986d"></script>
-<script src="js/12-npc-quests.js?v=7b9a4503d7"></script>
-<script src="js/13-shop-save.js?v=8712d481eb"></script>
+<script src="js/09-vfx-render.js?v=1db1d37a25"></script>
+<script src="js/10-ui-tabs.js?v=677c918154"></script>
+<script src="js/11-world-map.js?v=9f1685b47a"></script>
+<script src="js/12-npc-quests.js?v=53dec28509"></script>
+<script src="js/13-shop-save.js?v=6aa19ed00b"></script>
 <script src="js/14-craft-pandora.js?v=86a08e2a17"></script>
 <script src="js/15-cards.js?v=bd7d9bb2bf"></script>
 <script src="js/16-equip-book.js?v=efb39e48df"></script>

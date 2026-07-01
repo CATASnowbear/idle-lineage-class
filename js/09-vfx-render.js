@@ -34,7 +34,7 @@ function _vfxFlush() {
         for (const p of _vfxPending) {
             let slot = ml.querySelector('.mob-target[data-uid="' + p.uid + '"]');
             if (!slot) continue;
-            let box = slot.querySelector('.mob-img-wrap') || slot;
+            let box = slot.querySelector('.mob-img-inner') || slot.querySelector('.mob-img-wrap') || slot;   // 🎯 v2.6.41 VFX 錨定「圖層 .mob-img-inner」(帶 translateY/scale·getBoundingClientRect 反映實際位置) 而非「容器 .mob-img-wrap」→修 v2.6.39 單排景深(後排上移30px/前排放大1.55)後 死亡殘影/擊殺特效/傷害數字 錯位
             let r = box.getBoundingClientRect();
             if (r.width === 0) continue;
             reads.push({ p: p, cx: r.left + r.width / 2, top: r.top, h: r.height });
@@ -99,7 +99,7 @@ function vfxKill(mob) {
         let ml = document.getElementById('mob-list');
         let slot = ml && ml.querySelector('.mob-target[data-uid="' + mob.uid + '"]');
         if (!slot) return;
-        let box = slot.querySelector('.mob-img-wrap') || slot;
+        let box = slot.querySelector('.mob-img-inner') || slot.querySelector('.mob-img-wrap') || slot;   // 🎯 v2.6.41 VFX 錨定「圖層 .mob-img-inner」(帶 translateY/scale·getBoundingClientRect 反映實際位置) 而非「容器 .mob-img-wrap」→修 v2.6.39 單排景深(後排上移30px/前排放大1.55)後 死亡殘影/擊殺特效/傷害數字 錯位
         let r = box.getBoundingClientRect();
         if (r.width === 0) return;
         let cx = r.left + r.width / 2, cy = r.top + r.height * 0.45;
@@ -240,7 +240,7 @@ function _vfxSlotRect(uid) {
     let ml = document.getElementById('mob-list');
     let slot = ml && ml.querySelector('.mob-target[data-uid="' + uid + '"]');
     if (!slot) return null;
-    let box = slot.querySelector('.mob-img-wrap') || slot;
+    let box = slot.querySelector('.mob-img-inner') || slot.querySelector('.mob-img-wrap') || slot;   // 🎯 v2.6.41 VFX 錨定「圖層 .mob-img-inner」(帶 translateY/scale·getBoundingClientRect 反映實際位置) 而非「容器 .mob-img-wrap」→修 v2.6.39 單排景深(後排上移30px/前排放大1.55)後 死亡殘影/擊殺特效/傷害數字 錯位
     let r = box.getBoundingClientRect();
     return (r.width > 0) ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
 }
@@ -422,7 +422,7 @@ function _renderMobsImpl() {
 
             let _hpBar = !_showMobHp ? '' : `<div class="mob-hp-bar flex justify-center mb-1" style="height:6px;"><div style="width:50px;height:5px;background:#475569;border-radius:3px;overflow:hidden;"><div style="height:100%;background:#ef4444;width:${Math.max(0, Math.min(100, Math.round((m.curHp / (m.hp || 1)) * 100)))}%;"></div></div></div>`;
             let _isBossUnit = BOSS_BIG_MAPS.includes(mapState.current) || m.boss;   // 🎲 頭目不散佈(維持置中大圖)
-            let _scat = _isBossUnit ? '' : ` style="${_mobScatter(m.uid)}"`;
+            let _scat = '';   // ⚠️v2.6.39 用戶要求「取消怪物隨機出現」：不再套 _mobScatter(隨機位移+隨機大小 --jit-scale)→整齊前後排站位（_mobScatter 保留但不再呼叫）
             _slotHtmls[_k] = `<div class="mob-target ${act}${_rowCls}${BOSS_BIG_MAPS.includes(mapState.current) ? ' boss-slot' : (m.boss ? ' boss-zoom' : '')}" data-uid="${m.uid}"${_scat}>
                         <div class="flex justify-center text-sm mb-1 mob-name">
                             <span class="${getMobNameClass(m)}">${m.n}</span>

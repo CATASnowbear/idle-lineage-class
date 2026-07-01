@@ -145,8 +145,8 @@ function tick() {
     }
     if (state.ticks % 10 === 0) siegeTick();   // 攻城戰：每秒檢查時限
     if (state.ticks % 100 === 0) { try { refreshPandoraMarket(false); } catch (e) {} }   // 🔧 潘朵拉黑市：每 10 秒檢查是否到 10 分鐘換商品（含稀有公告）
-    if (state._junkSellAt == null) state._junkSellAt = state.ticks + JUNK_AUTOSELL_TICKS;   // 🗑️ 自動賣廢品倒數：預設 10 分鐘（JUNK_AUTOSELL_TICKS）
-    if (state.ticks >= state._junkSellAt) { try { if (typeof autoSellJunk === 'function' && (!player || player.autoSellOn !== false)) autoSellJunk(); } catch (e) {} state._junkSellAt = state.ticks + JUNK_AUTOSELL_TICKS; }   // 🗑️ 倒數到→若「自動賣出」開啟(player.autoSellOn!==false·預設開)則賣出標示為廢品的物品並重新排程 3 分鐘；停止賣出時只重排程不賣。玩家手動標示廢品會把此時間往後推 3 分鐘（_bumpJunkSellTimer）
+    if (state._junkSellAt == null) state._junkSellAt = state.ticks + JUNK_AUTOSELL_TICKS;   // 🗑️ 自動賣廢品倒數：預設 10 秒（JUNK_AUTOSELL_TICKS）
+    if (state.ticks >= state._junkSellAt) { try { if (typeof autoSellJunk === 'function' && (!player || player.autoSellOn !== false)) autoSellJunk(); } catch (e) {} state._junkSellAt = state.ticks + JUNK_AUTOSELL_TICKS; }   // 🗑️ 倒數到→若「自動賣出」開啟(player.autoSellOn!==false·預設開)則賣出標示為廢品的物品並重新排程 10 秒；停止賣出時只重排程不賣。玩家手動標示廢品會把此時間往後推 10 秒（_bumpJunkSellTimer）。⚠️自動路徑 autoSellJunk() 不 saveGame（效能·靠其他存檔點落地）
     
     if(player.statuses.poison > 0 && state.ticks % player.statuses.poisonTick === 0 && !inAbsBarrier()) {
         let _pdmg = player.statuses.poisonDmg;
@@ -223,8 +223,7 @@ function tick() {
         }
         if(player._waterVitalCd > 0) player._waterVitalCd--;   // 🔧 水之元氣：觸發後 7 秒冷卻（每秒遞減）
         if(_buffEnded) calcStats();   // 到期重算（變身還原、技能加成移除等）
-        if(canAct) autoActions();
-        else tryEmergencyDispel();   // 🔧 石化/冰凍/暈眩/麻痺/沉睡（行動不能）中：仍允許自動施放「魔法相消術／聖潔之光」自救（沉默/魔法封印中除外）
+        if(canAct) autoActions();   // 🆕 v2.6.28 硬控中(石化/冰凍/暈眩/麻痺/沉睡)不再自救淨化；改由自由隊員(玩家/傭兵)幫全隊解除（team dispel）
     }
 
     // === 出怪判定：以邏輯 tick (state.ticks) 為準，與主迴圈時間補跑同步 ===
@@ -369,26 +368,39 @@ function tick() {
     // 盟主祝福到期清理（每秒檢查；到期即移除並重算屬性）
     if(!player.dead && player.blessings && state.ticks % 10 === 0) {
         let _changed = false;
-        for(let k in player.blessings) { if(player.blessings[k] > 0 && player.blessings[k] <= Date.now()) { player.blessings[k] = 0; _changed = true; } }
-        if(_changed) { calcStats(); updateUI(); }
+        for(let k in player.blessings) {
+            if(player.blessings[k] > 0 && player.blessings[k] <= Date.now()) {
+                // 🩸 v2.6.24 血盟祝福「切換式」：到期時若「自動續期」開啟且身上有王族搜索狀 → 扣 1 張續 24 小時；沒得扣 → 自動關閉續期並移除
+                if(player.blessingAuto && player.blessingAuto[k] && typeof _blessingConsumeWarrant === 'function' && _blessingConsumeWarrant()) {
+                    player.blessings[k] = Date.now() + 24 * 3600 * 1000;
+                    let _bn = (typeof BLESSING_DEFS !== 'undefined' && BLESSING_DEFS[k]) ? BLESSING_DEFS[k].n : k;
+                    logSys(`血盟祝福「<span class="text-amber-300 font-bold">${_bn}</span>」到期，自動消耗 1 張 王族搜索狀 續期 24 小時。`);
+                } else {
+                    if(player.blessingAuto && player.blessingAuto[k]) { player.blessingAuto[k] = false; let _bn = (typeof BLESSING_DEFS !== 'undefined' && BLESSING_DEFS[k]) ? BLESSING_DEFS[k].n : k; logSys(`血盟祝福「<span class="text-amber-300 font-bold">${_bn}</span>」到期，王族搜索狀不足，已停止自動續期。`); }
+                    player.blessings[k] = 0;
+                }
+                _changed = true;
+            }
+        }
+        if(_changed) { calcStats(); updateUI(); if(typeof _activePanel !== 'undefined' && String(_activePanel || '').startsWith('pledge:') && typeof renderPledgeNPC === 'function') { try { renderPledgeNPC(document.getElementById('interaction-content'), player.bloodPledge); } catch(e){} } }
     }
 
     // HoT 持續回復（體力回復術 / 生命的祝福）
-    if(player.hot && !player.dead) {
-        if(--player.hot.cd <= 0) {
-            player.hot.cd = player.hot.interval;
-            let _spCoefHot = (1 + (3 * player.d.magicDmg / 16));
-            let heal = player.hot.healDice
-                ? Math.max(1, Math.floor((rollDice(player.hot.healDice[0], player.hot.healDice[1]) + (player.hot.healBase || 0)) * _spCoefHot))
-                : Math.max(1, roll(player.hot.valDice[0], player.hot.valDice[1]) + player.d.magicDmg);
-            player.hp = Math.min(player.mhp, player.hp + heal);   // 🔧 水之元氣不套用於持續回復(HoT)，僅瞬間治癒術
-            player.hot.ticksLeft--;
-            logCombat(`${player.hot.skName} 回復了 ${heal} 點 HP。${player.hot.msg || ''}`, 'heal');
-            if(player.hot.ticksLeft <= 0) {
-                player.hot = null;
-                logCombat('持續回復效果結束。', 'heal');
-            } else {
-                updateUI();
+    if(player.hots && !player.dead) {   // 🍃 團隊 HoT（體力回復術/生命的祝福）：多技能並存·每 interval 對玩家＋全體非倒地傭兵各回復一次
+        let _hotAllies = (player.allies || []).filter(a => a && !a._downed && (a.curHp || 0) > 0);
+        for(let _hsk in player.hots) {
+            let _h = player.hots[_hsk];
+            if(--_h.cd <= 0) {
+                _h.cd = _h.interval;
+                let heal = _h.healDice
+                    ? Math.max(1, Math.floor((rollDice(_h.healDice[0], _h.healDice[1]) + (_h.healBase || 0)) * _h.spCoef))
+                    : Math.max(1, roll(_h.valDice[0], _h.valDice[1]) + (_h.magicDmg || 0));
+                player.hp = Math.min(player.mhp, player.hp + heal);   // 🔧 水之元氣不套用於持續回復(HoT)
+                _hotAllies.forEach(a => { a.curHp = Math.min(a.mhp || 1, (a.curHp || 0) + heal); });   // 🍃 全體傭兵同步回復
+                _h.ticksLeft--;
+                logCombat(`${_h.skName} 為全隊回復了 ${heal} 點 HP。${_h.msg || ''}`, 'heal');
+                if(_h.ticksLeft <= 0) { delete player.hots[_hsk]; logCombat(`${_h.skName} 的持續回復效果結束。`, 'heal'); }
+                else updateUI();
             }
         }
     }
