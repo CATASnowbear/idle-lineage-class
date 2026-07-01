@@ -1154,7 +1154,8 @@ function changeMap(force) {
         
         // 🎯 核心修復：離開村莊回到戰鬥時，恢復原本的面板設定
         mapPanel.classList.remove('flex-1', 'overflow-hidden');
-        
+        try { applyAreaBackground(); } catch(e){}   // ⚡ v2.6.49 立即套用狩獵區 area-fit(1920/580 條狀)＋背景，避免等到下一次 updateUI(下一 tick·最多~100ms)才變換→切村↔狩獵時戰鬥區解析度延遲跳動（村莊分支已於下方 updateUI() 即時處理·此分支原本漏呼故有延遲）
+
         // 進入新區域：依邏輯 tick 排程出怪（中央 50t=5秒、左側 70t=7秒、右側 90t=9秒）
         let t0 = state.ticks;
         mapState.spawnAt = [t0 + 70, t0 + 50, t0 + 90]; // [左0, 中1, 右2]
