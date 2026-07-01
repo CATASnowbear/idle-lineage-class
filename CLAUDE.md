@@ -233,6 +233,9 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
    ```
    - 新增外掛時,**務必同時**加上對應的 `<script>` 行(並同步加進 `scripts/sync-upstream.mjs` 的 `PLUGINS`;**有 DOM 掛點的**再加進 `scripts/smoke-hooks.mjs` 的 `need`——像 `afk-sw.js` 這種純註冊、無 DOM 掛點的就不必),否則功能不會生效、或下次自動同步會被原版覆蓋掉。
    - 原作者更新覆蓋 `index.html` 後,**第一件事就是把上面這幾行補回去**。
+   - **⚠️ 改「外掛 init 觸發條件」(尤其只在特定裝置/尺寸才執行的)→ 想清楚 smoke 那輪驗不驗得到它。踩過(2026-07-01):`afk-mobile` 改成「桌機零接觸」(commit 4558a7c,只有手機尺寸/裝置才 `init` 並印 `[AFK-mobile] hooks OK`)後,smoke 是用桌機視窗跑的 → afk-mobile 永遠印不出 hooks OK。而 smoke 只在自動同步 workflow 裡跑、手動 commit 不會觸發,所以這個假性失效當下沒被抓到,直到隔天作者出新版、自動同步跑 smoke 才爆成「⚠️ 掛點失效」issue 擋下同步(玩家端表現=「沒更新到作者最新版」)。修法:smoke 對「只在手機才 init 的外掛」改用 `devices['iPhone 13']` 開第二輪 context 專驗(`needMobileOnly=['[AFK-mobile]']`),桌機那輪不列入。判準:任何「掛點只在某條件下才建立」的外掛,smoke 必須在該條件下(手機模擬/特定狀態)驗它,否則就是假性失效在等下次同步爆。**
+
+>  **📌 smoke 只在 sync-upstream workflow 內跑,手動 push 不觸發**——所以「動到外掛掛點/init 條件」的手動 commit,push 前最好本機先 `node scripts/smoke-hooks.mjs` 跑一次(exit 0 才安心),別等自動同步時才發現假性失效擋住作者更新。
 2. **改了任何外掛 JS → 一定要 bump `?v=` 版本號**(GitHub Pages / 瀏覽器會死命快取 JS;
    只改 `index.html?v=` 沒用,因為 script src 的檔名沒變、瀏覽器照樣給舊的快取 JS。
    Brave 尤其黏)。版本號規則:日期 + 當天流水字母(如 `20260613a` → `20260613b`)。
