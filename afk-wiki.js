@@ -1249,9 +1249,12 @@
       var town = DB.towns[tid];
       if (!town || !town.npcs || !town.npcs.length) return;   // 無 NPC 的安全區（時空裂痕入口等）跳過
       h += '<div class="m-wiki-sub">🏘️ ' + esc(town.n || tid) + '</div>';
+      var townName = town.n || tid;
       town.npcs.forEach(function (npc) {
         var icon = NPC_TYPE_ICON[npc.type] || '👤';
+        // 村莊名寫進每個 NPC 列(不只寫在群組標題),搜尋抓單一 .m-wiki-kv 時才看得到它在哪個村莊
         h += '<div class="m-wiki-kv"><b>' + icon + ' ' + esc(npc.n) + '</b>' +
+          '<span class="m-npc-town">＠' + esc(townName) + '</span>' +
           '<span style="color:#fbbf24;margin-right:8px;">［' + esc(npc.title || '') + '］</span>' +
           '<span class="m-npc-d">' + esc(npc.d || '') + '</span>' + npcFlagTags(npc) + '</div>';
       });
@@ -2554,6 +2557,7 @@
       '.m-wiki-note{color:#94a3b8;font-size:12.5px;line-height:1.6;background:#111c30;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;}',
       '.m-wiki-note b{color:#fcd34d;}',
       '.m-npc-d{color:#cbd5e1;}',
+      '.m-npc-town{color:#7dd3fc;font-size:12px;margin-right:8px;white-space:nowrap;}',
       '.m-npc-tag{font-size:11.5px;white-space:nowrap;}',
       '.m-wiki-card{background:#111c30;border:1px solid #334155;border-radius:10px;padding:11px 12px;}',
       '.m-wiki-name{font-size:15px;font-weight:bold;color:#fcd34d;margin-bottom:3px;}',
