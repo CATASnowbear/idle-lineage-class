@@ -652,6 +652,10 @@
          單一外層捲動也避開 iOS 巢狀捲動手勢打架(同倉庫的解法)。只 scope 在手機設定頁,戰鬥/背包/桌機不受影響。 */
       'body.m-mobile.mview-config .m-col-left{overflow-y:auto !important;-webkit-overflow-scrolling:touch;padding-bottom:12px;}',
       'body.m-mobile.mview-config #automation-panel{flex:0 0 auto !important;overflow:visible !important;}',
+      /* 隊伍/技能設定清單:作者對 #squad-tab-team/skill 設 max-height:46vh(桌機為了保留下方面板可見)。
+         手機隊伍視圖裡它是唯一內容 → 46vh 上限造成下半截空白＋清單自己內捲。解除上限、改隨內容高,
+         捲動交給上面那條 .m-col-left 單一外層捲動(同樣避開 iOS 巢狀捲動)。 */
+      'body.m-mobile.mview-config #squad-tab-team,body.m-mobile.mview-config #squad-tab-skill{max-height:none !important;overflow:visible !important;}',
 
       'body.m-mobile{padding:0 !important;}',
       /* 🖥️→📱 中和作者 2026-06 新增的「1920×1080 固定設計舞台」#app-stage:它用 fitStage() 對舞台
