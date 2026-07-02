@@ -953,6 +953,10 @@
 
   // ===== 面板 =============================================================
   var TABS = [
+    { k: 'equipbook', n: '收藏-裝備' },
+    { k: 'miscbook', n: '收藏-道具' },
+    { k: 'card', n: '收藏-怪物' },
+    { k: 'magic', n: '職業魔法' },
     { k: 'mastery', n: '職業專精' },
     { k: 'weapon', n: '武器特性' },
     { k: 'combat', n: '戰鬥機制' },
@@ -961,14 +965,10 @@
     { k: 'map', n: '地圖' },
     { k: 'npc', n: 'NPC總覽' },
     { k: 'stats', n: '能力值' },
-    { k: 'magic', n: '職業魔法' },
     { k: 'pets', n: '帶寵物' },
     { k: 'ally', n: '傭兵' },
     { k: 'quest', n: '任務' },
     { k: 'set', n: '套裝' },
-    { k: 'equipbook', n: '收藏-裝備' },
-    { k: 'miscbook', n: '收藏-道具' },
-    { k: 'card', n: '收藏-怪物' },
     { k: 'doll', n: '魔法娃娃' },
     { k: 'equip', n: '裝備' },
     { k: 'enhance', n: '強化' },
@@ -981,7 +981,7 @@
     { k: 'rift', n: '時空裂痕' },
     { k: 'kingroom', n: '軍王之室' }
   ];
-  var state = { tab: 'mastery', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collMode: null, equipCls: 'all', equipSlot: 'wpn' };
+  var state = { tab: 'equipbook', cls: 'knight', q: '', magicCls: 'all', magicChar: '', collMode: null, equipCls: 'all', equipSlot: 'wpn' };   // 預設分頁=分頁列第一個(收藏-裝備)
   // 搜尋打字防抖:每次按鍵只重設計時器,停手這麼久才真的過濾+重渲染(降低逐字輸入的 INP)。
   var SEARCH_DEBOUNCE_MS = 150;
   var _searchTimer = null;
@@ -1167,6 +1167,10 @@
 
   // 搜尋來源:職業相關分頁(cls:true)逐職業各搜一次,其餘整頁搜一次
   var SEARCH_SOURCES = [
+    { key: 'equipbook', cls: false, label: '收藏-裝備' },
+    { key: 'miscbook', cls: false, label: '收藏-道具' },
+    { key: 'card', cls: false, label: '收藏-怪物' },
+    { key: 'magic', cls: false, label: '職業魔法' },
     { key: 'mastery', cls: true, label: '職業專精' },
     { key: 'weapon', cls: false, label: '武器特性' },
     { key: 'combat', cls: false, label: '戰鬥機制' },
@@ -1175,14 +1179,10 @@
     { key: 'map', cls: false, label: '地圖' },
     { key: 'npc', cls: false, label: 'NPC總覽' },
     { key: 'stats', cls: false, label: '能力值' },
-    { key: 'magic', cls: false, label: '職業魔法' },
     { key: 'pets', cls: false, label: '帶寵物' },
     { key: 'ally', cls: false, label: '傭兵' },
     { key: 'quest', cls: true, label: '任務' },
     { key: 'set', cls: false, label: '套裝' },
-    { key: 'equipbook', cls: false, label: '收藏-裝備' },
-    { key: 'miscbook', cls: false, label: '收藏-道具' },
-    { key: 'card', cls: false, label: '收藏-怪物' },
     { key: 'doll', cls: false, label: '魔法娃娃' },
     { key: 'equip', cls: false, label: '裝備' },
     { key: 'enhance', cls: false, label: '強化' },
