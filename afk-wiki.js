@@ -1047,9 +1047,9 @@
       // 裝備分頁的「職業篩選」
       var eqcls = e.target.closest ? e.target.closest('[data-equipcls]') : null;
       if (eqcls) { state.equipCls = eqcls.getAttribute('data-equipcls'); render(); return; }
-      // 收藏三分頁的「模式」切換
+      // 收藏三分頁的「模式」切換(再點同一顆=收合)
       var cm = e.target.closest ? e.target.closest('[data-collmode]') : null;
-      if (cm) { state.collMode = cm.getAttribute('data-collmode'); render(); return; }
+      if (cm) { var cmv = cm.getAttribute('data-collmode'); state.collMode = (state.collMode === cmv) ? null : cmv; render(); return; }
       var b = e.target.closest ? e.target.closest('[data-magiccls]') : null;
       if (!b) return;
       state.magicCls = b.getAttribute('data-magiccls');
@@ -1482,7 +1482,7 @@
   function renderCard() {
     var out = '<div class="m-wiki-note">「卡片收集」：每隻怪（<b>血盟與建築類除外</b>）極低機率掉「怪物卡片」；<b>圖鑑還沒開通的怪，撿到卡片會自動登錄</b>、解鎖牠的資料，把一個地區的怪收齊還有<b>屬性加成</b>。<b>怪物收集冊</b>從畫面上的「<b>收藏</b>」面板翻開，不再放在道具欄。</div>';
     out += collModeRow();
-    out += cardProgressHTML();
+    if (state.collMode !== null) out += cardProgressHTML();
 
     var tiers = (typeof CARD_TIERS !== 'undefined') ? CARD_TIERS : [];
     var price = function (t) { var c = tiers[t - 1]; return c ? Number(c.price).toLocaleString() : '?'; };
@@ -1609,9 +1609,14 @@
     var bonus = (typeof EQUIP_CAT_BONUS !== 'undefined') ? EQUIP_CAT_BONUS : {};
     var out = '<div class="m-wiki-note">「裝備收集冊」：<b>獲得任何裝備就自動登錄</b>（只增不減，賣掉／丟掉也保留紀錄），依部位分類。把<b>某部位的全部裝備</b>都收集齊，就拿到該部位的<b>永久加成</b>（加成不大但永久、各部位獨立；作者之後在某部位加新裝備，原本收滿的會變回沒滿）。收集冊本體從畫面上的「<b>收藏</b>」面板翻開。</div>';
     out += collModeRow();
-    var b = collBuckets();
-    out += collBookProgressHTML('🗡️ 裝備收集進度（' + esc(b.mode) + '模式）', EQUIP_CATEGORIES, EQUIP_CAT_ITEMS, b.equip,
-      function (k) { return ebBonusTxt(bonus[k]); });
+    if (state.collMode !== null) {
+      var b = collBuckets();
+      out += collBookProgressHTML('🗡️ 裝備收集進度（' + esc(b.mode) + '模式）', EQUIP_CATEGORIES, EQUIP_CAT_ITEMS, b.equip,
+        function (k) { return ebBonusTxt(bonus[k]); });
+    } else if (typeof EQUIP_CAT_BONUS !== 'undefined') {   // 未選模式:只列加成對照(無進度、不爆缺項)
+      out += wCard('🗡️ 各部位全收集加成', wTbl(['部位', '全部收集齊 → 永久加成'],
+        EQUIP_CATEGORIES.map(function (c) { return [esc(c.name), ebBonusTxt(bonus[c.key])]; })));
+    }
     return out;
   }
 
@@ -1621,9 +1626,14 @@
     var bonus = (typeof MISC_CAT_BONUS !== 'undefined') ? MISC_CAT_BONUS : {};
     var out = '<div class="m-wiki-note">「道具收集冊」：道具（藥水／卷軸／技能書／材料／其他）<b>獲得即自動登錄</b>（只增不減），只收錄「<b>有取得管道</b>」的道具。把<b>某一類全部收齊</b>就拿到該類的<b>永久加成</b>（各類獨立；作者之後在某類加新道具，原本收滿的會變回沒滿）。收集冊本體從畫面上的「<b>收藏</b>」面板翻開。</div>';
     out += collModeRow();
-    var b = collBuckets();
-    out += collBookProgressHTML('🧰 道具收集進度（' + esc(b.mode) + '模式）', MISC_CATEGORIES, MISC_CAT_ITEMS, b.misc,
-      function (k) { var bb = bonus[k]; return bb ? esc(bb.label) : '—'; });
+    if (state.collMode !== null) {
+      var b = collBuckets();
+      out += collBookProgressHTML('🧰 道具收集進度（' + esc(b.mode) + '模式）', MISC_CATEGORIES, MISC_CAT_ITEMS, b.misc,
+        function (k) { var bb = bonus[k]; return bb ? esc(bb.label) : '—'; });
+    } else {   // 未選模式:只列加成對照(無進度、不爆缺項)
+      out += wCard('🧰 各類全收集加成', wTbl(['類別', '整類收集齊 → 永久加成'],
+        MISC_CATEGORIES.map(function (c) { var bb = bonus[c.key]; return [esc(c.name), bb ? esc(bb.label) : '—']; })));
+    }
     return out;
   }
 
@@ -2433,23 +2443,17 @@
   //      同模式角色共用一份 → 直接切模式看各份進度(全部唯讀,絕不寫桶) ----
   var COLL_MODE_CN = { '': '一般', '_classic': '經典', '_tradonly': '傳統', '_trad': '經典＋傳統' };
   var COLL_MODES = [['', '一般'], ['_classic', '經典'], ['_tradonly', '傳統'], ['_trad', '經典＋傳統']];
-  function collModeCur() {   // 未切過時預設「目前載入角色」所在模式;未進遊戲預設一般
-    if (state.collMode === null) {
-      state.collMode = (typeof player !== 'undefined' && player && player.cls && typeof modeSuffix === 'function')
-        ? modeSuffix(!!player.classicMode, !!player.traditionalMode) : '';
-    }
-    return state.collMode;
-  }
+  // 預設不選(state.collMode===null):避免還沒探索到的內容被缺項清單爆雷,點了模式才顯示進度、再點一次收合
   function collModeRow() {
-    var cur = collModeCur();
+    var cur = state.collMode;
     return '<div class="m-wiki-mfilter">' + COLL_MODES.map(function (m) {
       return '<button type="button" class="m-wiki-mfbtn' + (m[0] === cur ? ' on' : '') + '" data-collmode="' + m[0] + '">' + m[1] + '</button>';
     }).join('') + '</div>' +
-    '<div class="m-wiki-charsel-hint" style="margin:0 2px 8px;">收集進度「同模式角色共用」一份、四種模式各自獨立，切上面的模式看各份進度。</div>';
+    '<div class="m-wiki-charsel-hint" style="margin:0 2px 8px;">想看收集進度與缺什麼，點上面你在玩的模式（⚠️ 會列出全部收藏，怕被爆雷就別點；再點一次收合）。收集進度「同模式角色共用」一份、四種模式各自獨立。</div>';
   }
   // 讀選定模式的三本共用收藏桶;該模式＝目前載入角色的模式時,改用記憶體即時值(較新)
   function collBuckets() {
-    var suf = collModeCur();
+    var suf = state.collMode;
     var modeName = COLL_MODE_CN[suf];
     if (typeof player !== 'undefined' && player && player.cls && typeof modeSuffix === 'function' &&
         modeSuffix(!!player.classicMode, !!player.traditionalMode) === suf) {
