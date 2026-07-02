@@ -872,9 +872,10 @@
   // ----- 自動化設定面板「🔌 外掛」列:遊戲中也能開小百科/掉落查詢/木人場 ------
   // 與 afk-dex/afk-training 共用同一列(id=m-afk-navrow),各自注入自己的鈕、零耦合;誰先載入誰建列。標題統一「🔌 外掛」。
   function injectAutoNav(btnId, label, onClick) {
-    var panel = document.getElementById('automation-panel');
+    var panel = document.getElementById('tab-automation');   // v2.6.74 起自動化設定改為遊戲分頁(靜態 DOM,不會被重繪洗掉)
+    var scroll = panel;
+    if (!panel) { panel = document.getElementById('automation-panel'); scroll = panel && (panel.querySelector('.overflow-y-auto') || panel); }   // 舊版面後備
     if (!panel) return;
-    var scroll = panel.querySelector('.overflow-y-auto') || panel;
     var row = document.getElementById('m-afk-navrow');
     if (!row) {
       row = document.createElement('div');

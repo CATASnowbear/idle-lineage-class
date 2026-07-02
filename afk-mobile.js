@@ -4,7 +4,7 @@
  * 設計:CSS 為主 + 少量 JS,完全不改原作者程式碼。
  *   - 不重建 DOM,只「辨識三欄(靠內容裡的穩定 id,比位置順序耐改版)」並加 class。
  *   - 把 #status-panel(HP/MP/金幣)移到最上方常駐;三欄一次只顯示一欄。
- *   - 注入底部導覽列:⚔️戰鬥 / ⚙️設定 / 🎒背包 / 📜日誌(日誌=底部浮動面板,可切戰鬥/系統、有✕關閉)。
+ *   - 注入底部導覽列:⚔️戰鬥 / 👥隊伍(v2.6.74 作者把自動化設定移成遊戲分頁後,此視圖只剩傭兵隊伍面板) / 🎒背包 / 📜日誌(日誌=底部浮動面板,可切戰鬥/系統、有✕關閉)。
  *   - 用 matchMedia 偵測手機;切回桌機自動還原,桌面版面 100% 不受影響。
  *   - 所有手機樣式都掛在 body.m-mobile 之下,JS 沒判定是手機就完全不生效。
  *
@@ -378,7 +378,7 @@
     function buildNav() {
       var n = document.createElement('div');
       n.id = 'm-nav';
-      [['battle', '⚔️', '戰鬥', 'view'], ['config', '⚙️', '設定', 'view'], ['bag', '🎒', '背包', 'view'], ['log', '📜', '日誌', 'log'], ['logout', '🚪', '登出', 'logout']].forEach(function (it) {
+      [['battle', '⚔️', '戰鬥', 'view'], ['config', '👥', '隊伍', 'view'], ['bag', '🎒', '背包', 'view'], ['log', '📜', '日誌', 'log'], ['logout', '🚪', '登出', 'logout']].forEach(function (it) {
         var b = document.createElement('button');
         b.type = 'button';
         b.setAttribute('data-nav', it[0]);

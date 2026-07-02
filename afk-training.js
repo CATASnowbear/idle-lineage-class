@@ -504,10 +504,11 @@
 
   // ---- 入口：自動化面板「🔌 外掛」列加一顆鈕（沿用 afk-dex 的共用列 id；木人場自成一列、不擠進查詢鈕排） ----
   function injectAutoNav() {
-    var panel = document.getElementById('automation-panel');
+    var panel = document.getElementById('tab-automation');   // v2.6.74 起自動化設定改為遊戲分頁(靜態 DOM,不會被重繪洗掉)
+    var scroll = panel;
+    if (!panel) { panel = document.getElementById('automation-panel'); scroll = panel && (panel.querySelector('.overflow-y-auto') || panel); }   // 舊版面後備
     if (!panel) return false;
     if (document.getElementById('m-afk-nav-train')) return true;
-    var scroll = panel.querySelector('.overflow-y-auto') || panel;
     var row = document.getElementById('m-afk-navrow');
     if (!row) {
       row = document.createElement('div');
