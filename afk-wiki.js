@@ -940,6 +940,7 @@
     { k: 'poly', n: '變形' },
     { k: 'mode', n: '遊戲模式' },
     { k: 'map', n: '地圖' },
+    { k: 'npc', n: 'NPC總覽' },
     { k: 'stats', n: '能力值' },
     { k: 'magic', n: '職業魔法' },
     { k: 'pets', n: '帶寵物' },
@@ -1099,6 +1100,7 @@
     if (key === 'poly') return renderPoly();
     if (key === 'mode') return renderMode();
     if (key === 'map') return renderMap();
+    if (key === 'npc') return renderNpc();
     if (key === 'stats') return renderStats();
     if (key === 'magic') return renderMagic();
     if (key === 'quest') return renderQuest(cls);
@@ -1147,6 +1149,7 @@
     { key: 'poly', cls: false, label: '變形' },
     { key: 'mode', cls: false, label: '遊戲模式' },
     { key: 'map', cls: false, label: '地圖' },
+    { key: 'npc', cls: false, label: 'NPC總覽' },
     { key: 'stats', cls: false, label: '能力值' },
     { key: 'magic', cls: false, label: '職業魔法' },
     { key: 'pets', cls: false, label: '帶寵物' },
@@ -1223,6 +1226,36 @@
         h += '<div class="m-wiki-kv"><b>' + wDexLink(HIDDEN_AREA_NAMES[hid]) + '</b>' + bits.join('　') + '</div>';   // 🔗 隱藏區域名可點→查該圖有哪些怪
       });
     }
+    return h;
+  }
+
+  // ===== NPC 總覽（讀 DB.towns，依村莊分組列出每個 NPC 的作用；作者新增/改動 NPC 自動跟上）=====
+  var NPC_TYPE_ICON = {
+    shop: '💰', craft: '⚒️', skill: '📖', exchange: '⚖️', quest: '📜', pledge: '⚔️',
+    ally: '🤝', bless: '✨', pray: '🙏', mastery: '🏅', castleguard: '🛡️',
+    petstore: '🐾', travel: '⛵', synth: '🎴', warehouse: '📦'
+  };
+  function npcFlagTags(npc) {
+    var t = [];
+    if (npc.darkOnly) t.push('<span class="m-npc-tag" style="color:#c084fc;">🌑 黑暗妖精限定</span>');
+    if (npc.classicHide) t.push('<span class="m-npc-tag" style="color:#fca5a5;">經典模式不出現</span>');
+    if (npc.traditionalHide) t.push('<span class="m-npc-tag" style="color:#fca5a5;">經典+傳統模式隱藏</span>');
+    return t.length ? '　' + t.join('　') : '';
+  }
+  function renderNpc() {
+    if (typeof DB === 'undefined' || !DB.towns) return '<div class="m-wiki-note">讀不到 NPC 資料。</div>';
+    var h = '<div class="m-wiki-note">依<b>村莊／安全區</b>分組，列出各地 NPC 的<b>作用</b>。到該村莊點對應 NPC 即可互動。用搜尋（例 <b>製作</b>、<b>倉庫</b>、NPC 名）也找得到它在哪個村莊。</div>';
+    Object.keys(DB.towns).forEach(function (tid) {
+      var town = DB.towns[tid];
+      if (!town || !town.npcs || !town.npcs.length) return;   // 無 NPC 的安全區（時空裂痕入口等）跳過
+      h += '<div class="m-wiki-sub">🏘️ ' + esc(town.n || tid) + '</div>';
+      town.npcs.forEach(function (npc) {
+        var icon = NPC_TYPE_ICON[npc.type] || '👤';
+        h += '<div class="m-wiki-kv"><b>' + icon + ' ' + esc(npc.n) + '</b>' +
+          '<span style="color:#fbbf24;margin-right:8px;">［' + esc(npc.title || '') + '］</span>' +
+          '<span class="m-npc-d">' + esc(npc.d || '') + '</span>' + npcFlagTags(npc) + '</div>';
+      });
+    });
     return h;
   }
 
@@ -2520,6 +2553,8 @@
       '.m-wiki-hint{color:#94a3b8;text-align:center;padding:22px 8px;font-size:14px;}',
       '.m-wiki-note{color:#94a3b8;font-size:12.5px;line-height:1.6;background:#111c30;border:1px solid #1e293b;border-radius:8px;padding:9px 11px;}',
       '.m-wiki-note b{color:#fcd34d;}',
+      '.m-npc-d{color:#cbd5e1;}',
+      '.m-npc-tag{font-size:11.5px;white-space:nowrap;}',
       '.m-wiki-card{background:#111c30;border:1px solid #334155;border-radius:10px;padding:11px 12px;}',
       '.m-wiki-name{font-size:15px;font-weight:bold;color:#fcd34d;margin-bottom:3px;}',
       '.m-wiki-msg{font-size:12.5px;color:#7dd3fc;margin-bottom:5px;}',
