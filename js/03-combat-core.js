@@ -852,7 +852,7 @@ function getPhysicalDmg(diceStr, target, wpn, arrowData, forceHeavy, forceHit, f
     let _outDmg = inner + fixed;
     if (graze) _outDmg = Math.max(1, Math.floor(_outDmg * 0.5));   // 擦傷：最終傷害剩 50%
     _outDmg = Math.max(1, Math.floor(_outDmg * fragileMult(target)));   // 🔮 脆弱（白鳥5）：受所有來源傷害 +20%
-    _outDmg = Math.max(1, Math.floor(_outDmg * wpnEnFinalMult(player.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（×1.1~×2.0，取該階段值）
+    _outDmg = Math.max(1, Math.floor(_outDmg * wpnEnFinalMult(wpnInst || player.eq.wpn)));   // 🔧 武器強化最終傷害倍率；🛡️ v2.6.69 審計#14：有傳 wpnInst（如迅猛雙斧副手揮擊傳 offwpn）就用「該武器自身」的強化與分級，不再硬吃主手倍率
     if (_cw && _cw.finalMult) _outDmg = Math.max(1, Math.floor(_outDmg * _cw.finalMult));   // 🏛️ 武器最終傷害倍率（古老武器 ×2）
     _outDmg = Math.max(1, Math.floor(_outDmg * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：最終傷害（普攻及所有走本函式的物理攻擊：反擊/居合/看破/連擊/連射/穿透/魔擊/物理技能）
     _outDmg = Math.max(1, Math.floor(_outDmg * elementCounterMult(_wAff && _wAff.ele, target.e)));   // ⚔️ 屬性剋制：武器屬性詞綴剋怪 ×1.4、被剋 ×0.6（無屬性詞綴→×1）
@@ -907,7 +907,8 @@ function wandLightArrowProc(target) {
     if (player.classicMode) return;   // 🎮 經典模式：停用共鳴
     let wpn = player.eq.wpn;
     if (!wpn || !WAND_LIGHTARROW_IDS.includes(wpn.id)) return;
-    if (Math.random() >= ((player.d.int || 0) / 60)) return;   // 觸發機率 = 裝備者智力 / 60
+    let _ms = hasMastery('m_strike');   // 🏅 v2.6.70 魔擊精通：持共鳴武器時共鳴改發魔擊；v2.6.71 觸發機率比照原生魔擊＝力量/60（不再吃智力）
+    if (Math.random() >= (((_ms ? player.d.str : player.d.int) || 0) / 60)) return;   // 觸發機率 = 智力/60（共鳴）；魔擊精通改 力量/60
     // 選定光箭目標：主目標仍存活則優先；若主目標已被普攻擊殺，改打場上隨機一隻存活的怪；全部清空則作罷
     let t = (target && target.curHp > 0) ? target : null;
     if (!t) {
@@ -915,6 +916,7 @@ function wandLightArrowProc(target) {
         if (alive.length === 0) return;
         t = alive[Math.floor(Math.random() * alive.length)];
     }
+    if (_ms) { procMagicStrike(t); return; }   // 🏅 改為發動魔擊（含擴散·不再施放光箭/回魔）
     procLightArrow(t);
 }
 // 光箭傷害：與 castSkill 單體魔法完全相同的公式(魔法/無屬性/tier1/dmgDice[1,6])，但不耗魔力、不吃冷卻

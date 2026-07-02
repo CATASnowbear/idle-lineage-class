@@ -451,7 +451,7 @@ function allyDualWieldOffhandAttack(ally, t) {
     if (!t || t.curHp <= 0 || t._dead) return;
     if (!allyDualWieldOffhandOk(ally) || !ally.eq.offwpn || !allyWarriorDualWieldWpnOk(ally, ally.eq.offwpn.id)) return;
     let owpn = DB.items[ally.eq.offwpn.id];
-    let r = allyStrikeRoll(ally, t, { wpnInst: ally.eq.offwpn, noEnhance: true });   // 副手獨立命中（基礎骰＋近戰加成；不另計強化）
+    let r = allyStrikeRoll(ally, t, { wpnInst: ally.eq.offwpn });   // 副手獨立命中（基礎骰＋近戰加成）；🛡️ v2.6.69 審計#5：改吃「副手自身」強化最終倍率（與玩家副手揮擊改用 wpnInst 對齊·原 noEnhance 恆×1 與玩家不一致）
     if (!r.hit) { logCombat(`<span class="font-bold" style="color:#fbbf24;">【協力·${ally._allyName}·迅猛雙斧】</span>副手追擊 <span class="${getMobColor(t.lv)}">${t.n}</span> 未命中。`, 'miss'); return; }
     let dmg = r.dmg;
     if (ally.skills.includes('sk_warrior_berserk') && Math.random() < 0.05) dmg = Math.max(1, dmg * 2);   // ⚔️ 狂暴：副手亦為一般攻擊
@@ -511,18 +511,24 @@ function allyCastMagic(ally, sk) {
         let _bw = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
         if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0 && !ally.classicMode) {   // 🎮 經典模式：傭兵停用魔爆
             let _aoe = (sk.target === 'all') || (targets.length > 1);
-            if (Math.random() < ((d.int || 0) / (_aoe ? 60 : 100))) {
+            let _amkB = allyHasMastery(ally, 'm_strike');   // 🏅 v2.6.71：改發魔擊時觸發率＝力量/60（鏡像玩家）
+            if (Math.random() < (_amkB ? ((d.str || 0) / 60) : ((d.int || 0) / (_aoe ? 60 : 100)))) {
+                if (_amkB) {   // 🏅 v2.6.70 魔擊精通（傭兵）：魔爆觸發改為發動魔擊（對施放目標·含擴散·鏡像玩家）
+                    let _mt = (targets && targets.find(x => x && x.curHp > 0)) || mapState.mobs.find(m => m && m.curHp > 0 && !m._dead);
+                    if (_mt) _allyMagicStrikeHit(ally, _mt, ally.eq && ally.eq.wpn, _bw);
+                } else {
                 let _live = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
                 if (_live.length) {
                     let _ex = Math.max(1, Math.floor(_burstDmg * 0.3 / _live.length));   // 🔧 v2.6.63：總量30%均分給場上敵人（原每隻各吃30%）
                     logCombat(`<span class="font-bold" style="color:#f0abfc;text-shadow:0 0 6px #c026d3;">【協力·${ally._allyName}·魔爆】</span>魔力過載爆炸，波及全場！`, 'player-special');
                     _live.forEach(m => {
                         let _d = Math.max(1, Math.floor(_ex * fragileMult(m)));
-                        _d = Math.max(1, Math.floor(_d * royalAllyMult()));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)
+                        // 👑 v2.6.69 審計#13：王族魅力加成已含於 _burstDmg（各目標傷害於 496 行乘過），此處不再重複乘（原本平方＝魅力80時魔爆虛高80%）
                         m.curHp -= _d; m.justHit = 'magic'; mobWake(m);
                         logCombat(`魔爆波及 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${_d} 點無屬性傷害。`, 'magic');
                         if (m.curHp <= 0) { let ri = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (ri !== -1) killMob(ri); }
                     });
+                }
                 }
             }
         }
@@ -532,7 +538,7 @@ function allyCastMagic(ally, sk) {
         let _wi = ally.eq && ally.eq.wpn, _w = _wi ? DB.items[_wi.id] : null;
         if (_w) {
             if (_w.eff === 'mp_drain' || _w.mpOnHit) { let _en = capWpnEn(_wi.en); ally.mp = Math.min(ally.mmp || 0, (ally.mp || 0) + 1 + Math.max(0, _en - 6)); }   // 命中回 MP（同 allyWeaponProcs·同玩家 1+max(0,強化-6)）
-            if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(_wi.id) && !ally.classicMode && Math.random() < ((d.int || 0) / 60)) { let _rt = _allyProcTarget(getTarget()); if (_rt) allyProcLightArrow(ally, _rt); }   // 共鳴：int/60 免費光箭回魔（同 allyWeaponProcs 965）
+            if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(_wi.id) && !ally.classicMode && !allyHasMastery(ally, 'm_strike') && Math.random() < ((d.int || 0) / 60)) { let _rt = _allyProcTarget(getTarget()); if (_rt) allyProcLightArrow(ally, _rt); }   // 共鳴：int/60 免費光箭回魔（同 allyWeaponProcs）；🏅 v2.6.70 魔擊精通傭兵共鳴已改發魔擊→本補償塊(只補回魔·不套傷害proc)不再施放光箭
         }
     }
     renderMobs();
@@ -589,7 +595,7 @@ function allyCastPhysicalSkill(ally, sk) {
     let t = getTarget(); if (!t || t.curHp <= 0) return false;
     let d = ally.d || {};
     let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
-    if (sk.reqWpn === 'w2h'    && !(wpn && wpn.w2h))    return false;   // 需雙手武器
+    if (sk.reqWpn === 'w2h'    && !(wpn && wpn.w2h && !wpn.isBow)) return false;   // 需雙手武器（🛡️ v2.6.69 審計#4：且非弓·與玩家路徑一致）
     if (sk.reqWpn === 'bow'    && !(wpn && wpn.isBow))  return false;   // 需弓
     if (sk.reqWpn === 'nonbow' && !(wpn && !wpn.isBow)) return false;   // 需「有武器且非弓」（衝擊之暈）
     let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
@@ -607,11 +613,12 @@ function allyCastPhysicalSkill(ally, sk) {
             landed++;
             res.dmg = Math.floor(res.dmg * illuLvMult(ally));   // 🔮 幻術士(傭兵)骷髏毀壞：等級加成 ×(1+等級/50)（非幻術士回 1，不影響騎士/龍騎物理技）
             res.dmg = Math.max(1, Math.floor(res.dmg * _royalMult));   // 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100)（換身前已快照）
+            if (sk.skillAddDmg) res.dmg = Math.max(1, res.dmg + sk.skillAddDmg);   // ⚔️ v2.6.69 審計#12：衝擊之暈 +10 固定加值（鏡像玩家 js/07:512·不吃倍率）
             t.curHp -= res.dmg; t.justHit = getWpnEle(ally.eq ? ally.eq.wpn : null, wpn); mobWake(t);
             totalDmg += res.dmg;
             let mark = (res.heavy && res.crit) ? '會心' : (res.crit ? '爆' : (res.heavy ? '重' : ''));
             logHits.push(res.dmg + (mark ? '(' + mark + ')' : ''));
-            if (sk.stun) applyMobStatus(t, { kind: 'stun', pbase: sk.stun, dur: 6, hitOff: (wpn && wpn.stunHitBonus) ? Math.round(wpn.stunHitBonus / 5) : 0 }, sk.n);   // 🏛️ 傭兵持真．冥皇執行劍：衝擊之暈暈眩命中率 +20%
+            if (sk.stun && (sk.stunChance == null || Math.random() < sk.stunChance)) applyMobStatus(t, { kind: 'stun', pbase: sk.stun, dur: 6, hitOff: (wpn && wpn.stunHitBonus) ? Math.round(wpn.stunHitBonus / 5) : 0 }, sk.n);   // 🏛️ 傭兵持真．冥皇執行劍：衝擊之暈暈眩命中率 +20%；🛡️ v2.6.69 審計#3：補鏡像 stunChance(10%) 前置骰（原漏→傭兵每擊必判暈＝玩家10倍）
             if (sk.status) applyMobStatus(t, sk.status, sk.n);
             if (t.curHp > 0 && sk.instakill) { let idx = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (idx !== -1) tryInstakill(t, sk.instakill, sk.n, idx, true); }   // 🔧 deferKill：換身期間不結算，由下方還原 player 後的 killMob 處理
         }
@@ -932,6 +939,22 @@ function allyDollAttackProcs(ally, target) {
         if (_t2) allyProcFreeMagicSkill(ally, _t2, dl.procSkill, 0);
     }
 }
+// 🔮 傭兵魔擊本體（必中重擊＋魔擊精通擴散）：eff:'magicstrike' proc 與 🏅 v2.6.70「共鳴/魔爆改發魔擊」共用（鏡像玩家 procMagicStrike）
+function _allyMagicStrikeHit(ally, t, wpnInst, wpn) {
+    if (!t || t.curHp <= 0) return;
+    let res = allyStrikeRoll(ally, t, { forceHeavy: true });
+    logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【協力·${ally._allyName}·魔擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${res.crit?'會心一擊':'重擊'}!）。`, res.crit ? 'player-crit' : 'player-special');
+    wearHardSkin(t, null, true, false);   // 🔧 硬皮消磨：傭兵魔擊重擊 -2
+    _allyDamageMob(ally, t, res.dmg, getWpnEle(wpnInst, wpn));
+    // 🔧 傭兵魔擊精通：必定額外擴散魔擊（對全體各打一次，不再連鎖）
+    if (allyHasMastery(ally, 'm_strike')) {
+        let _all = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
+        if (_all.length) {
+            logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【協力·${ally._allyName}·魔擊精通】</span>魔力向四方擴散！`, 'player-special');
+            _all.forEach(m => { let r2 = allyStrikeRoll(ally, m, { forceHeavy: true }); logCombat(`擴散魔擊命中 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${r2.dmg} 點傷害。`, 'player-special'); _allyDamageMob(ally, m, r2.dmg, getWpnEle(wpnInst, wpn)); });
+        }
+    }
+}
 function allyWeaponProcs(ally, target, hitInfo) {
     allyDollAttackProcs(ally, target);   // 🆕 v2.6.10 #3：魔法娃娃攻擊 proc（置於武器判定前→無武器也生效，比照玩家）
     let wpnInst = ally.eq && ally.eq.wpn;
@@ -970,25 +993,16 @@ function allyWeaponProcs(ally, target, hitInfo) {
         let en = capWpnEn(wpnInst.en);
         ally.mp = Math.min(ally.mmp||0, (ally.mp||0) + 1 + Math.max(0, en - 6));
     }
-    if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(wpnInst.id) && Math.random() < ((d.int||0)/60)) {
-        let t = _allyProcTarget(target); if (t) allyProcLightArrow(ally, t);
+    {
+        let _amk = allyHasMastery(ally, 'm_strike') && !ally.classicMode;   // 🏅 v2.6.70 魔擊精通（傭兵）：共鳴改發魔擊；v2.6.71 觸發率比照原生魔擊＝力量/60（鏡像玩家·經典模式維持光箭吃智力）
+        if (typeof WAND_LIGHTARROW_IDS !== 'undefined' && WAND_LIGHTARROW_IDS.includes(wpnInst.id) && Math.random() < (((_amk ? d.str : d.int) || 0) / 60)) {
+            let t = _allyProcTarget(target);
+            if (t) { if (_amk) _allyMagicStrikeHit(ally, t, wpnInst, wpn); else allyProcLightArrow(ally, t); }
+        }
     }
     if (wpn.eff === 'magicstrike' && !ally.classicMode && Math.random() < ((d.str||0)/60)) {   // 🎮 經典模式：傭兵停用魔擊
         let t = _allyProcTarget(target);
-        if (t) {
-            let res = allyStrikeRoll(ally, t, { forceHeavy: true });
-            logCombat(`<span class="font-bold" style="color:#d8b4fe;text-shadow:0 0 6px #a855f7;">【協力·${ally._allyName}·魔擊】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${res.dmg} 點傷害（${res.crit?'會心一擊':'重擊'}!）。`, res.crit ? 'player-crit' : 'player-special');
-            wearHardSkin(t, null, true, false);   // 🔧 硬皮消磨：傭兵魔擊重擊 -2
-            _allyDamageMob(ally, t, res.dmg, getWpnEle(wpnInst, wpn));
-            // 🔧 傭兵魔擊精通：必定額外擴散魔擊（對全體各打一次，不再連鎖）
-            if (allyHasMastery(ally, 'm_strike')) {
-                let _all = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
-                if (_all.length) {
-                    logCombat(`<span class="font-bold" style="color:#e9d5ff;text-shadow:0 0 8px #a855f7;">【協力·${ally._allyName}·魔擊精通】</span>魔力向四方擴散！`, 'player-special');
-                    _all.forEach(m => { let r2 = allyStrikeRoll(ally, m, { forceHeavy: true }); logCombat(`擴散魔擊命中 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${r2.dmg} 點傷害。`, 'player-special'); _allyDamageMob(ally, m, r2.dmg, getWpnEle(wpnInst, wpn)); });
-                }
-            }
-        }
+        if (t) _allyMagicStrikeHit(ally, t, wpnInst, wpn);
     }
     if (wpn.eff === 'moonburst' && Math.random() < 0.08) {
         let t = _allyProcTarget(target); if (t) allyProcMoonburst(ally, t);
@@ -1709,11 +1723,12 @@ function alliesTick() {
         if (_iAura) { _iBase = { ed: ally.d.extraDmg || 0, eh: ally.d.extraHit || 0, md: ally.d.magicDmg || 0 }; ally.d.extraDmg = _iBase.ed + _iAura.ed; ally.d.extraHit = _iBase.eh + _iAura.eh; ally.d.magicDmg = _iBase.md + _iAura.md; }   // 注入本傭兵：額外傷害(歐吉4+化身10)/額外命中(歐吉4)/魔法傷害(巫妖2)
         if (!_ccBlock && ally.cls === 'illusion') allyCubeTick(ally);   // 🔮 幻術士傭兵：立方常駐光環（硬控中不展開）
         if (!_ccBlock && ally.skills && ally.skills.length) for (let _ssid of STORM_BUFF_SKILLS) { let _ssk = DB.skills[_ssid]; if (ally.skills.includes(_ssid) && _ssk && !mapState.current.startsWith('town_') && state.ticks % (_ssk.stormInterval || 40) === 0) allyStormTick(ally, _ssk); }   // 🌨️🔥 傭兵 冰雪颶風/火牢（已學會→常駐，依各自 stormInterval 觸發；安全區不展開）
-        // 🍃 傭兵維持團隊 HoT（生命的祝福/體力回復術）：已學會的 hot+autoBuff 技能·該技能團隊 HoT 未在持續中→施放(全隊回復·消耗傭兵MP)·安全區不施放·硬控中不施放
-        if (!_ccBlock && ally.skills && ally.skills.length && !mapState.current.startsWith('town_')) for (let _hid of ally.skills) {
+        // 🍃 傭兵維持團隊 HoT（生命的祝福/體力回復術）：已學會的 hot+autoBuff 技能·該技能團隊 HoT 未在持續中→施放(全隊回復·消耗傭兵MP)·安全區不施放·硬控/沉默/魔封中不施放
+        if (!_ccBlock && !_castBlock && ally.skills && ally.skills.length && !mapState.current.startsWith('town_')) for (let _hid of ally.skills) {   // 🛡️ v2.6.69 審計#19：補 !_castBlock——沉默中不能補血卻能放 HoT 自相矛盾（玩家路徑走 castSkillInner 有沉默閘）
             let _hsk = DB.skills[_hid]; if (!_hsk || !_hsk.hot || !_hsk.autoBuff) continue;
             if (player.hots && player.hots[_hid] && player.hots[_hid].ticksLeft > 0) continue;   // 已在持續→不重複(單一團隊實例·後放取代先放)
-            let _hcost = _hsk.mp || 0; if ((ally.mp || 0) < _hcost) continue;
+            let _hcost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(_hsk.mp || 0, _hsk.tier) : (_hsk.mp || 0);   // 🛡️ v2.6.69 審計#20：套 mpReduce/學徒折扣（比照傭兵攻擊技/淨化）
+            if ((ally.mp || 0) < _hcost) continue;
             ally.mp -= _hcost; applyTeamHot(_hid, _hsk, ally.d);
             logCombat(`<span class="text-emerald-300 font-bold">協力·${ally._allyName}</span> 施放 ${_hsk.n}，全隊開始持續回復 HP。`, 'heal', 'mercenary');
         }
@@ -1746,7 +1761,7 @@ function alliesTick() {
                 allyActWithSkillGate(ally, allyMageAct);   // ⏳ 法師：攻擊魔法週期施放·平時基礎光箭普攻
             } else {
                 let wpn = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
-                let _itv = Math.max(8, Math.round((wpn && wpn.spd ? wpn.spd : 1.0) * 10));
+                let _itv = Math.max(8, Math.round(atkSpdBaseItv(ally) * 10));   // ⚔️ 攻速改由「職業性別×武器種類」查表（ATK_APM·js/01·含戰士雙斧）·不再讀 wpn.spd
                 { let _aClvW = wpn && wpn.eff === 'cleave'; if (!ally.classicMode && (ally._cleaveTicks > 0 || (allyHasMastery(ally, 'k_cleave') && _aClvW))) _itv = Math.max(8, Math.round(_itv * (allyHasMastery(ally, 'k_cleave') ? 0.50 : 0.8))); }   // 🔧 切割：攻速+20%（🏅 切割精通 +50%・持切割武器常駐）；🎮 經典模式停用
                 if (allyHasMastery(ally, 'e_sword') && wpn && !wpn.w2h && !wpn.isBow && !wpn.ranged) _itv = Math.max(8, Math.round(_itv * (1/1.5)));   // 🏅 劍術精通（傭兵）：持單手近戰武器攻速+50%
                 if (ally.cls === 'illusion' && wpn && !wpn.isBow && ((allyHasMastery(ally, 'i_qigu') && wpn.qigu) || (allyHasMastery(ally, 'i_magicsword') && !wpn.qigu && !isWandWeapon(wpn)))) _itv = Math.max(8, Math.round(_itv * (1/1.3)));   // 🔮 奇古獸/魔劍精通（傭兵·排除魔杖）：攻速+30%（鏡像玩家 recomputeStats spdMult）
@@ -1760,13 +1775,25 @@ function alliesTick() {
     });
 }
 // 🤝 Phase 3：傭兵自動治癒——若已設定治癒魔法且隊伍(玩家＋自己＋其他非倒地傭兵)中有人 HP% 低於該傭兵門檻，對最低者施放（消耗 MP）。回傳是否施放（true→佔用本回合行動）。
-// 治癒量比照玩家 castSkillInner：(XdY healDice + healBase)×(1+3×magicDmg/16)，或 valBase+valDice+magicDmg；🆕 v2.6.17 水之元氣改全隊生效→套 waterVitalHeal(讀隊長 buff·全隊共用 7 秒冷卻)。HoT/淨化/吸血(autoBuff/healSlot)不在此（已被 isHeal 過濾）。
+// 治癒量比照玩家 castSkillInner：(XdY healDice + healBase)×(1+3×magicDmg/16)，或 valBase+valDice+magicDmg；🆕 v2.6.17 水之元氣改全隊生效→套 waterVitalHeal(讀隊長 buff·全隊共用 7 秒冷卻)。HoT/淨化(autoBuff)不在此；🩸 v2.6.69 吸血(healSlot)改在本函式開頭支援（走 allyCastMagic·只看自身HP門檻）。
 function allyTryHeal(ally) {
     let sid = ally._healSkill; if (!sid) return false;
     let sk = DB.skills[sid]; if (!sk) return false;
+    // 🩸 v2.6.69 審計#9：治癒欄支援吸血魔法（寒冷戰慄/吸血鬼之吻·type:'atk'+healSlot）——UI 可選但原讀取端只收 type:'heal'，選了永不施放。
+    //    吸血只回復施放者本人 → 只看「自身」HP 門檻；有存活目標且 MP 足夠→走 allyCastMagic（其 lifesteal 分支回復 ally.curHp）
+    if (sk.type === 'atk' && sk.healSlot) {
+        let cost0 = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(sk.mp || 0, sk.tier) : (sk.mp || 0);
+        if ((ally.mp || 0) < cost0) return false;
+        let thr0 = ((ally._healHpPct != null ? ally._healHpPct : 70) / 100);
+        if (((ally.curHp || 0) / (ally.mhp || 1)) >= thr0) return false;
+        let t0 = getTarget(); if (!t0 || t0.curHp <= 0) return false;
+        ally.mp -= cost0;
+        allyCastMagic(ally, sk);
+        return true;
+    }
     let isHeal = (sk.type === 'heal' && !sk.autoBuff && !sk.hot && !['sk_antidote', 'sk_holy_light', 'sk_cancel'].includes(sid));
     if (!isHeal) return false;
-    let cost = sk.mp || 0;
+    let cost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(sk.mp || 0, sk.tier) : (sk.mp || 0);   // 🛡️ v2.6.69 審計#20：治癒也吃 mpReduce/學徒折扣（原收原價·與攻擊技/淨化收費標準不一）
     if ((ally.mp || 0) < cost) return false;
     let thr = ((ally._healHpPct != null ? ally._healHpPct : 70) / 100);
     let cand = [];
@@ -1903,69 +1930,158 @@ function _allyLevelRecompute(ally) {
 }
 // 城鎮 NPC：召喚/解除協力角色
 function allyCost(slotN) { let sum = slotSummary(slotN); return sum ? (sum.lv || 1) * 10000 : 0; }   // 招募費用 = 角色等級 × 10000
-// 🤝 解雇結算：把傭兵受雇期間累積的 ally.exp 回存到「該存檔角色」的存檔（同職業＋同名守衛·SIG1 重簽·套用升級曲線）。回傳給 logSys 用的訊息片段；失敗（存檔不存在/被換角/解析失敗）回空字串、不動存檔。
-function _settleAllyExp(ally) {
+// 🤝 v2.6.72 重新招募費率曲線（用戶指定錨點）：Lv1＝原價 1/10、Lv50＝1/5、Lv100＝1/2，中間等級分段幾何級數插值
+//    1~50：0.1 × 2^((lv−1)/49)（0.1→0.2）；50~100：0.2 × 2.5^((lv−50)/50)（0.2→0.5）——三錨點精確、中間平滑遞增
+function mercRehireMult(lv) {
+    lv = Math.max(1, Math.min(100, Math.floor(lv || 1)));
+    return (lv <= 50) ? 0.1 * Math.pow(2, (lv - 1) / 49) : 0.2 * Math.pow(2.5, (lv - 50) / 50);
+}
+function mercRehireCost(lv) { return Math.floor((lv || 1) * 10000 * mercRehireMult(lv)); }   // 重新招募費用 = 原價(lv×10000) × 曲線費率
+// 🤝 v2.6.72 重新招募：一鍵「結算累積經驗（記入待領帳本）＋以來源存檔最新狀態重建戰力快照」，取代原「解除」按鈕（單獨解散改用 全員退出）
+function rehireAlly(slotN) {
+    slotN = String(slotN);
+    let cur = (player.allies || []).find(a => a && a._slot === slotN);
+    if (!cur) return;
+    let sum = slotSummary(slotN);
+    if (!sum) {   // 來源存檔已不存在 → 無法重建，結算後解散（不收費）
+        let m0 = _settleAllyExp(cur, 'dismiss');
+        player.allies = player.allies.filter(a => a && a._slot !== slotN);
+        logSys(`<span class="text-amber-300">存檔 ${slotN} 已無可用角色，傭兵已解散。</span>${m0 ? ' ' + m0 : ''}`);
+    } else {
+        let cost = mercRehireCost(sum.lv || 1);
+        if ((player.gold || 0) < cost) { logSys(`<span class="text-red-400">重新招募 ${sum.name || ''}（Lv.${sum.lv}）需要 ${cost.toLocaleString()} 金幣，你的金幣不足。</span>`); return; }
+        let m = _settleAllyExp(cur, 'rehire');   // 🤝 結算：累積經驗記入待領帳本（該角色下次載入/回村領取）
+        let fresh = buildAlly(slotN);
+        if (!fresh) {   // 重建失敗（角色不可用）→ 已結算，直接解散、不收費
+            player.allies = player.allies.filter(a => a && a._slot !== slotN);
+            logSys(`<span class="text-amber-300">存檔 ${slotN} 無法重新招募（角色不可用），傭兵已解散（未收費）。</span>${m ? ' ' + m : ''}`);
+        } else {
+            player.gold -= cost;
+            let idx = player.allies.findIndex(a => a && a._slot === slotN);
+            if (idx !== -1) player.allies[idx] = fresh; else player.allies.push(fresh);
+            logSys(`<span class="text-emerald-300 font-bold">花費 ${cost.toLocaleString()} 金幣重新招募 ${fresh._allyName}（存檔 ${slotN}，Lv.${sum.lv}），戰力快照已更新。</span>${m ? ' ' + m : ''}`);
+        }
+    }
+    saveGame(); updateUI();
+    let _c = document.getElementById('interaction-content'); if (_c) renderAllyNPC(_c);
+}
+// ===== 🤝 v2.6.68 傭兵經驗「待領帳本」（取代 解雇直接改寫來源存檔＋v2.6.42 storage 訊號廣播）=====
+// 設計：解散傭兵或「隊長回村」時，只把累積經驗寫成一筆獨立待領紀錄（唯一編號/來源隊伍/傭兵存檔身分/經驗/時間），
+//       絕不直接改寫來源角色存檔；該角色下次「載入遊戲或回村」時自動一次領取所有未領紀錄並標記已結算（同一筆只領一次）。
+//       寫入與領取皆走跨分頁鎖（localStorage token 鎖·5 秒逾時防死鎖）→ 同一時間只有一個分頁能改帳本；
+//       開十個分頁最多產生十筆待領紀錄，不會十個分頁一起改寫同一份角色存檔。戰力快照與經驗結算完全分離（快照維持招募當下）。
+const MERC_LEDGER_KEY = 'fb5_merc_exp_ledger';
+const MERC_LEDGER_LOCK_KEY = 'fb5_merc_exp_ledger_lock';
+const MERC_LEDGER_LOCK_TTL = 5000;                         // 鎖逾時：持鎖分頁當機/被關 → 5 秒後他人可搶（正常操作持鎖僅數毫秒）
+const MERC_LEDGER_KEEP_CLAIMED = 7 * 24 * 3600 * 1000;     // 已領紀錄保留 7 天供查帳後清除
+const MERC_LEDGER_KEEP_UNCLAIMED = 90 * 24 * 3600 * 1000;  // 未領紀錄保留 90 天（角色被刪除/改名則永遠領不到→到期清除）
+let _mercLockToken = null;   // 🛡️ v2.6.69 審計#18：臨界區期間的持鎖 token（寫入前再驗一次·縮小 TOCTOU 窗口＋TTL 被奪鎖時中止續寫）
+function _mercLedgerLocked(fn) {   // 跨分頁鎖：搶到→執行 fn 回 true；搶不到→回 false（呼叫端排程重試）。set 後回讀驗 token＝雙寫競態後寫者勝、自己沒搶到就讓出。
+    let token = 'T' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e9).toString(36);
+    try {
+        let cur = localStorage.getItem(MERC_LEDGER_LOCK_KEY);
+        if (cur) { let ts = parseInt(cur.split('|')[1] || '0', 10); if (Date.now() - ts < MERC_LEDGER_LOCK_TTL) return false; }   // 他分頁持鎖未逾時
+        localStorage.setItem(MERC_LEDGER_LOCK_KEY, token + '|' + Date.now());
+        let chk = localStorage.getItem(MERC_LEDGER_LOCK_KEY);
+        if (!chk || chk.indexOf(token) !== 0) return false;
+    } catch (e) { return false; }
+    _mercLockToken = token;
+    try { fn(); } finally { _mercLockToken = null; try { let c2 = localStorage.getItem(MERC_LEDGER_LOCK_KEY); if (c2 && c2.indexOf(token) === 0) localStorage.removeItem(MERC_LEDGER_LOCK_KEY); } catch (e) {} }
+    return true;
+}
+function _mercLedgerHoldingLock() {   // 🛡️ 寫入前最終驗證：鎖仍是自己的（防 set/verify 交錯競態與 TTL 被奪後續寫）
+    try { let c = localStorage.getItem(MERC_LEDGER_LOCK_KEY); return !!(c && _mercLockToken && c.indexOf(_mercLockToken) === 0); } catch (e) { return false; }
+}
+function _mercLedgerRead() { try { let raw = _lzGet(MERC_LEDGER_KEY); let a = raw ? JSON.parse(raw) : []; return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function _mercLedgerWrite(list) {   // 寫回＋清理（呼叫端須在 _mercLedgerLocked 內）；回 true=寫入成功、false=鎖已失守/儲存失敗（呼叫端須視為失敗重試）
+    if (!_mercLedgerHoldingLock()) return false;   // 🛡️ 審計#18：鎖被奪→放棄本次寫入（不覆蓋他人資料）
+    let now = Date.now();
+    list = (list || []).filter(r => r && (r.claimed ? (now - (r.claimedAt || 0)) < MERC_LEDGER_KEEP_CLAIMED : (now - (r.ts || now)) < MERC_LEDGER_KEEP_UNCLAIMED));
+    try { _lzSet(MERC_LEDGER_KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+}
+let _mercLedgerOutbox = [];   // 搶鎖失敗的待寫紀錄（記憶體暫存＋鏡像進 player 隨 saveGame 入檔·重載補寫·uid 冪等）
+function _mercSyncPlayerOutbox() {   // 🛡️ 審計#8：outbox 鏡像到 player.mercLedgerOutbox → saveGame 帶入存檔，關分頁不遺失、重載後 loadGame 補 flush
+    try { if (player && player.cls) player.mercLedgerOutbox = _mercLedgerOutbox.slice(); } catch (e) {}
+}
+function _mercLedgerFlush() {
+    if (!_mercLedgerOutbox.length) { _mercSyncPlayerOutbox(); return; }
+    let batch = _mercLedgerOutbox;
+    let wrote = false;
+    let ok = _mercLedgerLocked(() => {
+        let led = _mercLedgerRead();
+        let have = new Set(led.map(r => r && r.uid));
+        batch.forEach(r => { if (r && r.uid && !have.has(r.uid)) { led.push(r); have.add(r.uid); } });   // 🛡️ uid 去重：重送/重載補寫皆冪等
+        wrote = _mercLedgerWrite(led);
+        if (wrote) {   // 🛡️ 審計#18 寫後驗證：批次 uid 全數存在才算成功（同刻被他分頁覆蓋→重試自癒）
+            let have2 = new Set(_mercLedgerRead().map(r => r && r.uid));
+            if (!batch.every(r => !r || have2.has(r.uid))) wrote = false;
+        }
+    });
+    if (ok && wrote) { _mercLedgerOutbox = []; _mercSyncPlayerOutbox(); }
+    else setTimeout(_mercLedgerFlush, 1500 + Math.floor(Math.random() * 1000));   // 隨機退避重試
+}
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('pagehide', () => { try { _mercLedgerFlush(); } catch (e) {} });   // 🛡️ 審計#8：關分頁前最後一次 flush（失敗仍有 player 鏡像兜底）
+// 🤝 結算＝建立一筆待領紀錄（解散 reason='dismiss'／隊長回村 reason='town'）。只歸零 _expGained 計數，不動來源存檔、不動戰力快照；
+//    回村結算後傭兵留在隊上繼續累積下一筆。回傳 logSys 訊息片段（無累積經驗→''）。
+function _settleAllyExp(ally, reason) {
     try {
         if (!ally) return '';
-        let slot = String(ally._slot);
-        let banked = Math.floor(ally._expGained || 0);   // 🤝 delta-merge：回寫「受雇期間賺到的總經驗」（含即時升級已消耗的），加到該存檔角色「當前」進度上→多開時是合併而非整個覆蓋
+        let banked = Math.floor(ally._expGained || 0);
         if (banked <= 0) return '';
-        let raw = _saveUnwrap(_lzGet('lineage_idle_save_' + slot)).payload;
-        if (!raw) return '';
-        let obj; try { obj = JSON.parse(raw); } catch (e) { return ''; }
-        let p = obj && obj.p;
-        if (!p || !p.cls) return '';
-        if (p.cls !== ally.cls || (p.name || '') !== (ally.name || '')) return '';   // 🛡️ 守衛：存檔位必須仍是同一角色，避免被換角後寫錯
-        let before = p.lv || 1;
-        p.exp = (p.exp || 0) + banked;
-        while ((p.lv || 1) < 100 && p.exp >= getExpReq(p.lv)) { p.exp -= getExpReq(p.lv); p.lv++; if (p.lv >= 50) p.bonus = (p.bonus || 0) + 1; }   // 比照 checkLvUp 升級曲線（升等只動 lv/exp/bonus；載入該角色時自會 recompute 衍生戰力）
-        if ((p.lv || 1) >= 100) p.exp = 0;   // 滿等不留溢出經驗
-        obj.p = p;
-        _lzSet('lineage_idle_save_' + slot, _saveWrap(JSON.stringify(obj)));   // 🛡️ SIG1 重簽寫回
-        try { _broadcastMercExp(slot, ally.cls, ally.name || '', banked); } catch (e) {}   // 🔄 v2.6.42 多開同步：廣播經驗差→若該角色正在其他分頁遊玩(currentSlot 相同)，該分頁即時吸收進記憶體 player＋存檔，避免其陳舊快照 saveGame 又把本次回寫覆蓋掉（見 _mercExpSigListen）。單開/該角色未載入他處→無吸收者、直接寫回即最終值。
-        ally.exp = 0; ally._expGained = 0;
-        let gained = (p.lv || 1) - before;
-        return `<span class="text-emerald-300">累積的 ${banked.toLocaleString()} 經驗已回存至 ${ally._allyName}（存檔 ${slot}）${gained > 0 ? `，升 ${gained} 級至 Lv.${p.lv}` : ''}。</span>`;
+        let rec = {
+            uid: 'MX' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e9).toString(36),                            // 唯一編號
+            party: (player && player.name ? player.name : '?') + '@' + (typeof currentSlot !== 'undefined' ? currentSlot : '?'),   // 來源隊伍（隊長名@存檔位）
+            slot: String(ally._slot), cls: ally.cls, name: ally.name || '',                                                       // 傭兵存檔身分（領取時三重比對）
+            exp: banked, ts: Date.now(), reason: reason || 'dismiss', claimed: false
+        };
+        ally._expGained = 0;
+        _mercLedgerOutbox.push(rec); _mercSyncPlayerOutbox(); _mercLedgerFlush();   // 🛡️ 審計#8：先鏡像進 player 再 flush（flush 失敗時 saveGame 會把待寫紀錄帶進存檔）
+        return `<span class="text-emerald-300">${ally._allyName} 累積的 ${banked.toLocaleString()} 經驗已記入待領帳本（該角色下次載入或回村時領取）。</span>`;
     } catch (e) { return ''; }
 }
-// 🔄 v2.6.42 傭兵經驗多開同步（修「解散傭兵時，該角色若正在其他分頁遊玩→其陳舊快照 saveGame 覆蓋掉回寫的經驗」）：
-//   _settleAllyExp 直接寫回該存檔位（單開/該角色未開他處時＝最終值）後，另廣播一則「經驗差」訊號到 localStorage（僅網頁版跨分頁；打包版單一實例鎖無多開）。
-//   正在遊玩該角色的分頁(currentSlot 相同＋同職業同名)收到 storage 事件→即時把經驗加進記憶體 player＋比照升級曲線＋立即 saveGame→其後續存檔已含此經驗、不再覆蓋。訊號為一次性通知(非持久信箱)→不會於日後載入時重覆計算。
-let _mercExpSigSeq = 0;
-function _broadcastMercExp(slot, cls, name, banked) {
-    banked = Math.floor(banked || 0);
-    if (banked <= 0) return;
-    try { localStorage.setItem('fb5_mercexp_sig', JSON.stringify({ slot: String(slot), cls: cls, name: name || '', banked: banked, nonce: (Date.now() + '_' + (++_mercExpSigSeq)) })); } catch (e) {}   // setItem 觸發「其他分頁」的 storage 事件（本分頁不觸發自己）
-}
-let _lastMercExpNonce = null;
-function _mercExpSigListen(ev) {
+// 🤝 隊長回村：所有上場傭兵各記一筆待領經驗（不解散·不改來源存檔·戰力快照不動）
+function mercBankAlliesAtTown() {
     try {
-        if (!ev || ev.key !== 'fb5_mercexp_sig' || !ev.newValue) return;
-        let sig; try { sig = JSON.parse(ev.newValue); } catch (e) { return; }
-        if (!sig || sig.nonce === _lastMercExpNonce) return;   // 去重（同一訊號只吸收一次）
-        _lastMercExpNonce = sig.nonce;
-        let banked = Math.floor(sig.banked || 0);
-        if (banked <= 0) return;
-        if (typeof currentSlot === 'undefined' || String(currentSlot) !== String(sig.slot)) return;   // 只有「本分頁正在遊玩該存檔位」才吸收
-        if (!player || !player.cls || player.cls !== sig.cls || (player.name || '') !== (sig.name || '')) return;   // 且必須仍是同一角色（守衛換角）
-        player.exp = (player.exp || 0) + banked;
-        let before = player.lv || 1;
-        while ((player.lv || 1) < 100 && player.exp >= getExpReq(player.lv)) { player.exp -= getExpReq(player.lv); player.lv++; if (player.lv >= 50) player.bonus = (player.bonus || 0) + 1; }   // 比照 checkLvUp 升級曲線
-        if ((player.lv || 1) >= 100) player.exp = 0;
-        let gained = (player.lv || 1) - before;
-        if (gained > 0) { try { if (typeof calcStats === 'function') calcStats(); } catch (e) {} }   // 升級→重算戰力＋刷面板
-        try { if (typeof saveGame === 'function') saveGame(); } catch (e) {}   // 立即存檔→本分頁快照已含此經驗、日後 saveGame 不再覆蓋回寫
-        try { if (typeof updateUI === 'function') updateUI(); } catch (e) {}
-        try { if (typeof logSys === 'function') logSys(`<span class="text-emerald-300">收到另一分頁回存的協力經驗 ${banked.toLocaleString()}${gained > 0 ? `，升 ${gained} 級至 Lv.${player.lv}` : ''}。</span>`); } catch (e) {}
+        let _n = 0;
+        ((player && player.allies) || []).forEach(a => { let m = _settleAllyExp(a, 'town'); if (m) { logSys(m); _n++; } });
+        if (_n > 0) { try { saveGame(); } catch (e) {} }   // 🛡️ v2.6.69 修（審計#2）：立即固化 _expGained=0；否則「進村→關分頁→重載」會把同一筆經驗重複記帳＝無限刷
     } catch (e) {}
 }
-if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('storage', _mercExpSigListen);
+// 🤝 領取：本分頁目前角色（currentSlot＋同職業＋同名三重守衛）的所有未領紀錄→鎖內標記已結算→套用升級曲線→存檔。
+//    掛點：回村/回城（changeMap 村莊分支·loadGame 一律回家鄉村莊故載入亦觸發）。鎖被占→隨機退避重試（最多 5 次）。
+function mercExpClaimPending(_retry) {
+    try {
+        if (!player || !player.cls || typeof currentSlot === 'undefined' || currentSlot == null) return;
+        let total = 0, _writeFail = false;
+        let ok = _mercLedgerLocked(() => {
+            let led = _mercLedgerRead(), hit = false;
+            led.forEach(r => {
+                if (!r || r.claimed) return;
+                if (String(r.slot) !== String(currentSlot) || r.cls !== player.cls || (r.name || '') !== (player.name || '')) return;   // 🛡️ 三重守衛：防換角/刪角誤領
+                total += Math.max(0, Math.floor(r.exp || 0));
+                r.claimed = true; r.claimedAt = Date.now(); hit = true;   // 標記已結算：同一筆只能領一次（跨分頁由鎖保證）
+            });
+            if (hit && !_mercLedgerWrite(led)) { total = 0; _writeFail = true; }   // 🛡️ 審計#18：寫入失敗（鎖失守）→ 不套用經驗、走重試（帳本未標記＝下次可重領）
+        });
+        if (!ok || _writeFail) { if ((_retry || 0) < 5) setTimeout(() => mercExpClaimPending((_retry || 0) + 1), 1200 + Math.floor(Math.random() * 800)); return; }
+        if (total <= 0) return;
+        let before = player.lv || 1;
+        player.exp = (player.exp || 0) + total;
+        while ((player.lv || 1) < 100 && player.exp >= getExpReq(player.lv)) { player.exp -= getExpReq(player.lv); player.lv++; if (player.lv >= 50) player.bonus = (player.bonus || 0) + 1; }   // 比照 checkLvUp 升級曲線
+        if ((player.lv || 1) >= 100) player.exp = 0;   // 滿等不留溢出經驗
+        let gained = (player.lv || 1) - before;
+        if (gained > 0) { try { calcStats(); } catch (e) {} }
+        try { saveGame(); } catch (e) {}   // 領取後立即存檔：本檔快照已含此經驗
+        try { updateUI(); } catch (e) {}
+        logSys(`<span class="text-emerald-300 font-bold">傭兵出征經驗 +${total.toLocaleString()}</span>${gained > 0 ? `<span class="text-emerald-300">，升 ${gained} 級至 Lv.${player.lv}！</span>` : ''}`);
+    } catch (e) {}
+}
 function toggleAlly(slotN) {
     slotN = String(slotN);
     if (!player.allies) player.allies = [];
     if (isAllyActive(slotN)) {
         let _dis = player.allies.find(a => a && a._slot === slotN);
-        let _expMsg = _dis ? _settleAllyExp(_dis) : '';   // 🤝 解雇前先把累積經驗回存到該存檔角色
+        let _expMsg = _dis ? _settleAllyExp(_dis, 'dismiss') : '';   // 🤝 v2.6.68 解雇＝記一筆待領經驗（帳本制·不直接改寫來源存檔）
         player.allies = player.allies.filter(a => a && a._slot !== slotN);
         logSys(`協力傭兵（存檔 ${slotN}）已解散（招募費用不退還）。${_expMsg}`);
     } else {
@@ -2005,7 +2121,7 @@ function renderAllyNPC(div) {
         let _tag = (_classic && _trad) ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> <span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_trad ? '<span style="color:#c4b5fd;font-weight:bold;">🏛️傳統</span> ' : (_classic ? '<span style="color:#fbbf24;font-weight:bold;">⚔經典</span> ' : ''));
         let _nameStyle = (_classic && _trad) ? 'style="color:#2dd4bf;"' : (_trad ? 'style="color:#c4b5fd;"' : (_classic ? 'style="color:#fbbf24;"' : 'class="text-amber-300"'));   // 經典＋傳統＝青綠
         let _btn = active
-            ? `<button onclick="toggleAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-red-900 border-red-700 text-red-200">解除</button>`
+            ? `<button onclick="rehireAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-sky-900 border-sky-700 text-sky-200" title="結算累積經驗（記入待領帳本，該角色下次載入或回村時領取）並以最新存檔重建戰力快照">重新招募　${mercRehireCost(sum.lv || 1).toLocaleString()}金</button>`
             : (_modeMatch
                 ? `<button onclick="toggleAlly('${n}')" class="btn py-1 px-4 text-sm font-bold bg-emerald-900 border-emerald-700 text-emerald-200">召喚　${((sum.lv||1)*10000).toLocaleString()}金</button>`
                 : `<span class="text-xs text-slate-500 px-2 text-right">非同模式存檔<br>不可招募</span>`);
@@ -2024,7 +2140,7 @@ function renderAllyNPC(div) {
         </div>`;
     }).join('');
     div.innerHTML = `<div class="flex flex-col gap-3 p-1">
-        <div class="text-slate-300 text-sm leading-relaxed">招募其他存檔位的角色一起作戰，<b class="text-amber-300">費用＝該角色等級 × 10000 金幣</b>。協力傭兵戰鬥中不會陣亡，<b class="text-emerald-300">你死亡並回城／原地復活後仍會留在身邊，只有在此處點「解除」才會解散（費用不退還）</b>；存讀檔不會使其消失。法師以魔法、妖精以弓/三重矢、騎士以物理（含看破/殺戮）出手。<br><span class="text-slate-400">提示：切換那名角色的裝備或升級後，需「解除→重新招募」才會更新戰力快照。</span></div>
+        <div class="text-slate-300 text-sm leading-relaxed">招募其他存檔位的角色一起作戰，<b class="text-amber-300">費用＝該角色等級 × 10000 金幣</b>。協力傭兵戰鬥中不會陣亡，<b class="text-emerald-300">你死亡並回城／原地復活後仍會留在身邊，只有點「⚠ 全員退出」才會解散（費用不退還）</b>；存讀檔不會使其消失。法師以魔法、妖精以弓/三重矢、騎士以物理（含看破/殺戮）出手。<br><span class="text-slate-400">提示：點「重新招募」可隨時結算傭兵累積經驗（記入待領帳本）並以最新存檔更新戰力快照；費用依等級為原價的 1/10（Lv1）~ 1/5（Lv50）~ 1/2（Lv100）曲線遞增。</span></div>
         <div class="flex items-center justify-between gap-2">
             <div class="text-sm">你的金幣：<span class="text-yellow-400 font-bold">${(player.gold||0).toLocaleString()}</span></div>
             ${(player.allies||[]).length ? `<button onclick="dismissAllAllies()" class="btn py-1 px-3 text-xs font-bold bg-red-950 border-red-700 text-red-200" title="解除目前全部協力傭兵（含異常卡住、找不到對應存檔的傭兵）">⚠ 全員退出（${(player.allies||[]).length}）</button>` : ''}
@@ -2036,8 +2152,8 @@ function renderAllyNPC(div) {
 function dismissAllAllies() {
     let n = (player.allies || []).length;
     if (!n) { logSys('<span class="text-slate-400">目前沒有上場的協力傭兵。</span>'); return; }
-    if (!confirm(`確定要解除全部 ${n} 名協力傭兵嗎？\n（招募費用不退還，累積經驗會回存至各自存檔角色，可之後重新招募）`)) return;
-    (player.allies || []).forEach(a => { let m = _settleAllyExp(a); if (m) logSys(m); });   // 🤝 各自回存累積經驗到對應存檔角色
+    if (!confirm(`確定要解除全部 ${n} 名協力傭兵嗎？\n（招募費用不退還，累積經驗會記入待領帳本，各角色下次載入或回村時領取）`)) return;
+    (player.allies || []).forEach(a => { let m = _settleAllyExp(a, 'dismiss'); if (m) logSys(m); });   // 🤝 v2.6.68 各自記一筆待領經驗（帳本制·不直接改寫來源存檔）
     player.allies = [];
     logSys(`<span class="text-amber-300">已解除全部協力傭兵（共 ${n} 名）。</span>`);
     saveGame(); updateUI();

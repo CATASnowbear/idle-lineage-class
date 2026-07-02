@@ -646,6 +646,7 @@ function startGame() {
     else if (player.cls === 'royal') startMap = 'town_talking';   // 👑 王族：說話之島
 
     setMapSelectors(startMap);
+    _uiConfigReady = true;   // 🛡️ 審計#1：新角色 UI 已重設為預設（563 行）＝當下 DOM 即正確 config
     changeMap(true);
 
     state.running = true;
@@ -666,12 +667,17 @@ function updateClassPotionRows() {
     if(elfRow) elfRow.classList.toggle('hidden', player.cls !== 'elf');
 }
 
+// 🛡️ v2.6.69 修（審計#1）：UI「自動化設定」是否已與目前角色同步完成。
+//    loadGame 途中（config 還原在尾端）觸發的 saveGame（如進村領取傭兵經驗）若照舊以「當下 DOM」重建 player.config，
+//    會把靜態預設 UI 寫進存檔、永久洗掉玩家全部自動化設定。未就緒時保留既有 player.config 原樣入檔。
+let _uiConfigReady = false;
 function saveGame() {
     // 死亡狀態不寫檔：避免把 player.dead=true 存進去，導致下次讀檔卡在死亡狀態而不出怪。
     // 死亡期間沒有可保存的進度，保留上一份「存活」存檔即可。
     if (player && player.dead) return;
     if (typeof sanitizeState === 'function') sanitizeState();   // 🛡️ 寫檔前合理性夾擠：把 runtime(Console)改出的不可能數值夾回合法範圍，連同簽章一起固化、不讓作弊值被存檔/匯出
-    // 收集目前的自動化設定 UI 狀態
+    // 收集目前的自動化設定 UI 狀態（🛡️ 僅在 UI 已同步時重建；否則沿用記憶體中既有 config）
+    if (_uiConfigReady) {
     player.config = {
         setPot: document.getElementById('set-pot').value,
         setHpPot: document.getElementById('set-hp-pot').value,
@@ -707,6 +713,7 @@ function saveGame() {
         let chk = document.getElementById(`auto-sk-${sid}`);
         if (chk) player.config.autoBuffSkills[sid] = chk.checked;
     });
+    }   // ← _uiConfigReady 閘（審計#1）
 
     _lzSet('lineage_idle_save_' + currentSlot, _saveWrap(JSON.stringify({ v: SAVE_VERSION, p: player, ms: mapState, ticks: state.ticks })));   // 🔧 架構#6：寫入存檔版本（🛡️ 加完整性簽章後 💾 LZString 壓縮）   // 🔧 一併保存 tick 計數：召喚物/迷魅的 endTick 為絕對 tick，不存會在重載後失準（迷魅重新計時 1 小時）
     logSys(`遊戲進度已儲存。`);
@@ -736,6 +743,7 @@ function consolidateInventory() {
 }
 
 function loadGame() {
+    _uiConfigReady = false;   // 🛡️ 審計#1：載入期間 DOM 仍是上一個畫面/預設值，禁止 saveGame 以它重建 config
     let _u = _saveUnwrap(_lzGet('lineage_idle_save_' + currentSlot));   // 🛡️ 解存檔簽章（舊明文存檔 signed:false 照常載入）
     if (_u.signed && !_u.ok) { alert('此存檔的完整性校驗未通過，可能已被外部修改，無法載入。\n可在載入畫面點「復原備份」還原，或改用未被修改的存檔。'); return; }   // 🛡️ 簽章不符＝被竄改：拒絕載入
     let s = _u.payload;
@@ -837,6 +845,13 @@ function loadGame() {
         // 🔧 架構#6：集中式預設值合併（放在所有「轉換型」遷移之後，作為缺漏欄位的統一保底）。
         // 日後新增欄位只需登錄於 SAVE_DEFAULTS；上方逐項 if(undefined) 為歷史遷移，不必再增列。
         applySaveDefaults(player);
+        // 🛡️ v2.6.69 審計#8：上次分頁關閉前未寫進帳本的傭兵經驗待寫紀錄（隨存檔攜帶）→ 重載後補 flush（uid 冪等·帳本已有同 uid 自動跳過）
+        if (typeof _mercLedgerOutbox !== 'undefined' && Array.isArray(player.mercLedgerOutbox) && player.mercLedgerOutbox.length) {
+            let _mNow = Date.now();
+            player.mercLedgerOutbox.forEach(r => { if (r && r.uid && (_mNow - (r.ts || 0)) < MERC_LEDGER_KEEP_CLAIMED) _mercLedgerOutbox.push(r); });   // 超過已領保留期(7天)的陳舊鏡像不再補寫（防已領又被清的紀錄復活＝重複領取）
+            player.mercLedgerOutbox = [];
+            try { _mercLedgerFlush(); } catch (e) {}
+        }
         if (typeof loadSharedCollections === 'function') loadSharedCollections();   // 🎴🗡️ 讀檔：載入同模式共用收集圖鑑（卡片/裝備·併入該角色既有資料）
         if (typeof ensureCardBook === 'function') ensureCardBook();   // 🎴 舊存檔遷移：移除道具欄的卡片收集冊本體（改由「收藏」面板開啟）
         if (typeof ensureEquipBook === 'function') ensureEquipBook();   // 🗡️ 舊存檔遷移：移除裝備收集冊本體＋登錄現有(背包/已裝備)裝備
@@ -925,6 +940,7 @@ function loadGame() {
         
         updateClassPotionRows();
         try { if (typeof _renderAutoSellBtn === 'function') _renderAutoSellBtn(); } catch (e) {}   // 🗑️ 還原「自動賣出」按鈕點亮/變暗狀態（player.autoSellOn）
+        _uiConfigReady = true;   // 🛡️ 審計#1：config→DOM 還原完成，此後 saveGame 才可用 DOM 重建 config
 
         state.running = true;
         // 自然恢復（每 16 秒）已由主迴圈 tick() 內的 state.ticks % 160 統一驅動，不再額外 setInterval。

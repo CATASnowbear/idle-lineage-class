@@ -437,3 +437,7 @@
 /* 非 area-fit（攻城/裂痕/無背景圖）：怪物列維持原尺寸但於放大的框內垂直置中、不留上下空白。
    ⚠️ 必須排除 .hidden→否則 display:flex 會蓋掉 .hidden(display:none)，使村莊時隱藏的戰鬥框仍佔位、把 town-view 擠扁 */
 #battle-view:not(.area-fit):not(.hidden) { display: flex; align-items: center; justify-content: center; }
+
+/* 🔧 v2.6.74 自動化設定改「分頁內嵌」#tab-automation（v2.6.73 浮動視窗取消）：flex 直排＋卡片間距；.hidden 顯式覆蓋（ID 特異性高於 Tailwind .hidden） */
+#tab-automation { display: flex; flex-direction: column; gap: 1rem; }
+#tab-automation.hidden { display: none; }

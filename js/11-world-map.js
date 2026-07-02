@@ -1133,6 +1133,8 @@ function changeMap(force) {
         player.hp = player.mhp;
         player.mp = player.mmp;
         try { if (typeof reviveDownedMercsAtTown === 'function') reviveDownedMercsAtTown(); } catch (e) {}   // 🤝 Phase 3：回村/回城免費復活全體倒地傭兵
+        try { if (typeof mercBankAlliesAtTown === 'function') mercBankAlliesAtTown(); } catch (e) {}   // 🤝 v2.6.68 隊長回村：上場傭兵各記一筆待領經驗（不解散·不改來源存檔）
+        try { if (typeof mercExpClaimPending === 'function') mercExpClaimPending(); } catch (e) {}     // 🤝 v2.6.68 本角色回村/載入（loadGame 一律回家鄉村莊）：自動領取自己的待領經驗
         // 🏰 城堡護衛：回城/回村補滿血並解除力竭
         if (player.castleGuard) { let _cg = player.castleGuard; if (_cg.mode === 'heal') { _cg.mp = _cg.maxMp; _cg._healAcc = 0; } else { _cg.hp = _cg.maxHp; } _cg.disabled = false; _cg._regenAcc = 0; }
         // 協力角色：進村莊一併回滿 MP（與玩家一致）
@@ -1447,6 +1449,13 @@ function interactNPC(npcId, townId) {
     if (npc.traditionalHide && tradNoScrolls()) return;   // 🏛️ 僅經典+傳統：肯特城兌換 NPC（伊賽馬利）不可互動（縱深防護）；一般+傳統照常
     _activePanel = null;   // 開啟新面板：先清除自動刷新標記，由對應 render 視需要重新設定
 
+    // 🔧 v2.6.77 倉庫 NPC：浮動倉庫直接覆蓋在村莊 NPC 清單上，不切入舊式 NPC 互動畫面
+    //    → 關閉倉庫後直接回到村莊頁面，不會再露出「返回村莊」的互動頁（參考用戶 2667 修正版）
+    if (npc.type === 'warehouse' && typeof openWarehouseWindow === 'function') {
+        openWarehouseWindow();
+        return;
+    }
+
     document.getElementById('town-npc-container').classList.add('hidden');
     document.getElementById('town-interaction-container').classList.remove('hidden');
     document.getElementById('town-interaction-container').classList.add('flex');
@@ -1530,7 +1539,7 @@ function interactNPC(npcId, townId) {
     } else if (npc.type === 'ally') {
         renderAllyNPC(contentDiv);
     } else if (npc.type === 'warehouse') {
-        if (typeof openWarehouseWindow === 'function') openWarehouseWindow(); else renderWarehouseNPC(contentDiv);
+        renderWarehouseNPC(contentDiv);   // 🔧 v2.6.77 正常情況已在 interactNPC 開頭早退開浮動倉庫；此分支僅剩 openWarehouseWindow 不存在時的舊式後備
     } else if (npc.id === 'npc_baowu') {
         renderPetStorageNPC(contentDiv);
     } else if (npc.id === 'npc_isba') {

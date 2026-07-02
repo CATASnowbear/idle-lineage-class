@@ -1606,6 +1606,12 @@ window.onload = () => {
         if(sk.healBase || sk.healDice) eff.push('治療 '+(sk.healBase||0)+(sk.healDice?('＋'+sk.healDice[0]+'d'+sk.healDice[1]):''));
         if(sk.lifesteal) eff.push('吸取生命');
         if(sk.instakill) eff.push('即死（不死系）');
+        // 🛡️ v2.6.69 審計#15：補渲染 reqWpn/skillAddDmg/stun(Chance)——衝擊之暈等技能的機制原本在唯一說明面完全隱形
+        if(sk.reqWpn==='w2h') eff.push('限雙手武器（非弓）');
+        else if(sk.reqWpn==='bow') eff.push('限弓');
+        else if(sk.reqWpn==='nonbow') eff.push('限非弓武器');
+        if(sk.skillAddDmg) eff.push('一般攻擊傷害＋'+sk.skillAddDmg);
+        if(sk.stun) eff.push('命中時'+(sk.stunChance!=null?(Math.round(sk.stunChance*100)+'% 機率'):'')+'暈眩');
         if(sk.status) eff.push('附加：'+(STATUS_NAME[sk.status.kind]||sk.status.kind));
         if(sk.summon) eff.push('召喚協力單位');
         if(sk.mEff) eff.push(SK_MEFF[sk.mEff]||'特殊效果');

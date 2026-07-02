@@ -205,7 +205,7 @@ function recomputeStats() {
         // 🔧 武器「強化」固定加成：近距離與遠距離 傷害＋命中 同時各加（每強化+1→四者各+1）。⚠️ 與「最終傷害倍率」wpnEnFinalMult 各自獨立疊加（依使用者指定·+20 武器明顯變強）
         d.meleeDmg += _enW.dmg; d.rangedDmg += _enW.dmg;
         d.meleeHit += _enW.hit; d.rangedHit += _enW.hit;
-        d.aspd = w.spd;
+        d.aspd = atkSpdBaseItv(p);   // ⚔️ 攻速改由「職業性別×武器種類」查表（ATK_APM·js/01）·武器 def 的 spd 欄位停用（玩家＋傭兵 buildAlly 共用本函式）
         if(w.mdmg) d.magicDmg += w.mdmg;
         if(w.mpR) d.mpR += w.mpR;
         if(w.hpR) d.hpR += w.hpR;   // 🗡️ 武器 HP 自然恢復量加成/扣減（血紅慾望短劍 HP自然恢復 -3）

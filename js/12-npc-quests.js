@@ -53,13 +53,16 @@ function whSubCatOptions(){
         { key:'quest', name:'任務' }, { key:'scroll', name:'卷軸' }, { key:'other', name:'其他' }
     ];
     let grp = (_whFilter === 'weapon') ? ['武器'] : ['防具','飾品'];   // 防具主分類涵蓋圖鑑的「防具」+「飾品」部位
-    return (typeof EQUIP_CATEGORIES !== 'undefined' ? EQUIP_CATEGORIES : []).filter(c => grp.indexOf(c.group) >= 0).map(c => ({ key:c.key, name:c.name }));
+    let options = (typeof EQUIP_CATEGORIES !== 'undefined' ? EQUIP_CATEGORIES : []).filter(c => grp.indexOf(c.group) >= 0).map(c => ({ key:c.key, name:c.name }));
+    if(_whFilter === 'armor' && !options.some(c => c.key === 'tshirt')) options.splice(2, 0, { key:'tshirt', name:'內衣' });   // 🔧 v2.6.77 倉庫防具子分類補「內衣」（EQUIP_CATEGORIES 無此鍵→手動插入·參考用戶 2667 修正版）
+    return options;
 }
 // 倉庫物品是否符合「主分類＋子分類」：子分類空＝只看主分類
 function whMatchFilter(id){
     if(whCategory(id) !== _whFilter) return false;
     if(!_whSubFilter) return true;
     if(_whFilter === 'item') return whItemSubCat(id) === _whSubFilter;
+    if(_whFilter === 'armor' && _whSubFilter === 'tshirt') { let d = DB.items[id]; return !!(d && d.type === 'arm' && d.slot === 'tshirt'); }   // 🔧 v2.6.77 內衣子分類：依 slot 直接比對
     return (typeof equipCatKey === 'function') ? (equipCatKey(id, DB.items[id]) === _whSubFilter) : true;
 }
 // 🛡️ 倉庫資料安全網（防「不匯出匯入也會清空」）：

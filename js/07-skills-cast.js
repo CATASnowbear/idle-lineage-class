@@ -229,6 +229,7 @@ function manualCast(skId) {
 
 function rollDice(count, sides) { let s = 0; for(let i = 0; i < count; i++) s += roll(1, sides); return s; }
 // 🔮 castSkill 包裝：魔力精通時，依本次施法實際消耗的 MP，回饋傭兵 10%（以 MP 差額判定，涵蓋所有施法分支；轉換類增MP不觸發）
+let _reqWpnWarnAt = -9999;   // 🛡️ v2.6.69 審計#15：reqWpn 不符提示節流（每 60 秒最多一次）
 function castSkill(skId) {
     let r;
     if (!(player && player.mastery === 'i_mana')) { r = castSkillInner(skId); }
@@ -279,9 +280,9 @@ function castSkillInner(skId) {
         player.mp = 0;
         let wpn = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
         let dice = wpn ? (_t.s === 'L' ? wpn.dmgL : wpn.dmgS) : 2;
-        let base = getPhysicalDmg(dice, _t, wpn, null, true, false);    // forceHeavy：必中必重
+        let base = getPhysicalDmg(dice, _t, wpn, null, true, false, false, true);    // forceHeavy＋forceCrit：必中必重必爆（🛡️ v2.6.69 審計#6：爆擊改由 getPhysicalDmg 內部套用一次；原外層再乘(1+爆傷%)＝自然爆擊時重複乘算變 ×4）
         let raw = (base.dmg || 1) + mobHardSkin(_t);                     // 無視硬皮：加回硬皮扣減量
-        let dmg = Math.max(1, Math.floor(raw * (1 + (player.d.meleeCritDmg || 0) / 100) * mult));   // 必定爆擊
+        let dmg = Math.max(1, Math.floor(raw * mult));   // MP 佔比倍率（必定爆擊已含於 base.dmg）
         if (_t.race === '血盟') dmg *= 2;                                 // 對血盟敵人 x2
         _t.curHp -= dmg; _t.justHit = getWpnEle(player.eq.wpn, wpn); mobWake(_t);
         logCombat(`<span class="font-bold" style="color:#f0abfc;text-shadow:0 0 8px #d946ef;">【會心一擊】</span>對 <span class="${getMobColor(_t.lv)}">${_t.n}</span> 造成 ${dmg} 點致命傷害！`, 'player-crit');
@@ -478,7 +479,10 @@ function castSkillInner(skId) {
         if(sk.dmgType === 'physical') {
             let t = getTarget();
             if(!t) return false;
-            if(sk.reqWpn === 'w2h' && (!player.eq.wpn || !DB.items[player.eq.wpn.id].w2h)) return false;
+            if(sk.reqWpn === 'w2h' && (!player.eq.wpn || !DB.items[player.eq.wpn.id].w2h || DB.items[player.eq.wpn.id].isBow)) {   // 🛡️ v2.6.69 審計#4：「雙手且非弓」——維持雙手限定的同時保留舊版排除弓的設計（w2h 弓不得施放衝擊之暈）
+                if (state.ticks - _reqWpnWarnAt > 600) { _reqWpnWarnAt = state.ticks; logSys(`<span class="text-slate-400">${sk.n} 需要「雙手（非弓）武器」，目前武器不符，已暫停施放。</span>`); }   // 🛡️ 審計#15：原本靜默不施放零提示→每 60 秒提示一次
+                return false;
+            }
             // 三重矢：必須裝備弓
             if(sk.reqWpn === 'bow' && (!player.eq.wpn || !DB.items[player.eq.wpn.id].isBow)) return false;
             // 衝擊之暈：必須裝備弓以外的武器（需有武器，且非弓）
@@ -544,7 +548,7 @@ function castSkillInner(skId) {
             }
             return true;
         } else {
-            let targets = sk.target === 'all' ? mapState.mobs.filter(m => m) : [getTarget()].filter(m => m);
+            let targets = sk.target === 'all' ? mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead) : [getTarget()].filter(m => m && m.curHp > 0);   // 🛡️ v2.6.69 審計#7：排除同 tick 已死屍體（killMob 只標記·settleDeadMobs 才移除）——原本對屍體結算的傷害會灌進 _burstDmg 使魔爆總量膨脹；與傭兵 allyCastMagic 過濾一致
             if(targets.length === 0) return false;
 
             // 防止對「已具有該異常狀態」的目標重複施放異常：
@@ -641,7 +645,12 @@ function castSkillInner(skId) {
                 let _bw = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
                 if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0 && !player.classicMode) {   // 🎮 經典模式：停用魔爆
                     let _aoe = (sk.target === 'all') || (targets.length > 1);
-                    if (Math.random() < (player.d.int || 0) / (_aoe ? 60 : 100)) {
+                    let _msB = hasMastery('m_strike');   // 🏅 v2.6.71：改發魔擊時觸發率比照原生魔擊＝力量/60（不再吃智力/100或/60）
+                    if (Math.random() < (_msB ? ((player.d.str || 0) / 60) : ((player.d.int || 0) / (_aoe ? 60 : 100)))) {
+                        if (_msB) {   // 🏅 v2.6.70 魔擊精通：持魔爆武器時，魔爆觸發改為發動魔擊（對施放目標·含擴散·不再引爆30%均分）
+                            let _mt = (targets && targets.find(x => x && x.curHp > 0)) || mapState.mobs.find(m => m && m.curHp > 0 && !m._dead);
+                            if (_mt) procMagicStrike(_mt);
+                        } else {
                         let _live = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
                         if (_live.length) {
                             let _ex = Math.max(1, Math.floor(_burstDmg * 0.3 / _live.length));   // 🔧 v2.6.63：總量30%均分給場上敵人（原每隻各吃30%）
@@ -652,6 +661,7 @@ function castSkillInner(skId) {
                                 logCombat(`魔爆波及 <span class="${getMobColor(m.lv)}">${m.n}</span>，造成 ${_d} 點無屬性傷害。`, 'player');
                                 if (m.curHp <= 0) { let ri = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (ri !== -1) killMob(ri); }
                             });
+                        }
                         }
                     }
                 }
