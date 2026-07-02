@@ -1647,7 +1647,9 @@ function allyMaintainBuffs(ally) {
     if (!_block && ally.skills && ally.skills.length) {
         let _live = ally.summon && ally.summon.skId && ((ally.buffs[ally.summon.skId] || 0) > 0) && state.ticks < ally.summon.endTick;
         if (!_live) {
-            let _sumSid = ally.skills.includes('sk_summon') ? 'sk_summon' : ally.skills.find(s => { let d = DB.skills[s]; return d && d.type === 'buff' && d.summon; });
+            let _sumSid = ally.skills.includes('sk_summon') ? 'sk_summon'
+                : ally.skills.includes('sk_elf_summon2') ? 'sk_elf_summon2'   // 🩸 妖精傭兵優先「召喚強力屬性精靈」(上級精靈)：先學的一般版 sk_elf_summon 排在前面，.find 會先抓到它 → 傭兵永遠只召弱版；顯式優先強力版修正
+                : ally.skills.find(s => { let d = DB.skills[s]; return d && d.type === 'buff' && d.summon; });
             if (_sumSid) {
                 let _ssk = DB.skills[_sumSid];
                 let _scost = (ally.d && typeof ally.d.getMpCost === 'function') ? ally.d.getMpCost(_ssk.mp, _ssk.tier) : (_ssk.mp || 0);
