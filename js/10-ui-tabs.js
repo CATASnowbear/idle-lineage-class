@@ -242,6 +242,7 @@ player.inv.forEach(i => {
     // 還原各分頁捲動位置
     ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el && _scroll[id] != null) el.scrollTop = _scroll[id]; });
     updateSummonLock();
+    if (typeof refreshEquipmentWindow === 'function') refreshEquipmentWindow();
 }
 
 // ===== 召喚類技能互斥：迷魅 / 召喚 / 造屍 / 召喚屬性精靈 / 召喚強力屬性精靈 同時只能開啟一個 =====
@@ -493,7 +494,7 @@ function buildItemDescHTML(item) {
         if(d.dmgBonus !== undefined) desc += ` / ${dmgLabel}: ${formatBonus(d.dmgBonus)}`; // 加上 !== undefined 避免 0 被漏掉
         
         if(d.mdmg) desc += ` / 魔法傷害: ${formatBonus(d.mdmg)}`;
-        if((item.en || 0) >= 1) desc += `<br><span class="text-amber-300">強化最終傷害 ×${enhanceWpnFinalMult(item.en).toFixed(2)}</span>`;   // 🔧 武器強化最終傷害倍率（+1 起·×1.02~×2.50）
+        if((item.en || 0) >= 1) desc += `<br><span class="text-amber-300">強化最終傷害 ×${enhanceWpnFinalMult(item.en, d).toFixed(2)}</span>`;   // 🔧 武器強化最終傷害倍率（+1 起·依潘朵拉權重分級·最高 ×1.02~×2.50）
 
         // 瑪那魔杖等「命中恢復MP」武器：依此物品的強化等級(+N)動態顯示恢復量
         if(d.eff === 'mp_drain' || d.mpOnHit) {
@@ -1328,15 +1329,20 @@ function sortInventory() {
 //    ⚡ 2026-07-01 效能：自動路徑（manual 未帶）賣出後「不 saveGame」——避免每 10 秒都壓縮整包存檔；賣掉的廢品/金幣靠其他既有存檔點(頭目擊殺/換地圖/裝備/操作/手動存檔)落地，崩潰重載最多回到未賣狀態(廢品仍在→下輪重標再賣·自癒)。手動「一鍵賣出」仍立即 saveGame。
 function autoSellJunk(manual) {   // manual=true → 玩家按「一鍵賣出」立即賣(並存檔)；不帶參數＝主迴圈自動賣(靜默·不存檔)
     if (!player || !Array.isArray(player.inv)) return;
+    if (!manual && typeof applyAutoSellRules === 'function') applyAutoSellRules();
+    let _delayMs = manual ? 0 : ((typeof getAutoSellRules === 'function' ? getAutoSellRules().delaySec : 10) * 1000);
+    let _now = Date.now();
     let toSell = player.inv.filter(i => {
         let d = DB.items[i.id];
-        return i.junk && !i.lock && d && !d.noSell;   // 🏅 不可販售物（精通之證）排除
+        if (i.junk && !i.junkSince) i.junkSince = _now;
+        return i.junk && !i.lock && d && !d.noSell && (manual || (_now - i.junkSince >= _delayMs));
     });
     if (toSell.length === 0) { if (manual) logSys('<span class="text-slate-400">目前沒有標記為廢品的物品可賣出（請先在 武器／防具／道具 分頁用「🗑️ 快速廢品」標記）。</span>'); return; }   // 無廢品→自動靜默、手動給提示
     let totalGold = 0, totalCount = 0;
-    toSell.forEach(i => { totalGold += getSellPrice(i) * i.cnt; totalCount += i.cnt; });
+    toSell.forEach(i => { let q = Math.min(i.cnt, i._autoSellQty || i.cnt); totalGold += getSellPrice(i) * q; totalCount += q; });
     let _grantSold = toSell.some(i => DB.items[i.id] && DB.items[i.id].grantSkills);
-    player.inv = player.inv.filter(i => !toSell.includes(i));
+    toSell.forEach(i => { let q = Math.min(i.cnt, i._autoSellQty || i.cnt); i.cnt -= q; delete i._autoSellQty; if (i.cnt > 0) { i.junk = false; delete i.junkSince; } });
+    player.inv = player.inv.filter(i => i.cnt > 0);
     player.gold += totalGold;
     logSys(`<span class="text-amber-300">${manual ? '一鍵賣出' : '系統自動賣出'} ${toSell.length} 件(共 ${totalCount} 個)廢品，獲得 <span class="text-yellow-400 font-bold">${totalGold}</span> 金幣。</span>`);
     renderTabs();
@@ -1360,6 +1366,110 @@ function _renderAutoSellBtn() {
     b.style.filter = on ? '' : 'grayscale(0.85)';
     b.title = on ? '自動賣出已開啟（每 10 秒賣出標記為廢品的物品）。點一下暫停。' : '自動賣出已停止。點一下重新開啟。';
 }
+
+// ===== 自動販賣規則（初版） =====
+function getAutoSellRules() {
+    if (!player.autoSellRules) player.autoSellRules = {
+        delaySec: 60,
+        protectBless: true, protectAnc: true, protectAttr: true, protectSet: true,
+        equip: { wpn: { on:false, max:0 }, arm: { on:false, max:0 }, acc: { on:false, max:0 } },
+        misc: {}, overrides: {}
+    };
+    let r = player.autoSellRules;
+    if (!r.equip) r.equip = {};
+    ['wpn','arm','acc'].forEach(k => { if (!r.equip[k]) r.equip[k] = { on:false, max:0 }; });
+    if (!r.misc) r.misc = {};
+    if (!r.overrides) r.overrides = {};
+    if (r.delaySec == null) r.delaySec = 60;
+    ['protectBless','protectAnc','protectAttr','protectSet'].forEach(k => { if (r[k] == null) r[k] = true; });
+    return r;
+}
+function _asTypeLabel(t) {
+    return ({pot:'藥水',scroll:'卷軸',book:'魔法書／技能書',mat:'材料',gem:'寶石',etc:'製作材料',misc:'特殊道具',quest:'任務道具',wpn:'武器',arm:'防具',acc:'飾品'})[t] || t;
+}
+function _asEquipType(d) {
+    if (!d) return null;
+    if (d.type === 'wpn' && !d.isArrow) return 'wpn';
+    if (d.type === 'arm') return 'arm';
+    if (d.type === 'acc') return 'acc';
+    return null;
+}
+function _autoSellDecision(i) {
+    let r = getAutoSellRules(), d = DB.items[i.id];
+    if (!d || i.lock || d.noSell || d.noJunk) return { sell:false };
+    let ov = r.overrides[i.id];
+    if (ov === 'keep') return { sell:false };
+    if (ov === 'sell') return { sell:true, qty:i.cnt };
+    let et = _asEquipType(d);
+    if (et) {
+        let er = r.equip[et];
+        if (!er || !er.on || (i.en || 0) > Number(er.max || 0)) return { sell:false };
+        if ((r.protectBless && i.bless) || (r.protectAnc && i.anc) || (r.protectAttr && i.attr) || (r.protectSet && i.seteff)) return { sell:false };
+        return { sell:true, qty:i.cnt };
+    }
+    let mr = r.misc[d.type];
+    if (!mr || !mr.on) return { sell:false };
+    let keep = Math.max(0, Number(mr.keep || 0));
+    return { sell:i.cnt > keep, qty:Math.max(0, i.cnt - keep) };
+}
+function applyAutoSellRules() {
+    if (!player || !Array.isArray(player.inv)) return;
+    let now = Date.now();
+    player.inv.forEach(i => {
+        let x = _autoSellDecision(i);
+        if (x.sell) {
+            if (!i.junk) i.junkSince = now;
+            i.junk = true; i._autoSellQty = x.qty;
+        } else if (i._ruleJunk) {
+            i.junk = false; delete i.junkSince; delete i._autoSellQty;
+        }
+        i._ruleJunk = !!x.sell;
+    });
+}
+function openAutoSellRules() {
+    let r = getAutoSellRules();
+    let old = document.getElementById('autosell-rule-modal'); if (old) old.remove();
+    let miscTypes = [...new Set(Object.values(DB.items).filter(d => d && !_asEquipType(d)).map(d => d.type).filter(Boolean))].sort();
+    let ids = Object.keys(DB.items).filter(id => DB.items[id]).sort((a,b) => (DB.items[a]?.n || a).localeCompare(DB.items[b]?.n || b, 'zh-Hant'));
+    let exceptionTypes = [...new Set(ids.map(id => _asEquipType(DB.items[id]) || DB.items[id].type).filter(Boolean))].sort();
+    let equipRows = [['wpn','武器'],['arm','防具'],['acc','飾品']].map(([k,n]) => `<label class="as-row"><input id="as-e-${k}" type="checkbox" ${r.equip[k].on?'checked':''}> ${n}，強化值 ≤ <input id="as-em-${k}" type="number" min="0" max="99" value="${r.equip[k].max}"> 自動販賣</label>`).join('');
+    let miscRows = miscTypes.map(t => { let x=r.misc[t]||{on:false,keep:0}; return `<label class="as-row"><input class="as-misc" data-type="${t}" type="checkbox" ${x.on?'checked':''}> ${_asTypeLabel(t)}：每種保留 <input class="as-keep" data-type="${t}" type="number" min="0" value="${x.keep}"> 個，多餘販賣</label>`; }).join('');
+    let itemRows = ids.map(id => `<option value="${id}">${DB.items[id]?.n || id}</option>`).join('');
+    let exceptionTypeRows = exceptionTypes.map(t => `<option value="${t}">${_asTypeLabel(t)}</option>`).join('');
+    let rules = Object.entries(r.overrides).map(([id,v]) => `<div class="as-ex"><span>${DB.items[id]?.n || id}</span><b>${v==='keep'?'永遠保留':'全部販賣'}</b><button onclick="deleteAutoSellOverride('${id}')">刪除</button></div>`).join('') || '<div class="as-muted">目前沒有個別例外</div>';
+    let el=document.createElement('div'); el.id='autosell-rule-modal'; el.innerHTML=`<style>
+      #autosell-rule-modal{position:fixed;inset:0;background:#020617aa;z-index:10050;display:flex;align-items:center;justify-content:center;color:#e2e8f0}
+      .as-box{width:min(720px,92vw);max-height:88vh;overflow:auto;background:#172033;border:2px solid #b7791f;border-radius:14px;padding:18px;box-shadow:0 18px 60px #000}
+      .as-head{display:flex;justify-content:space-between;align-items:center;font-size:23px;font-weight:bold;color:#fde68a}.as-sec{background:#0f172acc;border:1px solid #475569;border-radius:10px;padding:12px;margin-top:12px}.as-title{font-weight:bold;color:#fbbf24;margin-bottom:7px}.as-row{display:block;padding:5px 0}.as-row input[type=number]{width:72px;background:#020617;border:1px solid #64748b;border-radius:5px;padding:3px;text-align:center}.as-row input[type=checkbox]{width:18px;height:18px;vertical-align:middle}.as-help,.as-muted{font-size:13px;color:#94a3b8}.as-actions{display:flex;gap:8px;margin-top:12px}.as-actions button,.as-head button,.as-ex button,.as-ex-tools button{background:#334155;border:1px solid #64748b;border-radius:6px;padding:6px 12px}.as-actions .primary{background:#92400e;border-color:#f59e0b}.as-ex{display:flex;gap:10px;align-items:center;padding:5px;border-bottom:1px solid #334155}.as-ex span{flex:1}.as-ex b{color:#fcd34d}.as-ex-tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.as-ex-tools input,.as-ex-tools select,select{background:#020617;border:1px solid #64748b;padding:6px;border-radius:6px}.as-ex-tools input{min-width:180px;flex:1}#as-item{width:min(100%,390px);margin-bottom:7px}
+    </style><div class="as-box"><div class="as-head"><span>自動販賣規則</span><button onclick="closeAutoSellRules()">Close</button></div>
+      <div class="as-sec"><label class="as-row"><input id="as-on" type="checkbox" ${player.autoSellOn!==false?'checked':''}> 啟用自動販賣</label><label class="as-row">物品取得／符合規則後，等待 <input id="as-delay" type="number" min="10" max="86400" value="${r.delaySec}"> 秒才販賣</label><div class="as-help">等待期間可取消廢品標記或鎖定物品。手動「一鍵賣出」不受等待時間限制。</div></div>
+      <div class="as-sec"><div class="as-title">裝備條件</div>${equipRows}<label class="as-row"><input id="as-pb" type="checkbox" ${r.protectBless?'checked':''}> 保護祝福裝備</label><label class="as-row"><input id="as-pa" type="checkbox" ${r.protectAnc?'checked':''}> 保護古代裝備</label><label class="as-row"><input id="as-pt" type="checkbox" ${r.protectAttr?'checked':''}> 保護屬性裝備</label><label class="as-row"><input id="as-ps" type="checkbox" ${r.protectSet?'checked':''}> 保護套裝詞綴裝備</label></div>
+      <div class="as-sec"><div class="as-title">材料與一般物品</div>${miscRows}<div class="as-help">任務物品、不可販賣物品與系統保護物品不會被處理。</div></div>
+      <div class="as-sec"><div class="as-title">個別例外（全遊戲物品）</div><div class="as-ex-tools"><input id="as-item-search" type="search" placeholder="輸入物品名稱搜尋" oninput="refreshAutoSellItemOptions()"><select id="as-item-type" onchange="refreshAutoSellItemOptions()"><option value="all">全部分類</option>${exceptionTypeRows}</select><select id="as-item-scope" onchange="refreshAutoSellItemOptions()"><option value="all">全部物品</option><option value="held">目前持有</option></select></div><div><select id="as-item">${itemRows}</select> <button onclick="setAutoSellOverride('keep')">永遠保留</button> <button onclick="setAutoSellOverride('sell')">全部販賣</button></div><div class="as-help">例外依物品本體全局套用，包含未取得物品及其所有強化、祝福、屬性與套裝版本。</div><div id="as-overrides">${rules}</div></div>
+      <div class="as-actions"><button onclick="previewAutoSellRules()">預覽符合物品</button><button class="primary" onclick="saveAutoSellRules()">儲存規則</button></div></div>`;
+    document.body.appendChild(el);
+}
+function closeAutoSellRules(){ let e=document.getElementById('autosell-rule-modal'); if(e)e.remove(); }
+function _readAutoSellForm(){
+    let r=getAutoSellRules(); r.delaySec=Math.max(10,Number(document.getElementById('as-delay').value)||60); player.autoSellOn=document.getElementById('as-on').checked;
+    ['wpn','arm','acc'].forEach(k=>{r.equip[k].on=document.getElementById('as-e-'+k).checked;r.equip[k].max=Math.max(0,Number(document.getElementById('as-em-'+k).value)||0)});
+    r.protectBless=document.getElementById('as-pb').checked;r.protectAnc=document.getElementById('as-pa').checked;r.protectAttr=document.getElementById('as-pt').checked;r.protectSet=document.getElementById('as-ps').checked;
+    document.querySelectorAll('.as-misc').forEach(x=>{let t=x.dataset.type,k=document.querySelector(`.as-keep[data-type="${t}"]`);r.misc[t]={on:x.checked,keep:Math.max(0,Number(k.value)||0)}}); return r;
+}
+function saveAutoSellRules(){_readAutoSellForm();applyAutoSellRules();_renderAutoSellBtn();saveGame();renderTabs();closeAutoSellRules();logSys('<span class="text-amber-300">已儲存自動販賣規則；符合的物品會先進入防呆等待期。</span>')}
+function previewAutoSellRules(){_readAutoSellForm();let a=(player.inv||[]).map(i=>({i,x:_autoSellDecision(i)})).filter(o=>o.x.sell);alert(a.length?`目前符合 ${a.length} 種：\n`+a.slice(0,30).map(o=>`${getItemFullName(o.i)} × ${o.x.qty}`).join('\n')+(a.length>30?'\n……':''):'目前沒有符合規則的物品。')}
+function refreshAutoSellItemOptions(){
+    let select=document.getElementById('as-item'); if(!select)return;
+    let q=(document.getElementById('as-item-search')?.value||'').trim().toLowerCase();
+    let type=document.getElementById('as-item-type')?.value||'all';
+    let scope=document.getElementById('as-item-scope')?.value||'all';
+    let held=new Set((player.inv||[]).map(i=>i.id));
+    let ids=Object.keys(DB.items).filter(id=>{let d=DB.items[id];if(!d)return false;let cat=_asEquipType(d)||d.type;if(type!=='all'&&cat!==type)return false;if(scope==='held'&&!held.has(id))return false;return !q||((d.n||id)+' '+id).toLowerCase().includes(q)}).sort((a,b)=>(DB.items[a]?.n||a).localeCompare(DB.items[b]?.n||b,'zh-Hant'));
+    select.innerHTML=ids.map(id=>`<option value="${id}">${DB.items[id]?.n||id}${DB.items[id]?.noSell?'（不可販賣）':''}</option>`).join('');
+    if(!ids.length)select.innerHTML='<option value="">沒有符合的物品</option>';
+}
+function setAutoSellOverride(v){let id=document.getElementById('as-item').value;if(!id)return;_readAutoSellForm();getAutoSellRules().overrides[id]=v;openAutoSellRules()}
+function deleteAutoSellOverride(id){_readAutoSellForm();delete getAutoSellRules().overrides[id];openAutoSellRules()}
 function toggleLock(uid) {
     let item = player.inv.find(i => i.uid === uid);
     if (item) {

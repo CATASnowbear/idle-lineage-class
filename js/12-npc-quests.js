@@ -289,6 +289,8 @@ function whGold(dir){
     renderWarehouseNPC(document.getElementById('interaction-content'));
 }
 function renderWarehouseNPC(div){
+    if (typeof warehouseWindowIsOpen === 'function' && warehouseWindowIsOpen()) { let floating = document.getElementById('warehouse-window-content'); if (floating) div = floating; }
+    if (!div) return;
     _activePanel = null;   // 倉庫不需自動刷新
     let w = loadWarehouse();
     let mkBtn = (it, act) => `<button onclick="${act}('${it.uid}')" data-tip-uid="${it.uid}" data-tip-src="${act === 'whWithdraw' ? 'wh' : 'inv'}" class="tip-host btn w-full text-left py-1.5 px-2 text-sm bg-slate-800 hover:bg-slate-700 border-slate-600">${getItemFullName(it)}</button>`;

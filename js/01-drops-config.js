@@ -751,7 +751,7 @@ const MASTERY_DATA = {
         e_rapid:  { n: '連射精通', pos: 'top',    msg: '提升連射傷害與數量',                   d: '連射傷害由30%提升為50%，額外箭數由1~3變成隨機1~5' },
         e_spirit: { n: '精靈精通', pos: 'left',   msg: '可同時召喚多隻屬性精靈',               d: '召喚屬性精靈與召喚強力屬性精靈數量變成1+魅力/10，可同時擁有7隻屬性精靈或強力屬性精靈' },
         e_sword:  { n: '劍術精通', pos: 'right',  msg: '可使用騎士單手武器、攻速+50%、發動看破',         d: '可裝備騎士限定的單手武器；持單手近戰武器時攻擊速度+50%（與加速術/勇敢/精靈餅乾/變身相乘疊加）；近距離攻擊有機率發動看破' },
-        e_magic:  { n: '魔導精通', pos: 'bottom', msg: '同屬性傷害魔法增幅、省MP並可學高階法術',     d: '施放與自身同屬性的傷害魔法威力提升、消耗MP減少30%，可學習冰雪暴、龍捲風、震裂術、火風暴' }
+        e_magic:  { n: '魔導精通', pos: 'bottom', msg: '同屬性魔法省MP、可學高階法術',     d: '施放與自身同屬性的傷害魔法消耗MP減少50%，可學習冰雪暴、龍捲風、震裂術、火風暴' }
     } },
     dark: { logo: 'assets/logo/黑暗妖精logo.png', boss: '巴風特', list: {
         d_poison: { n: '劇毒精通', pos: 'top',    msg: '附加劇毒必定觸發、每秒200%傷害',     d: '附加劇毒觸發機率變成100%，且中毒每秒造成該次攻擊200%傷害（持續5秒、1層）' },
@@ -1343,16 +1343,36 @@ function enhanceWpnBonus(en) {
     return { dmg: Math.min(en, 20), hit: base + hitOver };                                  // 🔧 額外傷害每階+1、全程延伸到+20（原+10封頂取消）；額外命中+1~+10後依表續加（最高總+35@+20）
 }
 // 武器強化 → 最終傷害倍率（一般物理攻擊）；+1~+20「取該階段數值」（非累加），+0 為 1.0
-// 曲線：+1 ×1.02（平緩）→ +10 ×1.37 → +20 ×2.50（爆發）；總數值 100→250 對應的倍率（總數值/100）。
+// 基準曲線（最高檔）：+1 ×1.02（平緩）→ +10 ×1.37 → +20 ×2.50（爆發）；總數值 100→250 對應的倍率（總數值/100）。
 const WPN_EN_FINALMULT = {
     1:1.02, 2:1.04, 3:1.06, 4:1.09, 5:1.12, 6:1.15, 7:1.19, 8:1.24, 9:1.30, 10:1.37,
     11:1.45, 12:1.53, 13:1.62, 14:1.72, 15:1.83, 16:1.95, 17:2.08, 18:2.21, 19:2.35, 20:2.50
 };
-function enhanceWpnFinalMult(en) {
-    en = Math.max(0, Number(en) || 0);
-    return (en >= 1) ? (WPN_EN_FINALMULT[Math.min(en, 20)] || 1) : 1;
+// 🔧 v2.6.65：+20 上限依「潘朵拉權重」分五級（曲線形狀相同·bonus 部分等比縮放）
+//    分級用「未加倍」權重：js/14 initGachaWeights 對權重≥50 一律×2（提高低稀有度出現率）→ runtime≥100 者先還原÷2 再分級
+//    權重1→×2.5；2~20→×2.25；21~50→×2.0；51~75→×1.75；76~100→×1.5；權重0(非潘朵拉)：legend 傳說→×2.5、其餘(店賣/量產)→×1.5
+function wpnEnCurveMax(def) {
+    if (!def) return 2.5;                        // 查無定義（防呆）→ 沿用最高檔（舊行為）
+    if (def.legend) return 2.5;                  // 🔧 v2.6.66：傳說(legend)武器一律最高檔（不看權重·修 蕾雅魔杖 w10 落 ×2.25）
+    let w = def.gachaWeight;
+    if (w == null) return 2.5;
+    if (w >= 100) w = w / 2;                     // 還原「≥50 ×2」出現率加倍（分級按原始設計權重）
+    if (w <= 0) return 1.5;                      // 權重0（非潘朵拉）：店賣/量產基本武器→最低檔（legend 已於上方攔截）
+    if (w <= 1) return 2.5;
+    if (w <= 20) return 2.25;
+    if (w <= 50) return 2.0;
+    if (w <= 75) return 1.75;
+    return 1.5;
 }
-function wpnEnFinalMult(wpnInst) { return enhanceWpnFinalMult(wpnInst && wpnInst.en); }      // 由武器實例取倍率（未裝備→1）
+function enhanceWpnFinalMult(en, def) {
+    en = Math.max(0, Number(en) || 0);
+    if (en < 1) return 1;
+    let base = WPN_EN_FINALMULT[Math.min(en, 20)] || 1;
+    let mx = wpnEnCurveMax(def);
+    if (mx === 2.5) return base;                 // 最高檔＝基準曲線原值
+    return Math.round((1 + (base - 1) * (mx - 1) / 1.5) * 100) / 100;   // bonus 等比縮放（+20 恰為 mx·四捨五入至2位）
+}
+function wpnEnFinalMult(wpnInst) { return enhanceWpnFinalMult(wpnInst && wpnInst.en, wpnInst && DB.items[wpnInst.id]); }      // 由武器實例取倍率（未裝備→1）
 // 防具強化 → AC 減免量（值越大防禦越好）；+11~+15 的表值為「超過 +10」的額外量
 const ARM_EN_OVER10 = { 11:2, 12:4, 13:6, 14:8, 15:10 };   // 🔧 超過+10的「累計」額外AC；+11~+15 每階增量 +2（合計+10）→ AC 額外 12/14/16/18/20
 function enhanceArmAc(en) {

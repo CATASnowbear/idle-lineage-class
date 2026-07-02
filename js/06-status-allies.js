@@ -307,7 +307,7 @@ function allyQiguAttack(ally, t, wpn) {
             let pd = 0, lb = '';
             if (wpn.qiguProc === 'phantom') { pd = 79 + roll(1, 81); lb = '幻影衝擊'; }
             else if (wpn.qiguProc === 'mindbreak') { let _m = (t.st && t.st.mrhalf > 0) ? t.mr/2 : t.mr; pd = Math.max(1, Math.floor((ally.mmp||0) * 0.05 * (1 + ((ally.d && ally.d.magicDmg) || 0) / 16) * ((ally.mastery==='i_qigu' && wpn.qigu)?1:mrMult(_m)))); lb = '心靈破壞'; }   // 🔮 比照技能：×(1+魔法傷害/16)
-            if (pd > 0) { pd = Math.max(1, Math.floor(pd * fragileMult(t) * illuLvMult(ally) * enhanceWpnFinalMult(en))); pd = Math.max(1, Math.floor(pd * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ t.curHp -= pd; t.justHit = 'magic'; mobWake(t); logCombat(`<span class="font-bold" style="color:#a78bfa;">【協力·${lb}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${pd} 點傷害！`, 'magic'); }
+            if (pd > 0) { pd = Math.max(1, Math.floor(pd * fragileMult(t) * illuLvMult(ally) * enhanceWpnFinalMult(en, wpn))); pd = Math.max(1, Math.floor(pd * royalAllyMult()));   /* 👑 王族魅力加成：傭兵造成傷害 ×(1+魅力/100) */ t.curHp -= pd; t.justHit = 'magic'; mobWake(t); logCombat(`<span class="font-bold" style="color:#a78bfa;">【協力·${lb}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${pd} 點傷害！`, 'magic'); }
         }
     }
     let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid);
@@ -468,7 +468,7 @@ function allyCastMagic(ally, sk) {
     if (!targets.length) return;
     let tier = sk.tier || 1;
     let spCoef = (1 + (3 * (d.magicDmg||0) / 16)) * (1 + (tier / 3));
-    let mageMult = (ally.cls === 'mage') ? (1.5 + tier / 20) : 1.0;   // 法師專屬倍率；妖精等其他職業施放魔法不享有
+    let mageMult = 1.0;   // 🔧 法師法術階級加成已移除(2026-07 用戶要求)
     let texts = [], _burstDmg = 0;   // 🔧 神官魔杖·魔爆：累計本次魔法總傷害
     targets.forEach(t => {
         let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
@@ -487,7 +487,7 @@ function allyCastMagic(ally, sk) {
             let dd = Math.max(1, Math.floor((core + extra) * mrFactor) - (t.dr||0));
             dd = Math.floor(dd * mageMult);
             dd = Math.max(1, Math.floor(dd * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（傷害魔法逐骰·原僅紅獅字面）
-            if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) dd = Math.floor(dd * 2);   // 🔧 傭兵魔導精通：同屬性傷害魔法 ×2
+            // 🔧 傭兵魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
             dd = Math.max(1, Math.floor(dd * fragileMult(t) * illuLvMult(ally)));   // 🔮 脆弱（白鳥5）；🔮 幻術士(傭兵)等級加成 ×(1+等級/50)
             dd = Math.max(1, Math.floor(dd * wpnEnFinalMult(ally.eq && ally.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（也影響傭兵施放的傷害魔法；物理技走 allyStrikeRoll 已含）
             dd = Math.max(1, Math.floor(dd * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
@@ -506,15 +506,15 @@ function allyCastMagic(ally, sk) {
     if (sk.status || sk.freeze) { let _svS = player; player = ally; try { targets.forEach(t => { if (t && t.curHp > 0) { if (sk.status) applyMobStatus(t, sk.status, sk.n); if (sk.freeze) applyMobStatus(t, { kind: 'freeze', pbase: sk.freeze, dur: 6 }, sk.n); } }); } finally { player = _svS; } }   // 🔧 傷害魔法附帶異常狀態（🐉 奪命之雷暈 / 🔮 混亂 / 幻想沉睡）＋🧊 v2.6.18 #中 冰凍（冰矛圍籬 freeze:200）：換身以傭兵自身魔法命中判定（與玩家魔法分支 625 一致）
     logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>施放 ${sk.n} → ${texts.join('、')}`, 'magic');
     targets.forEach(t => { if (t.curHp <= 0) { let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (ri !== -1) killMob(ri); } });
-    // 🔧 神官魔杖·魔爆（傭兵版）：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)對全場額外造成本次傷害30%的無屬性傷害
+    // 🔧 神官魔杖·魔爆（傭兵版）：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)引爆本次傷害30%的無屬性傷害，均分給場上所有敵人
     {
         let _bw = (ally.eq && ally.eq.wpn) ? DB.items[ally.eq.wpn.id] : null;
         if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0 && !ally.classicMode) {   // 🎮 經典模式：傭兵停用魔爆
             let _aoe = (sk.target === 'all') || (targets.length > 1);
             if (Math.random() < ((d.int || 0) / (_aoe ? 60 : 100))) {
-                let _ex = Math.max(1, Math.floor(_burstDmg * 0.3));
                 let _live = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
                 if (_live.length) {
+                    let _ex = Math.max(1, Math.floor(_burstDmg * 0.3 / _live.length));   // 🔧 v2.6.63：總量30%均分給場上敵人（原每隻各吃30%）
                     logCombat(`<span class="font-bold" style="color:#f0abfc;text-shadow:0 0 6px #c026d3;">【協力·${ally._allyName}·魔爆】</span>魔力過載爆炸，波及全場！`, 'player-special');
                     _live.forEach(m => {
                         let _d = Math.max(1, Math.floor(_ex * fragileMult(m)));
@@ -563,7 +563,7 @@ function allyCastNonDamage(ally, sk) {
     if (sk.status && targets.every(m => m.st && m.st[sk.status.kind] > 0)) return false;
     let cost = Math.max(1, Math.ceil((sk.mp || 0) * (1 - (d.mpReduce || 0) / 100)));
     if (ally._setApprentice5 && (ally.mp || 0) < (ally.mmp || 0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半（與魔導精通疊加）
-    if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通（傭兵）：同屬性 MP -30%
+    if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.5));   // 🏅 魔導精通（傭兵）：同屬性 MP -50%(2026-07 30%→50%)
     if ((ally.mp || 0) < cost) return false;
     ally.mp -= cost;
     let _sv = player; player = ally;   // 以傭兵自身魔法命中判定（applyMobStatus/tryInstakill 內部讀 player）
@@ -813,7 +813,7 @@ function allyProcMoonburst(ally, t) {
     let dmg = roll(1, 30) + 2 * en;
     let _cm = elementCounterMult('wind', t.e);   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
     let counterTxt = (_cm > 1) ? ' <span class="text-emerald-300 font-bold">(剋屬性!)</span>' : (_cm < 1 ? ' <span class="text-rose-400 font-bold">(被剋!)</span>' : '');
-    dmg = Math.max(1, Math.floor(dmg * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率
+    dmg = Math.max(1, Math.floor(dmg * enhanceWpnFinalMult(en, ally.eq && ally.eq.wpn && DB.items[ally.eq.wpn.id])));   // 🔧 武器強化 +11~+20：最終傷害倍率
     dmg = Math.max(1, Math.floor(dmg * _cm));
     dmg = Math.max(1, Math.floor(dmg * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（月光爆裂·原全無·鏡像玩家 procMoonburst rlFuryMult）
     logCombat(`<span class="font-bold" style="color:#67e8f9;text-shadow:0 0 6px #06b6d4;">【協力·${ally._allyName}·月光爆裂】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點風屬性傷害！${counterTxt}`, 'player-special');
@@ -829,9 +829,9 @@ function _allyProcWeaponSpellHit(ally, t, sp, en) {
     let mrFactor = mrMult(effMr);
     let _cm = elementCounterMult(sp.ele, t.e);   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
     let dd = Math.floor(core * mrFactor) - (t.dr || 0);
-    if (allyHasMastery(ally, 'e_magic') && sp.ele && sp.ele !== 'none' && sp.ele === ally.elfEle) dd = Math.floor(Math.max(1, dd) * 2);   // 🏅 傭兵魔導精通：同屬性 ×2
+    // 🔧 傭兵魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
     dd = Math.max(1, Math.floor(Math.max(1, dd) * fragileMult(t)));
-    dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
+    dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en, ally.eq && ally.eq.wpn && DB.items[ally.eq.wpn.id])));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     dd = Math.max(1, Math.floor(dd * _cm));
     dd = Math.max(1, Math.floor(dd * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（死騎/克特武器附魔·原全無·鏡像玩家 _procWeaponSpellHit rlFuryMult）
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
@@ -879,10 +879,10 @@ function allyProcFreeMagicSkill(ally, t, skId, en) {
         dd = Math.max(1, dd);
         dd = Math.floor(dd * mageDmgMult);
         dd = Math.max(1, Math.floor(dd * allyRlFuryMult(ally)));   // 🔴😡 v2.6.18 紅獅5×狂怒5造傷（免費武器魔法逐骰·原僅紅獅字面）
-        if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) dd = Math.floor(dd * 2);
+        // 🔧 傭兵魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
         total += Math.max(1, Math.floor(dd * fragileMult(t)));
     });
-    total = Math.floor(total * enhanceWpnFinalMult(en));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
+    total = Math.floor(total * enhanceWpnFinalMult(en, ally.eq && ally.eq.wpn && DB.items[ally.eq.wpn.id]));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     total = Math.max(1, Math.floor(total * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
     if (total > 0) {
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
@@ -906,7 +906,7 @@ function allyLaiaWandHitProc(ally, t) {
     dd = Math.max(1, dd);   // 🔧 武器 proc 不吃法師「法術階級加成」(1.5+階/20)：原 8 階 ×1.9 已移除（spCoef 階級係數仍保留）
     if (wasFrozen) { dd += (sp.shatter || 0); t.st.freeze = 0; }
     dd = Math.max(1, Math.floor(Math.max(1, dd) * fragileMult(t)));
-    dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
+    dd = Math.max(1, Math.floor(dd * enhanceWpnFinalMult(en, w)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
     dd = Math.max(1, Math.floor(dd * elementCounterMult(sp.ele, t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【協力·${ally._allyName}·${sp.skn || '冰裂術'}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dd} 點水屬性魔法傷害${wasFrozen ? '（冰碎!）' : ''}。`, 'player-special');
@@ -949,7 +949,7 @@ function allyWeaponProcs(ally, target, hitInfo) {
             let t = _allyProcTarget(target);
             if (t) {
                 let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
-                let core = roll(4, 10) * (1 + 3 * (d.magicDmg || 0) / 16) * enhanceWpnFinalMult(_en);   // 🔧 武器強化倍率改在「扣 dr 前」併入核心（原本套在最後→被 dr 壓成 1 後再乘＝白加）
+                let core = roll(4, 10) * (1 + 3 * (d.magicDmg || 0) / 16) * enhanceWpnFinalMult(_en, wpn);   // 🔧 武器強化倍率改在「扣 dr 前」併入核心（原本套在最後→被 dr 壓成 1 後再乘＝白加）
                 let dmg = Math.floor(core * mrMult(effMr)) - (t.dr || 0);
                 dmg = Math.max(1, Math.floor(Math.max(1, dmg) * fragileMult(t)));
                 dmg = Math.max(1, Math.floor(dmg * elementCounterMult('water', t.e)));   // ⚔️ 屬性剋制倍率（取代舊 +6 固定加值）
@@ -1191,7 +1191,7 @@ function allyElfAct(ally) {
         // 傷害魔法：比照法師，MP 足夠則優先施放（妖精魔法不享有法師倍率，由 allyCastMagic 依職業處理）
         let cost = Math.max(1, Math.ceil((sk.mp||0) * (1 - (d.mpReduce||0)/100)));
         if (ally._setApprentice5 && (ally.mp||0) < (ally.mmp||0) * 0.3) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 學徒 5/5（傭兵）：MP<30% 耗魔減半（與魔導精通疊加）
-        if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通（傭兵）：同屬性魔法消耗MP -30%
+        if (allyHasMastery(ally, 'e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === ally.elfEle) cost = Math.max(1, Math.ceil(cost * 0.5));   // 🏅 魔導精通（傭兵）：同屬性魔法消耗MP -50%(2026-07 30%→50%)
         if ((ally.mp||0) >= cost) { ally.mp -= cost; allyCastMagic(ally, sk); return; }
     } else if (sk && sk.type === 'atk' && (sk.status || sk.instakill)) {
         if (allyCastNonDamage(ally, sk)) return;   // 🔧 非傷害攻擊技能（地面障礙/魔法消除/封印禁地/釋放元素…）；不適用則退回物理攻擊+連射
@@ -1383,7 +1383,7 @@ function allyStormTick(ally, sk, noMageBonus) {
     let d = ally.d || {};
     let tier = sk.tier || 1;
     let spCoef = (1 + 3 * (d.magicDmg || 0) / 16) * (1 + tier / 3);
-    let mageDmgMult = (!noMageBonus && ally.cls === 'mage') ? (1.5 + tier / 20) : 1.0;   // 🔮 魔女5/5 免費冰雪暴：noMageBonus 不吃法師階級加成
+    let mageDmgMult = 1.0;   // 🔧 法師法術階級加成已移除(2026-07 用戶要求)
     let dice = sk.dmgDice || [1, 10];
     let canFreeze = (sk.freezeHitOff !== undefined);
     let glow = STORM_ELE_GLOW[sk.ele] || STORM_ELE_GLOW.none;

@@ -1094,7 +1094,7 @@ function refreshGachaTicketCount() {
     }
     ['wpn_dragonslayer','wpn_baless'].forEach(_id => { if (DB.items[_id]) DB.items[_id].gachaWeight = 1; });   // 🔧 屠龍劍／巴列斯魔杖：固定權重 1
     ['hlm_icequeen_charm','amr_icequeen_charm','bot_icequeen_charm'].forEach(_id => { if (DB.items[_id]) DB.items[_id].gachaWeight = 1; });   // ❄️👸 冰之女王魅力套裝：雖兼任寒冰製作素材(會被 craftMatSet 設0)，仍強制黑市權重 1
-    [['hlm_official',10],['amr_official',10],['wpn_baranka_claw',10],['wpn_assassin_mark',10],['wpn_priest_wand',10],['wpn_laia_wand',10],['shd_priest_book',5]].forEach(([_id,_w]) => { if (DB.items[_id]) DB.items[_id].gachaWeight = _w; });   // 🔧 BOSS掉落但指定較高潘朵拉權重（不套用 BOSS專屬→1）
+    [['hlm_official',10],['amr_official',10],['wpn_baranka_claw',10],['wpn_assassin_mark',10],['wpn_priest_wand',10],['wpn_laia_wand',1],['shd_priest_book',5]].forEach(([_id,_w]) => { if (DB.items[_id]) DB.items[_id].gachaWeight = _w; });   // 🔧 BOSS掉落但指定較高潘朵拉權重（不套用 BOSS專屬→1）；🔧 v2.6.67 蕾雅魔杖 10→1（傳說級稀有度對齊）
 })();
 
 // ==========================================

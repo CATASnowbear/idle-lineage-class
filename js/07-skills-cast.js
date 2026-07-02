@@ -174,7 +174,7 @@ function manualCast(skId) {
     if((player.manualCd[skId] || 0) > 0) { logSys('技能冷卻中。'); return; }
     let cost = sk.mp ? player.d.getMpCost(sk.mp, sk.tier) : 0;
     if (player._setIllusion3 && isSupportSkill(sk)) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 幻覺3/5：輔助技能 MP 消耗 -50%
-    if (cost > 0 && player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通：同屬性魔法消耗MP -30%
+    if (cost > 0 && player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) cost = Math.max(1, Math.ceil(cost * 0.5));   // 🏅 魔導精通：同屬性魔法消耗MP -50%(2026-07 30%→50%)
     if ((sk.n === '加速術' || sk.n === '強力加速術') && playerHasWindHelm()) cost = 0;   // 🏝️ 風之頭盔：加速術/強力加速術免MP（裝備或放在背包皆可）
     if(player.mp < cost) { logSys('MP 不足。'); return; }
     if(sk.hpCost && player.hp <= sk.hpCost) { logSys('HP 不足。'); return; }
@@ -292,7 +292,7 @@ function castSkillInner(skId) {
 
     let cost = sk.mp ? player.d.getMpCost(sk.mp, sk.tier) : 0;
     if (player._setIllusion3 && isSupportSkill(sk)) cost = Math.max(1, Math.ceil(cost / 2));   // 🔮 幻覺3/5：輔助技能 MP 消耗 -50%
-    if (cost > 0 && player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) cost = Math.max(1, Math.ceil(cost * 0.7));   // 🏅 魔導精通：同屬性魔法消耗MP -30%
+    if (cost > 0 && player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) cost = Math.max(1, Math.ceil(cost * 0.5));   // 🏅 魔導精通：同屬性魔法消耗MP -50%(2026-07 30%→50%)
     if ((sk.n === '加速術' || sk.n === '強力加速術') && playerHasWindHelm()) cost = 0;   // 🏝️ 風之頭盔：加速術/強力加速術免MP（裝備或放在背包皆可）
     if (_echoFree) cost = 0;   // 🏅 迴響精通：連發那次不消耗 MP
     if (_royalFreeCast) cost = 0;   // 👑 魔法精通：免費額外施放選定攻擊技
@@ -509,6 +509,7 @@ function castSkillInner(skId) {
                 let res = getPhysicalDmg(dice, t, wpn, arrowData);
                 if(!res.hit) { hitsLog.push('Miss'); continue; }
                 landed++;
+                if(sk.skillAddDmg) res.dmg = Math.max(1, res.dmg + sk.skillAddDmg);   // ⚔️ 衝擊之暈：一般攻擊傷害 +10
                 // 🔮 紅獅 5/5 已於 getPhysicalDmg 內套用（避免重複），此處不再乘
                 // 遠距離物理技能命中滿血被動怪物，賦予 3 秒延遲（整段只觸發一次）
                 if(!delayDone && t.curHp === t.hp && t.beh === '被動' && res.ranged) { t._delayTicks = 30; delayDone = true; }
@@ -518,7 +519,7 @@ function castSkillInner(skId) {
                 let mark = (res.heavy && res.crit) ? '會心' : (res.crit ? '爆' : (res.heavy ? '重' : ''));
                 hitsLog.push(res.dmg + (mark ? '(' + mark + ')' : ''));
                 mobWake(t);
-                if(sk.stun) applyMobStatus(t, { kind:'stun', pbase:sk.stun, dur:6, hitOff: (wpn && wpn.stunHitBonus && !wpn.isBow) ? Math.round(wpn.stunHitBonus / 5) : 0 }, sk.n);   // 🏛️ 真．冥皇執行劍：施展衝擊之暈時暈眩命中率 +20%（hitOff +4，d20 每點≈5%）
+                if(sk.stun && (sk.stunChance == null || Math.random() < sk.stunChance)) applyMobStatus(t, { kind:'stun', pbase:sk.stun, dur:6, hitOff: (wpn && wpn.stunHitBonus && !wpn.isBow) ? Math.round(wpn.stunHitBonus / 5) : 0 }, sk.n);   // ⚔️ 衝擊之暈：命中時 stunChance(10%) 機率暈眩；🏛️ 真．冥皇執行劍：暈眩命中率 +20%（hitOff +4）
                 if(sk.status) applyMobStatus(t, sk.status, sk.n);
                 if(t.curHp > 0 && sk.instakill && tryInstakill(t, sk.instakill, sk.n, mapState.targetIdx)) { killed = true; break; }
             }
@@ -579,7 +580,7 @@ function castSkillInner(skId) {
     // 套用新的魔攻係數 (SP Coefficient) 公式
     let spCoef = (1 + (3 * player.d.magicDmg / 16)) * (1 + (skillTier / 3));
     // 法師專屬：一般攻擊魔法（排除精靈魔法 sk_elf_*、裝備授予技能）最終傷害 ×(1.5 + 法術階級/20)；僅影響傷害，不影響命中/治癒/回血
-    let mageDmgMult = (player.cls === 'mage' && !__granted && !skId.startsWith('sk_elf_')) ? (1.5 + skillTier / 20) : 1.0;
+    let mageDmgMult = 1.0;   // 🔧 法師法術階級加成 (1.5+階/20) 已移除(2026-07 用戶要求)
     
     let magicCritMult = isCrit ? (1 + player.d.magicCritDmg / 100) : 1.0;
 
@@ -598,7 +599,7 @@ function castSkillInner(skId) {
                     d = Math.max(1, Math.floor(d * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制：魔法剋怪 ×1.4、被剋 ×0.6（無屬性→×1）
                     d = Math.floor(d * mageDmgMult);   // 法師一般攻擊魔法：最終傷害再乘上 (1.5 + 階級/20)
                     d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5(×1.2)＋😡狂怒5/5：攻擊技能最終傷害
-                    if (player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) d = Math.floor(d * 2);   // 🏅 魔導精通：同屬性傷害魔法 ×2
+                    // 🔧 魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
                     d = Math.max(1, Math.floor(d * fragileMult(t) * illuLvMult(player)));    // 🔮 脆弱（白鳥5）；🔮 幻術士等級加成 ×(1+等級/50)（幻想/混亂）
                     d = Math.max(1, Math.floor(d * wpnEnFinalMult(player.eq.wpn)));   // 🔧 武器強化 +11~+20：最終傷害倍率（也影響玩家施放的傷害魔法；物理技能走 getPhysicalDmg 已含、不在此處）
                     totalDmg += d;
@@ -635,15 +636,15 @@ function castSkillInner(skId) {
                     if(realIdx !== -1) killMob(realIdx);
                 }
             });
-            // 🔧 神官魔杖·魔爆：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)對全場額外造成本次傷害30%的無屬性傷害
+            // 🔧 神官魔杖·魔爆：施放傷害魔法時依機率(單體 智力/100、全體 智力/60)引爆本次傷害30%的無屬性傷害，均分給場上所有敵人
             {
                 let _bw = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
                 if (_bw && _bw.eff === 'magicburst' && _burstDmg > 0 && !player.classicMode) {   // 🎮 經典模式：停用魔爆
                     let _aoe = (sk.target === 'all') || (targets.length > 1);
                     if (Math.random() < (player.d.int || 0) / (_aoe ? 60 : 100)) {
-                        let _ex = Math.max(1, Math.floor(_burstDmg * 0.3));
                         let _live = mapState.mobs.filter(m => m && m.curHp > 0 && !m._dead);
                         if (_live.length) {
+                            let _ex = Math.max(1, Math.floor(_burstDmg * 0.3 / _live.length));   // 🔧 v2.6.63：總量30%均分給場上敵人（原每隻各吃30%）
                             logCombat(`<span class="font-bold" style="color:#f0abfc;text-shadow:0 0 6px #c026d3;">【魔爆】</span>魔力過載爆炸，波及全場！`, 'player-special');
                             _live.forEach(m => {
                                 let _d = Math.max(1, Math.floor(_ex * fragileMult(m)));

@@ -1530,7 +1530,7 @@ function interactNPC(npcId, townId) {
     } else if (npc.type === 'ally') {
         renderAllyNPC(contentDiv);
     } else if (npc.type === 'warehouse') {
-        renderWarehouseNPC(contentDiv);
+        if (typeof openWarehouseWindow === 'function') openWarehouseWindow(); else renderWarehouseNPC(contentDiv);
     } else if (npc.id === 'npc_baowu') {
         renderPetStorageNPC(contentDiv);
     } else if (npc.id === 'npc_isba') {

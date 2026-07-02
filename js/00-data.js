@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.6.57';
+const GAME_VERSION = 'v2.6.67';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -300,7 +300,7 @@ const DB = {
         "wpn_eva_scold":     { n: "伊娃的責罵", type: "wpn", dmgS: 9, dmgL: 9, hit: 1, dmgBonus: 1, spd: 0.8, req: "royal,knight,elf,mage,dark,dragon,illusion", safe: 6, p: 56400, legend: true, gachaWeight: 1, ignHardSkin: true, spellProc: { skn: "水之矛", dice: [5, 5], flat: 5, ele: "water", status: { kind: "freeze", pct: 5, dur: 4 } }, procRateBase: 1, procRatePerEn: 1, d: "伊娃的責罵，劍鋒凝著沁骨的寒泉。<br>反擊；貫穿（無視硬皮額外減傷）；近距離傷害+1、近距離命中+1。<br>攻擊時 1%（每強化 +1%）機率發動水之矛：造成基礎 5D5+5 的水屬性單體魔法傷害，並有 5% 固定機率使目標冰凍。" },
         // ===== 軍王之室：掉落裝備 =====
         "wpn_assassin_mark": { n: "暗殺軍王之痕", type: "wpn", w2h: true, dmgS: 13, dmgL: 13, hit: 0, dmgBonus: 2, spd: 0.7, req: "dark", safe: 6, p: 25000, eff: "combo", gachaWeight: 10 },   // 雙刀・連擊
-        "wpn_priest_wand":   { n: "神官魔杖", type: "wpn", w2h: true, dmgS: 9, dmgL: 9, hit: 0, spd: 1.0, req: "mage", safe: 6, p: 13340, unBonus: true, eff: "magicburst", gachaWeight: 10, d: "神官祈禱經年的法杖，能將信仰化為爆裂的魔力。<br>魔爆：施放單體傷害魔法時 智力/100、全體傷害魔法時 智力/60 機率引發魔法能力爆炸，對所有敵人額外造成該次魔法傷害 30% 的無屬性傷害。" },
+        "wpn_priest_wand":   { n: "神官魔杖", type: "wpn", w2h: true, dmgS: 9, dmgL: 9, hit: 0, spd: 1.0, req: "mage", safe: 6, p: 13340, unBonus: true, eff: "magicburst", gachaWeight: 10, d: "神官祈禱經年的法杖，能將信仰化為爆裂的魔力。<br>魔爆：施放單體傷害魔法時 智力/100、全體傷害魔法時 智力/60 機率引發魔法能力爆炸，將該次魔法傷害 30% 的無屬性傷害均分給場上所有敵人。" },
         "wpn_laia_wand":     { n: "蕾雅魔杖", type: "wpn", dmgS: 1, dmgL: 1, hit: -3, dmgBonus: 0, mdmg: -2, spd: 1.0, req: "mage", safe: 6, p: 23340, legend: true, gachaWeight: 10, meleeHitSpell: { skn: "冰裂術", dice: [6, 10], ele: "water", freezePbase: 200, shatter: 100 }, d: "冰之女王蕾雅愛用的魔杖，杖尖凝結著永不消融的寒霜。<br>一般攻擊命中時觸發冰裂術：以法師8階法術公式造成 6D10×(1+強化/10) 水屬性魔法傷害（受魔法傷害與法術階級係數影響），有機率冰凍目標；對冰凍目標額外造成 100 水屬性傷害並解除其冰凍。" },
         "shd_priest_book":   { n: "神官魔法書", type: "arm", slot: "shield", ac: 3, mmp: 50, mpR: 3, req: "mage", safe: 6, p: 93000, gachaWeight: 5 },
         "amr_laia_robe":     { n: "蕾雅長袍", type: "arm", slot: "armor", ac: 2, mmp: 100, req: "mage", safe: 4, p: 58000, gachaWeight: 1 },
@@ -2041,22 +2041,22 @@ const DB = {
         "sk_shield": { n: "保護罩", type: "buff", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 2, dur: 1200, d: { ac: 2 } },
         "sk_lightarrow": { n: "光箭", type: "atk", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 3, dmgType: "magic", ele: "none", dmgDice: [1, 6] },
         "sk_teleport": { n: "傳送術", type: "manual", tier: 1, reqM: 4, reqE: 8, reqK: 16, reqI: 10, reqDk: 15, mp: 5, mEff: "teleport" },
-        "sk_icearrow": { n: "冰箭", type: "atk", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 3, dmgType: "magic", ele: "water", dmgDice: [1, 4] },
-        "sk_windblade": { n: "風刃", type: "atk", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 3, dmgType: "magic", ele: "wind", dmgDice: [1, 4] },
+        "sk_icearrow": { n: "冰箭", type: "atk", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 3, dmgType: "magic", ele: "water", dmgDice: [1, 6] },
+        "sk_windblade": { n: "風刃", type: "atk", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 3, dmgType: "magic", ele: "wind", dmgDice: [1, 6] },
         "sk_holy_wpn": { n: "神聖武器", type: "buff", tier: 1, reqM: 4, reqE: 8, reqK: 16, mp: 10, dur: 1200, d: { extraDmg: 1, extraHit: 1 }, msg: "你的武器暫時被注入了神聖力量。" },
 
         // 二階魔法 (Lv 8)
         "sk_antidote": { n: "解毒術", type: "heal", tier: 2, reqM: 8, reqE: 16, mp: 8, msg: "你感覺毒素消退了。" },
-        "sk_cold_shiver": { n: "寒冷戰慄", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 9, dmgType: "magic", ele: "none", dmgDice: [1, 8], lifesteal: true, healSlot: true },
+        "sk_cold_shiver": { n: "寒冷戰慄", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 9, dmgType: "magic", ele: "none", dmgDice: [1, 10], lifesteal: true, healSlot: true },
         "sk_poison_curse": { n: "毒咒", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 10, dmgType: "magic", status: { kind: "poison", pbase: 100, dur: 15, tick: 3, dmg: [1, 8] }, msg: "你使目標中毒了。" },
         "sk_ench_wpn": { n: "擬似魔法武器", type: "buff", tier: 2, reqM: 8, reqE: 16, mp: 20, dur: 1800, d: { extraDmg: 2 }, msg: "你的武器暫時被注入了魔法力量。" },
         "sk_reveal": { n: "無所遁形術", type: "buff", tier: 2, reqM: 8, reqE: 16, mp: 8, dur: 180 },
         "sk_load_up": { n: "負重強化", type: "buff", tier: 2, reqM: 8, reqE: 16, reqD: 16, mp: 10, dur: 1800, label: "增益", loadUpBuff: true, msg: "感覺到身體變輕了。" },   // 🔧 改版：負重上限+50（持續1800秒，效果結束才再施放）
-        "sk_firearrow": { n: "火箭", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 3, dmgType: "magic", ele: "fire", dmgDice: [1, 4] },
-        "sk_hell_fang": { n: "地獄之牙", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 3, dmgType: "magic", ele: "earth", dmgDice: [1, 4] },
+        "sk_firearrow": { n: "火箭", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 3, dmgType: "magic", ele: "fire", dmgDice: [1, 6] },
+        "sk_hell_fang": { n: "地獄之牙", type: "atk", tier: 2, reqM: 8, reqE: 16, mp: 3, dmgType: "magic", ele: "earth", dmgDice: [1, 6] },
 
         // 三階魔法 (Lv 12)
-        "sk_aurora": { n: "極光雷電", type: "atk", tier: 3, reqM: 12, reqE: 24, mp: 13, dmgType: "magic", ele: "wind", target: "all", dmgDice: [2, 14] },
+        "sk_aurora": { n: "極光雷電", type: "atk", tier: 3, reqM: 12, reqE: 24, mp: 13, dmgType: "magic", ele: "wind", target: "all", dmgDice: [2, 12] },
         "sk_undead_bane": { n: "起死回生術", type: "atk", tier: 3, reqM: 12, reqE: 24, mp: 15, dmgType: "magic", instakill: { tag: "undead", cap: 12 } },   // 🔧 即死成功率最高 60%
         "sk_heal_mid": { n: "中級治癒術", type: "heal", tier: 3, reqM: 12, reqE: 24, mp: 11, valDice: [1, 30], healDice: [1, 50], healBase: 50, msg: "你感覺舒服了一點。" },
         "sk_dark_blind": { n: "闇盲咒術", type: "atk", tier: 3, reqM: 12, reqE: 24, mp: 20, dmgType: "magic", status: { kind: "blind", pbase: 150, hit: 4, dur: 10 } },
@@ -2068,7 +2068,7 @@ const DB = {
         "sk_fireball": { n: "燃燒的火球", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 16, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[2, 6], [3, 6]] },
         "sk_dex_up": { n: "通暢氣脈術", type: "buff", tier: 4, reqM: 16, reqE: 32, mp: 45, dur: 1200, d: { dex: 5 }, msg: "你覺得身手變得更靈活。" },
         "sk_break": { n: "壞物術", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 20, dmgType: "magic", status: { kind: "broken", pbase: 150, dur: 25 } },
-        "sk_vampire": { n: "吸血鬼之吻", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 13, dmgType: "magic", ele: "none", dmgDice: [2, 8], lifesteal: true, healSlot: true },
+        "sk_vampire": { n: "吸血鬼之吻", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 13, dmgType: "magic", ele: "none", dmgDice: [2, 9], lifesteal: true, healSlot: true },
         "sk_slow": { n: "緩速術", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 20, dmgType: "magic", status: { kind: "slow", pbase: 150, dur: 30 } },
         "sk_holy_lightning": { n: "致命落雷", type: "atk", tier: 6, dmgType: "magic", ele: "wind", dmgDice: [6, 10] },   // 🏛️ 聖晶魔杖 procSkill 用：6D10 風屬性·走 procFreeMagicSkill（武器 proc 不套法師階級加成·非可學技能）
         "sk_rock_prison": { n: "岩牢", type: "atk", tier: 4, reqM: 16, reqE: 32, mp: 11, dmgType: "magic", ele: "earth", target: "all", dmgDice: [4, 5] },
@@ -2078,10 +2078,10 @@ const DB = {
         // 五階魔法 (Lv 20)
         "sk_mummy_curse": { n: "木乃伊的詛咒", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 35, dmgType: "magic", status: { kind: "stone", pbase: 100, dur: 6 } },
         "sk_charm": { n: "迷魅術", type: "manual", tier: 5, reqM: 20, reqE: 40, mp: 30, mEff: "charm" },
-        "sk_thunder": { n: "極道落雷", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 25, dmgType: "magic", ele: "wind", dmgDice: [6, 8] },
+        "sk_thunder": { n: "極道落雷", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 25, dmgType: "magic", ele: "wind", dmgDice: [8, 9] },
         "sk_heal2": { n: "高級治癒術", type: "heal", tier: 5, reqM: 20, reqE: 40, mp: 20, valDice: [2, 30], healDice: [1, 100], healBase: 100, msg: "你感覺舒服了一點。" },
         "sk_holy_light": { n: "聖潔之光", type: "heal", tier: 5, reqM: 20, reqE: 40, mp: 10, msg: "神聖光芒驅散了詛咒。" },
-        "sk_ice_spike": { n: "冰錐", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 21, dmgType: "magic", ele: "water", dmgDice: [6, 6] },
+        "sk_ice_spike": { n: "冰錐", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 21, dmgType: "magic", ele: "water", dmgDice: [6, 10] },
         "sk_demon_kiss": { n: "惡魔之吻", type: "atk", tier: 3, mp: 0, dmgType: "magic", ele: "earth", dmgDice: [3, 20], procOnly: true },   // 🏛️ 底比斯歐西里斯武器附魔施放（procSkill·不需學習/不耗MP·受魔法傷害公式影響）；procOnly：純武器proc、不顯示於技能列表/下拉
         "sk_mana_drain": { n: "魔力奪取", type: "convert", tier: 5, reqM: 20, reqE: 40, hpCost: 50, drain: true },   // 🔧 改為轉換技能（法師/妖精）：消耗HP、需對怪物施展且以異常魔法命中判定，命中吸取 MP=1D(怪物等級/2)；其餘機制比照魂體轉換
         "sk_dark_shadow": { n: "黑闇之影", type: "atk", tier: 5, reqM: 20, reqE: 40, mp: 25, dmgType: "magic", status: { kind: "blind", pbase: 150, hit: 5, dur: 20 } },
@@ -2090,8 +2090,8 @@ const DB = {
         "sk_zombie": { n: "造屍術", type: "buff", tier: 6, reqM: 24, reqE: 48, mp: 35, dur: 3600, summon: { n: "隨從：人形殭屍", dmgDice: [1, 12], dmgDiv: 5, dmgLvDiv: 20, interval: 20, kind: "melee", hitLvOff: 0 } },
         "sk_haste_spell": { n: "加速術", type: "buff", tier: 6, reqM: 24, reqE: 48, mp: 40, dur: 1200, haste: true, msg: "你感到身體變得非常輕盈。" },
         "sk_cancel": { n: "魔法相消術", type: "heal", tier: 6, reqM: 24, reqE: 48, mp: 40, msg: "你全身上下感到涼意。" },
-        "sk_earthquake": { n: "地裂術", type: "atk", tier: 6, reqM: 24, reqE: 48, mp: 25, dmgType: "magic", ele: "earth", dmgDice: [8, 6] },
-        "sk_blaze": { n: "烈炎術", type: "atk", tier: 6, reqM: 24, reqE: 48, mp: 30, dmgType: "magic", ele: "fire", dmgDice: [1, 60] },
+        "sk_earthquake": { n: "地裂術", type: "atk", tier: 6, reqM: 24, reqE: 48, mp: 25, dmgType: "magic", ele: "earth", dmgDice: [10, 8] },
+        "sk_blaze": { n: "烈炎術", type: "atk", tier: 6, reqM: 24, reqE: 48, mp: 30, dmgType: "magic", ele: "fire", dmgDice: [1, 100] },
         "sk_str_up": { n: "體魄強健術", type: "buff", tier: 6, reqM: 24, reqE: 48, mp: 50, dur: 1200, d: { str: 5 }, msg: "你覺得身體充滿了力量。" },
         "sk_bless_wpn": { n: "祝福魔法武器", type: "buff", tier: 6, reqM: 24, reqE: 48, mp: 20, dur: 1200, d: { extraDmg: 2, extraHit: 2 }, msg: "你的武器暫時被注入了魔法力量。" },
         "sk_weaken": { n: "弱化術", type: "atk", tier: 6, reqM: 24, reqE: 48, mp: 25, dmgType: "magic", status: { kind: "weaken", pbase: 150, dur: 30 } },
@@ -2099,8 +2099,8 @@ const DB = {
         // 七階魔法 (Lv 28)
         "sk_regen": { n: "體力回復術", type: "heal", tier: 7, reqM: 28, mp: 35, hot: { interval: 30, ticks: 5 }, valDice: [1, 20], healDice: [1, 30], healBase: 30, msg: "你的傷口逐漸癒合。", autoBuff: true },
         "sk_greater_haste": { n: "強力加速術", type: "buff", tier: 7, reqM: 28, mp: 60, dur: 2400, haste: true, msg: "你感到身體變得非常輕盈。" },
-        "sk_ice_lance": { n: "冰矛圍籬", type: "atk", tier: 7, reqM: 28, mp: 30, dmgType: "magic", ele: "water", dmgDice: [5, 10], freeze: 200 },
-        "sk_tornado": { n: "龍捲風", type: "atk", tier: 7, reqM: 28, mp: 45, dmgType: "magic", ele: "wind", target: "all", multiDmg: [[1, 18], [1, 18], [1, 18]] },
+        "sk_ice_lance": { n: "冰矛圍籬", type: "atk", tier: 7, reqM: 28, mp: 30, dmgType: "magic", ele: "water", dmgDice: [8, 10], freeze: 200 },
+        "sk_tornado": { n: "龍捲風", type: "atk", tier: 7, reqM: 28, mp: 45, dmgType: "magic", ele: "wind", target: "all", multiDmg: [[2, 9], [2, 9], [2, 9]] },
         "sk_berserk": { n: "狂暴術", type: "buff", tier: 7, reqM: 28, mp: 40, dur: 1200, d: { meleeDmg: 5, ac: -10 }, msg: "你的野性逐漸支配理智。" },
         "sk_summon": { n: "召喚術", type: "buff", tier: 7, reqM: 28, mp: 50, dur: 3600, summon: { tiered: true } },
         "sk_holy_dash": { n: "神聖疾走", type: "buff", tier: 7, reqM: 28, mp: 20, dur: 64, d: { er: 15 }, msg: "你覺得身體變輕了。" },
@@ -2108,10 +2108,10 @@ const DB = {
 
         // 八階魔法 (Lv 32)
         "sk_full_heal": { n: "全部治癒術", type: "heal", tier: 8, reqM: 32, mp: 30, valDice: [3, 30], healDice: [3, 50], healBase: 150, msg: "你感覺舒服了不少。" },
-        "sk_blizzard": { n: "冰雪暴", type: "atk", tier: 8, reqM: 32, mp: 60, dmgType: "magic", ele: "water", target: "all", multiDmg: [[2, 8], [2, 8], [2, 8], [2, 8]] },
+        "sk_blizzard": { n: "冰雪暴", type: "atk", tier: 8, reqM: 32, mp: 60, dmgType: "magic", ele: "water", target: "all", multiDmg: [[2, 10], [2, 10], [2, 10], [2, 10]] },
         "sk_blizzard_storm": { n: "冰雪颶風", type: "buff", tier: 10, reqM: 40, mp: 60, dur: 32, ele: "water", target: "all", noRefresh: true, stormInterval: 40, dmgDice: [1, 10], freezeHitOff: -3, msg: "冰雪颶風在你周身成形。" },   // 🌨️ 輔助勾選維持的傷害增益：每4秒對全體造成1D10水傷+冰凍(魔命-3)；傷害由 stormBuffTick 處理
         "sk_fire_prison": { n: "火牢", type: "buff", tier: 8, reqM: 32, mp: 60, dur: 10, ele: "fire", target: "all", noRefresh: true, stormInterval: 20, dmgDice: [1, 15], msg: "熊熊火牢在你周身燃起。" },   // 🔥 輔助勾選維持的傷害增益：每2秒對全體造成1D15火傷（無異常）；傷害由 stormBuffTick 處理
-        "sk_quake": { n: "震裂術", type: "atk", tier: 8, reqM: 32, mp: 40, dmgType: "magic", ele: "earth", target: "all", dmgDice: [4, 11] },
+        "sk_quake": { n: "震裂術", type: "atk", tier: 8, reqM: 32, mp: 40, dmgType: "magic", ele: "earth", target: "all", dmgDice: [4, 15] },
         "sk_invisible": { n: "隱身術", type: "buff", tier: 8, reqM: 32, hpCost: 20, mp: 45, dur: 64 },
         "sk_resurrection": { n: "返生術", type: "passive", tier: 8, reqM: 32, mp: 50 },
         "sk_seal": { n: "魔法封印", type: "atk", tier: 8, reqM: 32, mp: 30, dmgType: "magic", status: { kind: "vacuum", pbase: 100, dur: 16 } },
@@ -2119,19 +2119,19 @@ const DB = {
         // 九階魔法 (Lv 36)
         "sk_holy_barrier": { n: "聖結界", type: "buff", tier: 9, reqM: 36, mp: 30, dur: 32, msg: "一道神聖的防禦屏障保護著你。" },
         "sk_sleep_mist": { n: "沉睡之霧", type: "atk", tier: 9, reqM: 36, mp: 40, dmgType: "magic", target: "all", status: { kind: "sleep", pbase: 100, dur: 8 } },
-        "sk_thunder_storm": { n: "雷霆風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "wind", target: "all", multiDmg: [[1, 9], [1, 9], [1, 9], [1, 9], [1, 9]] },
-        "sk_fire_storm": { n: "火風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[3, 9], [3, 9]] },
+        "sk_thunder_storm": { n: "雷霆風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "wind", target: "all", multiDmg: [[1, 9], [1, 9], [1, 9], [1, 9], [1, 9], [1, 9], [1, 9], [1, 9]] },
+        "sk_fire_storm": { n: "火風暴", type: "atk", tier: 9, reqM: 36, mp: 48, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[3, 12], [3, 12]] },
 
         // 十階魔法 (Lv 40)
-        "sk_meteor": { n: "流星雨", type: "atk", tier: 10, reqM: 40, mp: 60, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[1, 10], [1, 10], [1, 10], [1, 10], [1, 10], [1, 10]] },
+        "sk_meteor": { n: "流星雨", type: "atk", tier: 10, reqM: 40, mp: 60, dmgType: "magic", ele: "fire", target: "all", multiDmg: [[1, 15], [1, 15], [1, 15], [1, 15], [1, 15], [1, 15]] },
         "sk_soul_up": { n: "靈魂昇華", type: "buff", tier: 10, reqM: 40, mp: 20, dur: 1200, msg: "你覺得身體充滿了活力。" },
         "sk_abs_barrier": { n: "絕對屏障", type: "manual", tier: 10, reqM: 40, mp: 30, mEff: "barrier", dur: 7, label: "增益", msg: "你感覺身體與這個世界隔絕了。" },
-        "sk_disintegrate": { n: "究極光裂術", type: "atk", tier: 10, reqM: 40, mp: 70, dmgType: "magic", ele: "none", dmgDice: [1, 120] },
+        "sk_disintegrate": { n: "究極光裂術", type: "atk", tier: 10, reqM: 40, mp: 70, dmgType: "magic", ele: "none", dmgDice: [2, 70] },
 
         // ================= 【騎士技術】 =================
         "sk_solid_shield": { n: "堅固防護", type: "buff", tier: 2, reqK: 40, hpCost: 30, mp: 5, dur: 180, reqShield: true, d: { er: 15 } },
         "sk_reduction_armor": { n: "增幅防禦", type: "buff", tier: 1, reqK: 30, mp: 10, dur: 1200 },
-        "sk_shock_stun": { n: "衝擊之暈", type: "atk", tier: 1, reqK: 30, mp: 12, dmgType: "physical", reqWpn: "nonbow", stun: 150 },
+        "sk_shock_stun": { n: "衝擊之暈", type: "atk", tier: 1, reqK: 30, mp: 12, dmgType: "physical", reqWpn: "w2h", skillAddDmg: 10, stunChance: 0.1, stun: 150 },
         "sk_spike_armor": { n: "尖刺盔甲", type: "buff", tier: 1, reqK: 30, mp: 10, dur: 1200, d: { meleeHit: 5 } },
         "sk_counter_barrier": { n: "反擊屏障", type: "buff", tier: 1, reqK: 30, mp: 10, dur: 64, label: "增益", msg: "你擺出了反擊的架式。" },   // 🔧 雙手武器可發動反擊；原生反擊/居合武器的反擊與居合最終傷害×2（持續64秒，效果結束才再施放）
 

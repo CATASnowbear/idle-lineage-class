@@ -265,7 +265,7 @@ function stormBuffTick(sk, noMageBonus) {
     if (!targets.length) return;
     let tier = sk.tier || 1;
     let spCoef = (1 + 3 * (player.d.magicDmg || 0) / 16) * (1 + tier / 3);
-    let mageDmgMult = (!noMageBonus && player.cls === 'mage') ? (1.5 + tier / 20) : 1.0;   // 法師攻擊魔法最終加成（🔮 魔女5/5 免費冰雪暴：noMageBonus=true 不吃法師階級加成）
+    let mageDmgMult = 1.0;   // 🔧 法師法術階級加成已移除(2026-07 用戶要求)
     let dice = sk.dmgDice || [1, 10];
     let canFreeze = (sk.freezeHitOff !== undefined);
     let glow = STORM_ELE_GLOW[sk.ele] || STORM_ELE_GLOW.none;
@@ -372,7 +372,7 @@ function weaponSpellProc(target) {
             if (!t) { let _al = mapState.mobs.filter(m => m && m.curHp > 0); if (_al.length) t = _al[Math.floor(Math.random() * _al.length)]; }
             if (t) {
                 let effMr = (t.st && t.st.mrhalf > 0) ? (t.mr / 2) : t.mr;
-                let core = roll(4, 10) * (1 + 3 * (player.d.magicDmg || 0) / 16) * enhanceWpnFinalMult(_en);   // 🔧 武器強化倍率改在「扣 dr 前」併入核心（原本套在最後→被 dr 壓成 1 後再乘＝白加）
+                let core = roll(4, 10) * (1 + 3 * (player.d.magicDmg || 0) / 16) * enhanceWpnFinalMult(_en, wpn);   // 🔧 武器強化倍率改在「扣 dr 前」併入核心（原本套在最後→被 dr 壓成 1 後再乘＝白加）
                 let dmg = Math.floor(core * mrMult(effMr)) - (t.dr || 0);
                 dmg = Math.max(1, Math.floor(Math.max(1, dmg) * fragileMult(t) * elementCounterMult('water', t.e)));   // ⚔️ 屬性剋制 ×1.4(剋)/×0.6(被剋)
                 if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
@@ -427,10 +427,10 @@ function procFreeMagicSkill(t, skId, en) {
         d = Math.max(1, Math.floor(Math.max(1, d) * elementCounterMult(sk.ele, t.e)));   // ⚔️ 屬性剋制 ×1.4(剋)/×0.6(被剋)（取代舊 +6）
         d = Math.floor(d * mageDmgMult);
         d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5＋😡狂怒5/5 最終傷害
-        if (player.cls === 'elf' && hasMastery('e_magic') && sk.ele && sk.ele !== 'none' && sk.ele === player.elfEle) d = Math.floor(d * 2);
+        // 🔧 魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
         total += Math.max(1, Math.floor(d * fragileMult(t)));
     });
-    total = Math.floor(total * enhanceWpnFinalMult(en));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
+    total = Math.floor(total * enhanceWpnFinalMult(en, player.eq.wpn && DB.items[player.eq.wpn.id]));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     if (total > 0) {
         t.curHp -= total; t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic'; mobWake(t);
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
@@ -513,9 +513,9 @@ function _procWeaponSpellHit(t, sp, en) {
     let mrFactor = mrMult(effMr);
     let _cm = elementCounterMult(sp.ele, t.e);   // ⚔️ 屬性剋制倍率 ×1.4(剋)/×0.6(被剋)/×1
     let d = Math.floor(core * mrFactor) - (t.dr || 0);
-    if (player.cls === 'elf' && hasMastery('e_magic') && sp.ele && sp.ele !== 'none' && sp.ele === player.elfEle) d = Math.floor(Math.max(1, d) * 2);   // 🏅 魔導精通：武器附帶施放的同屬性傷害魔法 ×2（與 castSkill 一致）
+    // 🔧 魔導精通同屬性傷害×2 已移除(2026-07 用戶要求)
     d = Math.max(1, Math.floor(Math.max(1, d) * fragileMult(t) * _cm));
-    d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)·與一般武器一致）
+    d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en, player.eq.wpn && DB.items[player.eq.wpn.id])));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)·與一般武器一致）
     d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5＋😡狂怒5/5 最終傷害
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     d = illusionMagicDmg(d, true);   // 🔮 幻覺2/5回MP＋5/5：武器附魔施放魔傷二次傷害
@@ -563,7 +563,7 @@ function laiaWandHitProc(t) {
     d = Math.max(1, d);   // 🔧 武器 proc 不吃法師「法術階級加成」(1.5+階/20)：原 8 階 ×1.9 已移除（spCoef 階級係數仍保留）
     if (wasFrozen) { d += (sp.shatter || 0); t.st.freeze = 0; }   // 冰凍目標：額外傷害並解除冰凍
     d = Math.max(1, Math.floor(Math.max(1, d) * fragileMult(t) * elementCounterMult(sp.ele, t.e)));   // ⚔️ 屬性剋制 ×1.4(剋)/×0.6(被剋)（取代舊 +6）
-    d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
+    d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en, w)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
     d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5＋😡狂怒5/5 最終傷害
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     t.curHp -= d; t.justHit = sp.ele; mobWake(t);
@@ -689,6 +689,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         totalDmg = Math.floor(totalDmg * resFactor);
 
         // 隨機減免：騎士 (10-AC)/2；妖精/黑暗妖精/龍騎士/戰士 (10-AC)/3；幻術士 (10-AC)/4；王族/法師等 (10-AC)/5
+        // 🔧 v2.6.64：取值範圍由「0 ~ (10-AC)/Y」改為「(10-AC)/3Y ~ (10-AC)/Y」（下限=上限的1/3）
         let rndDrMax = 0;
         let acGap = Math.max(0, 10 - player.d.ac);
         if (player.cls === 'knight')         rndDrMax = Math.floor(acGap / 2);
@@ -699,7 +700,8 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         else if (player.cls === 'illusion')  rndDrMax = Math.floor(acGap / 4);   // 🔮 幻術士：(10-AC)/4
         else                                 rndDrMax = Math.floor(acGap / 5);   // 👑 王族／法師等：(10-AC)/5
         rndDrMax = Math.max(0, rndDrMax);
-        let randomDr = Math.floor(Math.random() * (rndDrMax + 1));
+        let rndDrMin = Math.floor(rndDrMax / 3);   // floor(floor(x/Y)/3)===floor(x/3Y)
+        let randomDr = rndDrMin + Math.floor(Math.random() * (rndDrMax - rndDrMin + 1));
 
         totalDmg -= player.d.dr; // 傷害減免（已含增幅防禦）
         totalDmg -= randomDr;    // 隨機減免
@@ -884,7 +886,9 @@ function enemyAttackAlly(mob, ally) {
     totalDmg = Math.floor(totalDmg * Math.max(0, Math.min(1, resFactor)));
     let acGap = Math.max(0, 10 - ((d.ac || 0) - teamAcBonus()));   // 🌿 大地的祝福：全隊 AC-7（隨機減傷上限亦提高）
     let rndDrMax = (ally.cls === 'knight') ? Math.floor(acGap / 2) : ((ally.cls === 'elf' || ally.cls === 'dark' || ally.cls === 'dragon' || ally.cls === 'warrior') ? Math.floor(acGap / 3) : (ally.cls === 'illusion' ? Math.floor(acGap / 4) : Math.floor(acGap / 5)));
-    totalDmg -= (d.dr || 0) + Math.floor(Math.random() * (Math.max(0, rndDrMax) + 1));
+    rndDrMax = Math.max(0, rndDrMax);
+    let rndDrMin = Math.floor(rndDrMax / 3);   // 🔧 v2.6.64：隨機減免下限 0 → (10-AC)/3Y（與玩家路徑一致）
+    totalDmg -= (d.dr || 0) + rndDrMin + Math.floor(Math.random() * (rndDrMax - rndDrMin + 1));
     if (ally._setIron3) totalDmg = Math.floor(totalDmg * 0.8);   // 🔮 鐵衛 3/5：-20%（傭兵套裝旗標·常數，不讀玩家狀態）
     totalDmg = Math.floor(totalDmg * teamDmgReduceMult());   // 🛡️ 鋼鐵防護：全隊受傷 -5%（讀玩家 buff）
     totalDmg = Math.floor(totalDmg * allyBuffDmgReduceMult(ally));   // 🆕 v2.6.12 #5a：傭兵聖結界-30%/龍裔-15%/狂怒5-20%（讀傭兵自身 buff/套裝）
