@@ -874,17 +874,20 @@ function doOpenOsirisBox(uid, n) {
     let table = (d.boxTier === 'high') ? OSIRIS_BOX_HIGH : OSIRIS_BOX_BASIC;
     n = Math.max(1, Math.floor(n));
     let opened = 0, gained = {};
-    for (let k = 0; k < n; k++) {
-        if ((item.cnt || 0) < 1) break;
-        let core = player.inv.find(i => i.id === 'mat_crack_core' && (i.cnt || 0) > 0);
-        if (!core) break;   // 龜裂之核 用罄
-        core.cnt--; if (core.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== core.uid);
-        item.cnt--;          // 消耗 1 寶箱（迴圈結束後統一清除空堆疊）
-        let rw = osirisBoxRoll(table);
-        gainItem(rw, 1);
-        gained[rw] = (gained[rw] || 0) + 1;
-        opened++;
-    }
+    let _svTrad = _tradLootCtx; _tradLootCtx = true;   // 🏛️ 傳統模式：寶箱開出的底比斯裝備比照掉落/製作，自帶隨機強化值（gainItem 內 traditionalActive() 閘·非傳統恆 +0；強化值走 committed lootRng 防 SL）
+    try {
+        for (let k = 0; k < n; k++) {
+            if ((item.cnt || 0) < 1) break;
+            let core = player.inv.find(i => i.id === 'mat_crack_core' && (i.cnt || 0) > 0);
+            if (!core) break;   // 龜裂之核 用罄
+            core.cnt--; if (core.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== core.uid);
+            item.cnt--;          // 消耗 1 寶箱（迴圈結束後統一清除空堆疊）
+            let rw = osirisBoxRoll(table);
+            gainItem(rw, 1);
+            gained[rw] = (gained[rw] || 0) + 1;
+            opened++;
+        }
+    } finally { _tradLootCtx = _svTrad; }   // try/finally：例外也必還原，杜絕上下文殘留洩漏
     if ((item.cnt || 0) <= 0) player.inv = player.inv.filter(i => i.uid !== item.uid);
     if (opened > 0) {
         let parts = Object.keys(gained).map(id => `${DB.items[id] ? DB.items[id].n : id}×${gained[id]}`);

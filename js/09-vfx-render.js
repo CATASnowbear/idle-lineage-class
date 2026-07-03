@@ -147,6 +147,9 @@ function vfxKill(mob) {
           }
         }
         let color = mob.boss ? '#ffd54f' : '#ff8a5c';
+        // 🎞️ v2.6.93 有死亡序列(death_*.png)→殘影改播死亡動畫，並略過白光殘影/衝擊波環/核心爆閃/爆裂粒子（死亡幀本身已表達「被擊殺」，白光重疊反而髒）。無死亡動畫則維持原白閃表現。
+        let _da = (typeof _mobAnimCache !== 'undefined') ? _mobAnimCache[mob.n] : null;
+        let _deathSeq = (_da && _da !== 'probing' && _da.death) ? _da.death : null;
         // ✨ 強化死亡表現（讓「怪物被消滅」更明顯）：白閃殘影 + 衝擊波環 + 核心爆閃。場上特效過多(>150)時略過較重的殘影/環，只留粒子，避免大量 AoE 連殺洗版。
         if (layer.childElementCount < 150) {
             // 1) 死亡殘影：複製怪物圖像 → 白化＋放大＋淡出（強烈的「被抹除」感）
@@ -159,8 +162,6 @@ function vfxKill(mob) {
                     gh.style.width = r.width + 'px'; gh.style.height = r.height + 'px';
                     gh.style.transformOrigin = (_anc.hc * 100).toFixed(1) + '% ' + (_anc.vc * 100).toFixed(1) + '%';   // 🎯 v2.6.45 放大自「怪物身體中心」擴散(非方框中心)→白閃由怪身發散
                     layer.appendChild(gh);
-                    let _da = (typeof _mobAnimCache !== 'undefined') ? _mobAnimCache[mob.n] : null;
-                    let _deathSeq = (_da && _da !== 'probing' && _da.death) ? _da.death : null;
                     if (_deathSeq) {   // 🎞️ v2.6.86 死亡序列（death_*.png）：殘影原位逐幀播一輪→短淡出（取代白閃；怪卡本體照常移除）
                         gh.src = _deathSeq[0].src;
                         let _fi = 0, _fint = setInterval(() => {
@@ -178,6 +179,7 @@ function vfxKill(mob) {
                     }
                 }
             } catch (e) {}
+            if (!_deathSeq) {   // 🎞️ v2.6.93 有死亡動畫→略過白光衝擊波環/核心爆閃
             // 2) 衝擊波環：自死亡點擴張的圓環
             let ring = document.createElement('div'); ring.className = 'vfx-killring';
             let _rsz = mob.boss ? 64 : 44;
@@ -203,7 +205,9 @@ function vfxKill(mob) {
                   { transform: 'translate(-50%,-50%) scale(1.45)', opacity: 0 } ],
                 { duration: 280, easing: 'ease-out' }
             ).onfinish = () => core.remove();
+            }   // /if(!_deathSeq) 衝擊波環+核心爆閃
         }
+        if (!_deathSeq) {   // 🎞️ v2.6.93 有死亡動畫→略過爆裂粒子（死亡幀本身已表達擊殺）
         let n = mob.boss ? 28 : 18;   // ✨ 爆裂粒子數提高（原 22/13）→ 死亡更顯眼
         for (let i = 0; i < n; i++) {
             let pt = document.createElement('div');
@@ -222,6 +226,7 @@ function vfxKill(mob) {
                 { duration: 460 + Math.random() * 260, easing: 'cubic-bezier(.2,.7,.3,1)' }
             ).onfinish = () => pt.remove();
         }
+        }   // /if(!_deathSeq) 爆裂粒子
         if (mob.boss) {   // 👑 頭目擊殺：戰場金白閃光
             let bv = document.getElementById('battle-view'); let br = bv && bv.getBoundingClientRect();
             if (br && br.width > 0) {
@@ -445,6 +450,8 @@ function _renderMobsImpl() {
             let _mi = mobStillImg(m.n, m.img, true);   // 🎬 戰鬥初始幀：有動畫→優先 spawn_0（無 spawn 退 idle_0·再退舊靜態）；無動畫→舊靜態
             let hitClass = m.justHit ? (m.justHit === true ? 'anim-hit-normal' : `anim-hit-${m.justHit}`) : '';
             _forceHit[_k] = !!m.justHit;   // 🚀 被擊中→即使字串相同也強制重建該格(重播受擊動畫)
+            // 🎬 v2.6.94 受擊序列幀（hurt_*.png）：被擊中且該怪有 hurt 動畫→優先播一輪（非鎖定·可蓋掉攻擊/待機·不打斷登場/技能鎖定）。gate 在「確有 hurt 序列」避免無 hurt 的怪被誤清掉進行中的攻擊動作。
+            if (m.justHit && MOB_ANIM_NAMES.has(m.n)) { let _ha = _mobAnimCache[m.n]; if (_ha && _ha !== 'probing' && _ha.hurt && typeof _mobAnimTrigger === 'function') _mobAnimTrigger(m, 'hurt'); }
             try { _vfxQueueDmg(m); } catch(e){}   // ✨ VFX：用 HP 差捕捉本幀傷害（須在重設 justHit 前）
             m.justHit = false;
 
@@ -474,7 +481,7 @@ function _renderMobsImpl() {
                         </div>
                         ${badges}
                         <div class="flex justify-center mb-1 mob-img-wrap">
-                            <span class="mob-img-inner"><img src="${_mi.src}" data-fb="${_mi.fb.concat(['https://placehold.co/100x100/1e293b/ffffff?text=?']).join('|')}" alt="${m.n}" onerror="_mobImgErr(this)" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}"></span>
+                            <span class="mob-img-inner${MOB_ANIM_NAMES.has(m.n) ? ' mob-anim' : ''}"><img src="${_mi.src}" data-fb="${_mi.fb.concat(['https://placehold.co/100x100/1e293b/ffffff?text=?']).join('|')}" alt="${m.n}" onerror="_mobImgErr(this)" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}"></span>
                         </div>
                         <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${_statRow}</div>
                         ${_hpBar}
@@ -536,13 +543,17 @@ const MOB_ANIM_MAX_FRAMES = 30;    // 每動作幀數探測上限
 let _mobAnimCache = {};            // 怪名 → {idle,spawn,attack,skill,death:各[Image]|null} ｜ 'probing' ｜ null（全無）
 // 🎬 有序列幀動畫的怪物名單（單一真相·同步判斷用）：戰鬥/圖鑑靜態顯示點與探測皆據此，避免對 1000+ 無動畫怪發 404。
 //    ⚠️ 新增動畫怪：把幀丟進 assets/anim/<怪名>/（跑 spr2png.js）後，把 <怪名> 加進此 Set（一行）。播放幀數由 _mobAnimProbe 自動偵測。
-const MOB_ANIM_NAMES = new Set(['安塔瑞斯']);
+const MOB_ANIM_NAMES = new Set(['安塔瑞斯', '哥布林', '妖魔', '妖魔弓箭手', '地靈', '特羅斯王子', '狼']);
 // 怪物「靜態顯示圖」候選：有動畫→戰鬥優先 spawn_0、圖鑑優先 idle_0，退回舊靜態 PNG；無動畫→直接舊靜態。回傳 {src, fb:[後備...]}（fb 走 onerror 逐張退·各呼叫點自行在末端補佔位符）。
 function mobStillImg(name, staticUrl, preferSpawn) {
     let base = staticUrl || `assets/icons/monsters/${name}.png`;
     if (!MOB_ANIM_NAMES.has(name)) return { src: base, fb: [] };
     let list = [];
-    if (preferSpawn) list.push(`assets/anim/${name}/spawn_0.png`);
+    if (preferSpawn) {
+        let _c = (typeof _mobAnimCache !== 'undefined') ? _mobAnimCache[name] : undefined;
+        // 🎬 v2.6.93 已探測且確定「無登場動畫」(如哥布林只有 idle/attack/death)→不放 spawn_0，免每次渲染固定 404；未探測/探測中仍嘗試(首見一次無害)。
+        if (!(_c && _c !== 'probing' && (!_c.spawn || !_c.spawn.length))) list.push(`assets/anim/${name}/spawn_0.png`);
+    }
     list.push(`assets/anim/${name}/idle_0.png`, base);
     return { src: list[0], fb: list.slice(1) };
 }
@@ -557,11 +568,11 @@ function _mobImgErr(img) {
 function _mobAnimProbe(name) {
     if (_mobAnimCache[name] !== undefined) return;
     _mobAnimCache[name] = 'probing';
-    let out = { idle: null, spawn: null, attack: null, skill: null, death: null }, pending = 5;
-    let finish = () => { if (--pending > 0) return; _mobAnimCache[name] = (out.idle || out.spawn || out.attack || out.skill || out.death) ? out : null; };
-    let probeSeq = (key, prefixes) => {   // 依前綴逐號載入到缺號為止；idle 先試 idle_ 再退裸編號
-        let frames = [], pi = 0;
-        let done = () => { out[key] = frames.length >= 2 ? frames : null; finish(); };
+    let out = { idle: null, spawn: null, attack: null, skill: null, hurt: null, death: null }, pending = 6;
+    let finish = () => { if (--pending > 0) return; _mobAnimCache[name] = (out.idle || out.spawn || out.attack || out.skill || out.hurt || out.death) ? out : null; };
+    let probeSeq = (key, prefixes, minF) => {   // 依前綴逐號載入到缺號為止；idle 先試 idle_ 再退裸編號。minF=最少幀數(受擊 hurt 允許 1 幀)
+        let frames = [], pi = 0, _min = minF || 2;
+        let done = () => { out[key] = frames.length >= _min ? frames : null; finish(); };
         let tryLoad = (i) => {
             if (i >= MOB_ANIM_MAX_FRAMES) { done(); return; }
             let im = new Image();
@@ -575,6 +586,7 @@ function _mobAnimProbe(name) {
     probeSeq('spawn', ['spawn_']);
     probeSeq('attack', ['attack_']);
     probeSeq('skill', ['skill_']);
+    probeSeq('hurt', ['hurt_'], 1);   // 🎬 v2.6.94 受擊動畫（通常 1~2 幀→允許單幀；被擊中優先播放一輪回待機）
     probeSeq('death', ['death_']);
 }
 // 🎬 觸發單次動作（js/04 攻擊/技能掛點呼叫）：鎖定動作（登場/技能）播放中→忽略新觸發（強制放完）
