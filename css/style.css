@@ -115,14 +115,17 @@
         #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。 */
         /* ⚠️v2.6.37 用戶要求「狩獵區域改回 1920×580 比例」：戰鬥框本身鎖 aspect-ratio 1920/580(＝條狀·不再 flex:1 吃滿整個地圖面板成 16:9)；背景 cover 貼齊此條狀框。省下的高度由 #log-row(下方 :has 規則改 flex:1)吸收。安全區(town·無 area-fit)與攻城/裂痕(16:9·非 area-fit)不受影響。 */
-        #battle-view.area-fit:not(.hidden) { display: flex; align-items: flex-end; background-position: center; overflow: hidden; flex: 0 0 auto; width: 100%; aspect-ratio: 1920 / 580; max-height: 100%; }   /* 🖥️ 戰鬥框＝1920/580 條狀(v2.6.37)；怪物列(#mob-list)靠「下緣」站立。⚠️v2.6.0 加 :not(.hidden)：安全區 battle-view 帶 .hidden 時本規則不得蓋過 .hidden 而露出狩獵圖 */
-        #battle-view.area-fit #mob-list { height: auto; aspect-ratio: 1920 / 580; max-height: 100%; }   /* 🎯 怪物站立帶＝還原原始條狀比例(1920/580·與框加大前一致)→怪物大小/前後排景深/特效命中位置全部對回；超高框時 max-height 夾住、其餘高度留給背景 */
+        /* 🖥️ v2.7.1 用戶要求「狩獵區域固定解析度」：戰鬥框改「固定 1120×338 px」(維持 1920/580 條狀比例)、置中、不再隨視窗寬度伸縮。
+           原因：動畫怪是小張像素幀(狼91×46/王子55×97…)，響應式框高會讓 height:100% 的放大倍率隨視窗浮動→動畫怪忽大忽小又糊；框高鎖死後放大倍率恆定、大小一致。
+           max-width:100% 僅為超窄視窗(非目標)防溢出的安全網——怪物大小由「固定框高 338」決定、與寬度無關，故即使觸發也不影響怪物尺寸一致性。align-self:center 讓固定寬度框在整欄置中(面板標題仍滿版)。 */
+        #battle-view.area-fit:not(.hidden) { display: flex; align-items: flex-end; justify-content: center; background-position: center; overflow: hidden; flex: 0 0 auto; width: 800px; height: 242px; max-width: 100%; align-self: center; }   /* 🖥️ 固定 800×242(v2.7.3·由 1120×338 縮小·維持 1920/580 比例)；動畫怪為原生尺寸(v2.7.3)不隨框縮放→框縮小後小怪相對更明顯。⚠️v2.6.0 加 :not(.hidden)：安全區 battle-view 帶 .hidden 時本規則不得蓋過 .hidden 而露出狩獵圖 */
+        #battle-view.area-fit #mob-list { height: 100%; }   /* 🎯 v2.7.1 怪物站立帶＝填滿固定框高(338)→放大倍率恆定、怪物大小/前後排景深/特效命中位置一致(不再依視窗寬度) */
         #battle-view.area-fit #mob-list:has(.boss-slot) { height: 100%; aspect-ratio: auto; }   /* 🐉 龍窟頭目(boss-slot)維持填滿整框大圖、不套站立帶 */
         /* 🎯 五怪站位（⚠️v2.6.39 用戶要求：取消隨機出沒＋恢復整齊「前排三個・後排兩個(後排較高)」＋怪變大）：
            v2.4.85~v2.6.38 曾用 2 排 grid(上下排各半高)——但狩獵區改 1920/580 條狀(v2.6.37)後每格僅 ~87px，被名稱/徽章/血條等固定列擠到怪圖只剩 ~13px(極小)。
            改回「單排站立帶(flex)」＝每隻怪吃滿條狀帶全高→怪圖 ~4-5× 大(13px→~69px)。DOM 順序 [front0,back3,front1,back4,front2](js/09 _order)於 flex 由左至右＝前,後,前,後,前 交錯；
            ⚠️v2.6.44 用戶要求「前後排統一大小＝取原前排1.55與後排1.02的平均1.285×」：前後排 scale 皆 1.285×，僅保留 translateY 位置差(後排 -30px 較高·前排 +2px)＝景深只靠位置不靠大小。頭目 boss-zoom＝1.78(不變·恆最大·仍 >1.285)。3 格地圖(龍窟/攻城/裂痕)無 .mob-back→走下方單排規則。 */
-        #battle-view.area-fit #mob-list:has(.mob-back) { display: flex; align-items: flex-end; height: auto; aspect-ratio: 1920 / 580; max-height: 100%; }
+        #battle-view.area-fit #mob-list:has(.mob-back) { display: flex; align-items: flex-end; height: 100%; }   /* 🎯 v2.7.1 五怪前後排：填滿固定框高(338)，同上（原 aspect-ratio 隨寬度改，固定框後不需要） */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner { transform: translateY(-30px) scale(1.285); transform-origin: bottom center; }   /* 後排：上移 30px＋統一大小 1.285×→較高較遠(僅位置差·大小同前排) */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(2px) scale(1.285); transform-origin: bottom center; }   /* 前排：統一大小 1.285×＝原前1.55與後1.02平均(<頭目 1.78) */
         /* ⚠️v2.6.44：怪名列固定單行→前後排「保留名稱高度」一致，怪圖區(.mob-img-wrap flex:1)吸收的剩餘高度才會等高＝前後排怪圖 base 尺寸相同，配合上方統一 1.285× 即渲染同大小。
@@ -136,6 +139,12 @@
         #battle-view.area-fit .mob-img-wrap { flex: 1 1 auto; min-height: 0; align-items: flex-end; }   /* 🦶 怪物圖貼齊框底(腳齊底)，供腳下接觸陰影對齊 */
         #battle-view.area-fit .mob-img-inner { position: relative; height: 100%; display: inline-flex; align-items: flex-end; justify-content: center; }   /* 內層 inline-flex 縮到圖寬→影子寬度跟著每隻怪縮放 */
         #battle-view.area-fit .mob-img-wrap img { height: 100%; width: auto; max-width: 100%; max-height: 100%; object-fit: contain; object-position: center bottom; position: relative; z-index: 1; }   /* 🖥️ object-fit:contain+底部對齊→戰鬥框加高後怪物圖維持原比例(不再被拉長)、且腳貼底(影子對齊) */
+        /* 🎞️ v2.7.1 動畫怪像素幀專屬：小張像素圖被放大(5~6×)時用 pixelated 保持銳利邊緣(不糊)；一般高解析怪圖(非 .mob-anim)不受影響、維持平滑。 */
+        #battle-view .mob-anim img { image-rendering: crisp-edges; image-rendering: pixelated; }
+        /* 🖼️ v2.7.3 用戶要求「怪物圖片不要縮放·維持原始尺寸比例」：動畫怪像素幀改「原生尺寸」顯示——不再 height:100% 撐滿、不套前後排/頭目 scale 放大，只以原生尺寸貼底置中，max 100% 僅防超大幀(如安塔瑞斯425×307)溢出框、比例不失真。
+           ⚠️ 只套 .mob-anim(動畫像素怪)：一般靜態怪圖原生 600×600，若不縮放會爆框→維持上方 height:100% 縮放填滿。transform:none!important 蓋過所有前後排/頭目/jit scale(那些選擇器含 #mob-list 雙 id 特異性高，須 !important)。 */
+        #battle-view .mob-img-inner.mob-anim { transform: none !important; }
+        #battle-view .mob-img-inner.mob-anim img { height: auto !important; width: auto !important; max-height: 100% !important; max-width: 100% !important; }
         /* 🙈 怪物名字預設隱藏，滑鼠游標移到「怪物圖片」上才顯示（:has 偵測圖片區 hover；img 為 pointer-events:none→hover 落在 .mob-img-wrap；保留名稱列空間避免版面跳動）。.name-show＝JS 依 _hoverMobUid 套用→跨重繪持續顯示(每 tick 換 innerHTML 時 :hover 會瞬失效，靠它穩住不閃) */
         #battle-view .mob-name { opacity: 0; transition: opacity 0.12s ease; }
         #battle-view .mob-target:has(.mob-img-wrap:hover) .mob-name,

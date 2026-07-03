@@ -1009,7 +1009,15 @@ function renderStatusIconBar() {
     Object.keys(STATUS_ICON_SKILLS).forEach(id=>{if((player.buffs[id]||0)>0)add(STATUS_ICON_SKILLS[id],player.buffs[id],DB.skills[id]?DB.skills[id].n:STATUS_ICON_SKILLS[id]);});
     // 持續治療不存於 player.buffs，而是以 0.1 秒 tick 記在 player.hots；換算成真正剩餘秒數後顯示。
     [['sk_regen','體力回復術'],['sk_elf_lifebless','生命的祝福']].forEach(([id,name])=>{let h=player.hots&&player.hots[id];if(h&&h.ticksLeft>0){let remainTicks=Math.max(0,(h.ticksLeft-1)*(h.interval||0)+(h.cd||0));add(name,Math.ceil(remainTicks/10),DB.skills[id]?DB.skills[id].n:name);}});
-    bar.innerHTML=rows.map(x=>{let time=x.ticks>0?`<span class="status-icon-time">${x.sec}s</span>`:'';let title=x.label+(x.ticks>0?'｜剩餘 '+x.sec+' 秒':'');return `<div class="status-icon" title="${title}"><img src="assets/state-icons/${encodeURIComponent(x.name)}.jpg" alt="${x.label}">${time}</div>`;}).join('');
+    // 🔧 v2.7.5 合併 2683「狀態圖示狂閃修正」：renderStatusEffects 每 tick(0.1秒) 呼叫本函式；原本每次都重建整排 innerHTML→所有 <img> 反覆重新解碼/重繪而狂閃。
+    //   改「簽章式重建」：sig 只含 狀態種類/順序/有無倒數(T/P)，不含秒數→種類/順序不變時不重建 DOM，僅更新倒數文字節點與 title(圖片保持不動、不閃)。
+    let sig=rows.map(x=>x.name+'|'+x.label+'|'+(x.ticks>0?'T':'P')).join('||');
+    if(bar.dataset.statusSig!==sig){
+        bar.dataset.statusSig=sig;
+        bar.innerHTML=rows.map((x,i)=>{let time=x.ticks>0?`<span class="status-icon-time">${x.sec}s</span>`:'';let title=x.label+(x.ticks>0?'｜剩餘 '+x.sec+' 秒':'');return `<div class="status-icon" data-status-index="${i}" title="${title}"><img src="assets/state-icons/${encodeURIComponent(x.name)}.jpg" alt="${x.label}">${time}</div>`;}).join('');
+    } else {
+        rows.forEach((x,i)=>{let icon=bar.querySelector(`[data-status-index="${i}"]`);if(!icon)return;icon.title=x.label+(x.ticks>0?'｜剩餘 '+x.sec+' 秒':'');let time=icon.querySelector('.status-icon-time');if(time)time.textContent=x.sec+'s';});
+    }
 }
 
 // 統一渲染「狀態」欄：魔法/藥水增益(buff) + 受到的減益(debuff)
@@ -1020,15 +1028,20 @@ function renderStatusEffects() {
     renderStatusIconBar();
 
     // ===== 增益 BUFF =====
+    // 🔧 v2.7.2 用戶要求「有圖示的狀態不用再於此文字欄重複」：戰鬥右上狀態圖示列(renderStatusIconBar)已顯示的增益，這裡略過文字。
+    //   但圖示列在 #battle-view 內→安全區(村莊)戰鬥區帶 .hidden 時圖示不可見，此時仍以文字顯示，避免完全看不到增益。
+    //   _skipIconized=true(戰鬥中·圖示可見)：藥水(加速/勇/藍/慎/精靈餅乾)、變身、及 STATUS_ICON_SKILLS 內的技能 皆略過文字（改看圖示）。
+    let _bv = document.getElementById('battle-view');
+    let _skipIconized = !!(_bv && !_bv.classList.contains('hidden'));
     let buffs = [];
-    if(player.buffs.haste>0 || player._equipHaste) buffs.push(`<span class="text-emerald-400 font-bold">加速</span>`);
-    if(player.buffs.brave>0) buffs.push(`<span class="text-fuchsia-400 font-bold">勇水</span>`);
-    if(player.buffs.blue>0) buffs.push(`<span class="text-blue-400 font-bold">藍水</span>`);
-    if(player.buffs.cautious>0) buffs.push(`<span class="text-violet-400 font-bold">慎水</span>`);
-    if(player.buffs.elfcookie>0) buffs.push(`<span class="text-yellow-300 font-bold">精靈餅乾</span>`);
+    if((player.buffs.haste>0 || player._equipHaste) && !_skipIconized) buffs.push(`<span class="text-emerald-400 font-bold">加速</span>`);
+    if(player.buffs.brave>0 && !_skipIconized) buffs.push(`<span class="text-fuchsia-400 font-bold">勇水</span>`);
+    if(player.buffs.blue>0 && !_skipIconized) buffs.push(`<span class="text-blue-400 font-bold">藍水</span>`);
+    if(player.buffs.cautious>0 && !_skipIconized) buffs.push(`<span class="text-violet-400 font-bold">慎水</span>`);
+    if(player.buffs.elfcookie>0 && !_skipIconized) buffs.push(`<span class="text-yellow-300 font-bold">精靈餅乾</span>`);
     // 變身顯示：套裝變身(_setPoly，僅穿著時生效)優先於藥水變身，與 recomputeStats 的數值優先序一致 → 穿上惡魔/死亡騎士/克特套裝會立即取代卷軸變身的名稱顯示
     { let _polyDisp = player._setPoly || ((player.buffs.poly>0 && player.poly) ? player.poly : null);
-      if(_polyDisp) buffs.push(`<span class="${_polyDisp.c} font-bold">變身:${_polyDisp.n}</span>`); }
+      if(_polyDisp && !_skipIconized) buffs.push(`<span class="${_polyDisp.c} font-bold">變身:${_polyDisp.n}</span>`); }
 
     // 🤝 協力傭兵已改由「協力傭兵隊伍」面板(#squad-panel)顯示 HP/MP/EXP/狀態，移除此處「狀態」欄的重複「協力：XX」條目
     // 👇 補上夥伴與誘捕狀態的顯示（可同時多種夥伴，數字=持有項圈數量，為1不顯示）
@@ -1068,6 +1081,7 @@ function renderStatusEffects() {
                 }
                 continue;
             }
+            if(_skipIconized && STATUS_ICON_SKILLS[k]) continue;   // 🔧 v2.7.2 有圖示的技能增益→戰鬥中略過文字(改看右上狀態圖示)；無圖示技能/村莊仍顯示
             buffs.push(`<span class="${getBuffColor(k, DB.skills[k])} font-bold">${DB.skills[k].n}</span>`);
         }
     }
