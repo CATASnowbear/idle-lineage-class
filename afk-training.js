@@ -3,6 +3,8 @@
  *
  * 在遊戲「⚙️ 自動化」面板加一顆「🥊 木人場」入口。進去後：
  *  - 選 1~5 隻怪（每隻可不同，預設第 1 格妖魔 orc），用 select+input 篩選挑選。
+ *  - 可選「世界模式」（一般／席琳的世界／瘋狂的席琳世界）：重用原作 applySherineBuff 對訓練怪
+ *    套用席琳強度（AC/MR/命中/減傷＋怪傷×2/×3 旗標），數值永遠與遊戲一致、作者改倍率自動跟上。
  *  - 怪打不死、玩家也打不死，跑「真實戰鬥」量輸出。
  *  - 旁邊 HUD 即時顯示「每隻 DPS」＋「總 DPS」（平均與近 10 秒即時）。
  *  - 「重新計算」＝重算角色數值(calcStats)＋重置怪＋DPS 歸零。
@@ -35,8 +37,10 @@
   var WINDOW_TICKS = 100;            // 即時 DPS 視窗 = 100 tick = 10 秒
   var SLOTS_KEY = 'afk_training_slots';
   var POS_KEY = 'afk_training_hudpos';   // HUD 拖曳後的位置記憶
+  var MODE_KEY = 'afk_training_mode';    // 世界模式記憶（各存檔位各一組，同 slots）
 
   var slots = [DEFAULT_MOB, null, null, null, null];   // 各格選的怪 id  （無 active 旗標：是否在木人場一律以 inTrain()＝map===TRAIN_MAP 判斷）
+  var worldMode = 'normal';              // 'normal' | 'sherine' | 'mad'（席琳／瘋狂席琳強度）
   var backup = null;                 // 進場前的狀態（離場還原用）
   var dps = null;                    // { startTick, perUid:{uid:累計傷害}, window:[每tick總傷害] }
   var hudTickAcc = 0;                // HUD 更新節流計數
@@ -180,15 +184,38 @@
       if (base.hard && typeof window.initHardSkin === 'function') window.initHardSkin(inst);
       mapState.mobs[RENDER_ORDER[i]] = inst;
     }
+    applyWorldMode();
     mapState.targetIdx = -1;   // 不硬鎖最左:設 -1 讓遊戲 getTarget() 自動瞄(優先序中央→左→右,同一般地圖)→ 木人場也是一開始瞄中間
     if (typeof window.renderMobs === 'function') window.renderMobs();
+  }
+
+  // ---- 世界模式（席琳／瘋狂席琳）強度：重用原作 applySherineBuff ----------------
+  //   原作函式讀 player.sherineWorld / player.sherineMad 旗標 → 呼叫前暫時設成所選模式、
+  //   finally 立刻還原（同步執行、中間不可能存檔）。數值單一事實來源在原作，作者改倍率自動跟上。
+  //   恩賜（applySherineGrace）是隨機 ×10 事件，量測要穩定 → 刻意不套。
+  function applyWorldMode() {
+    if (worldMode === 'normal') return;
+    if (typeof window.applySherineBuff !== 'function' || typeof player === 'undefined' || !player) return;
+    var sw = player.sherineWorld, sm = player.sherineMad;
+    player.sherineWorld = (worldMode === 'sherine');
+    player.sherineMad = (worldMode === 'mad');
+    try {
+      for (var i = 0; i < mapState.mobs.length; i++) {
+        var m = mapState.mobs[i];
+        if (!m || !m._train) continue;
+        window.applySherineBuff(i);
+        m.hp = TRAIN_HP; m.curHp = TRAIN_HP;   // buff 會把 HP ×3/×5，統一回木人場天文血量
+      }
+    } finally {
+      player.sherineWorld = sw; player.sherineMad = sm;
+    }
   }
 
   // ---- 進入木人場 ---------------------------------------------------------
   function enterTraining() {
     if (!player || !player.cls) { alert('請先載入角色，再進木人場。'); return; }
     // 防重入：人已在木人場地圖上 → 只重擺怪+DPS歸零，絕不重抓 backup（避免把木人場狀態記成「進場前」）
-    if (inTrain()) { spawnTrainingMobs(); resetDps(); openHud(); refreshHud(); return; }
+    if (inTrain()) { spawnTrainingMobs(); resetDps(); closePicker(); openHud(); refreshHud(); return; }
     // 進場前：把整個 mapState 全鍵快照存起來（離場還原用，確保離開時換回真實狀態）
     var msSnap = {}; for (var bk in mapState) msSnap[bk] = mapState[bk];
     backup = { ms: msSnap };
@@ -368,7 +395,9 @@
     var winDmg = 0; for (var w = 0; w < dps.window.length; w++) winDmg += dps.window[w];
     var instTotal = winSec > 0 ? winDmg / winSec : 0;
 
-    totalEl.innerHTML =
+    var modeTag = (worldMode === 'mad') ? '<div class="m-train-mode-tag m-train-mode-mad">🔥 瘋狂的席琳世界</div>'
+      : (worldMode === 'sherine') ? '<div class="m-train-mode-tag">🔮 席琳的世界</div>' : '';
+    totalEl.innerHTML = modeTag +
       '<div class="m-train-total-inst">即時 <b>' + fmt(instTotal) + '</b> <span>/秒</span></div>' +
       '<div class="m-train-total-avg">平均 ' + fmt(avgTotal) + ' /秒　·　' + elapsedSec.toFixed(0) + ' 秒</div>';
 
@@ -419,6 +448,11 @@
         '<div class="m-train-modal-head">🥊 木人場 — 選擇怪物' +
         '<button id="m-train-modal-x" type="button">✕</button></div>' +
         '<div class="m-train-modal-note">選 1~5 隻怪（每隻可不同）。怪打不死、你也打不死，旁邊即時顯示 DPS。<br>每格先在左邊輸入關鍵字篩選，再從右邊下拉選怪。</div>' +
+        '<div class="m-train-mode-row"><span>世界模式</span><select id="m-train-mode">' +
+        '<option value="normal">一般（無強化）</option>' +
+        '<option value="sherine">🔮 席琳的世界</option>' +
+        '<option value="mad">🔥 瘋狂的席琳世界</option>' +
+        '</select></div>' +
         '<div id="m-train-rows"></div>' +
         '<div class="m-train-modal-btns">' +
         '<button id="m-train-go" type="button" class="m-train-btn m-train-btn-amber">進入木人場</button>' +
@@ -431,11 +465,15 @@
       document.getElementById('m-train-go').addEventListener('click', function () {
         readSlotsFromUI();
         if (!slots.some(Boolean)) { alert('至少選 1 隻怪。'); return; }
+        var msel = document.getElementById('m-train-mode');
+        if (msel) worldMode = (msel.value === 'sherine' || msel.value === 'mad') ? msel.value : 'normal';
         saveSlots();
         enterTraining();
       });
     }
     renderPickerRows();
+    var msel0 = document.getElementById('m-train-mode');
+    if (msel0) msel0.value = worldMode;
     document.getElementById('m-train-go').textContent = inTrain() ? '套用變更' : '進入木人場';
     modal.style.display = 'flex';
   }
@@ -492,6 +530,7 @@
 
   // 各角色（各存檔位）各記一組：key 帶 currentSlot（1~8）。currentSlot 是 index.html 的 let 全域 → 用裸名
   function slotsKey() { return SLOTS_KEY + '_' + ((typeof currentSlot !== 'undefined') ? currentSlot : 1); }
+  function modeKey() { return MODE_KEY + '_' + ((typeof currentSlot !== 'undefined') ? currentSlot : 1); }
   function loadSlots() {
     slots = [DEFAULT_MOB, null, null, null, null];
     try {
@@ -499,8 +538,10 @@
       if (raw) { var arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length === 5) slots = arr.map(function (x) { return (x && DB.mobs[x]) ? x : null; }); }
     } catch (e) { /* ignore */ }
     if (!slots.some(Boolean)) slots = [DEFAULT_MOB, null, null, null, null];
+    worldMode = 'normal';
+    try { var m = localStorage.getItem(modeKey()); if (m === 'sherine' || m === 'mad') worldMode = m; } catch (e) { /* ignore */ }
   }
-  function saveSlots() { try { localStorage.setItem(slotsKey(), JSON.stringify(slots)); } catch (e) { /* ignore */ } }
+  function saveSlots() { try { localStorage.setItem(slotsKey(), JSON.stringify(slots)); localStorage.setItem(modeKey(), worldMode); } catch (e) { /* ignore */ } }
 
   // ---- 入口：自動化面板「🔌 外掛」列加一顆鈕（沿用 afk-dex 的共用列 id；木人場自成一列、不擠進查詢鈕排） ----
   function injectAutoNav() {
@@ -544,6 +585,11 @@
       '.m-train-total{text-align:center;margin-bottom:8px;}',
       '.m-train-total-inst{font-size:15px;color:#fde68a;}.m-train-total-inst b{font-size:20px;color:#facc15;}.m-train-total-inst span{font-size:12px;color:#94a3b8;}',
       '.m-train-total-avg{font-size:11px;color:#94a3b8;margin-top:2px;}',
+      '.m-train-mode-tag{font-size:12px;font-weight:bold;color:#a78bfa;margin-bottom:2px;}',
+      '.m-train-mode-mad{color:#f87171;}',
+      '.m-train-mode-row{display:flex;align-items:center;gap:8px;padding:0 14px 10px;font-size:13px;color:#cbd5e1;}',
+      '.m-train-mode-row span{flex:none;}',
+      '.m-train-mode-row select{flex:1;min-width:0;background:#1e293b;border:1px solid #475569;border-radius:6px;color:#e2e8f0;padding:6px 4px;font-size:13px;outline:none;}',
       '.m-train-list{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;max-height:170px;overflow-y:auto;}',
       '.m-train-row{display:flex;justify-content:space-between;align-items:center;gap:6px;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:3px 7px;}',
       '.m-train-row-name{color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
