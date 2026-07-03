@@ -543,7 +543,7 @@ const MOB_ANIM_MAX_FRAMES = 30;    // 每動作幀數探測上限
 let _mobAnimCache = {};            // 怪名 → {idle,spawn,attack,skill,death:各[Image]|null} ｜ 'probing' ｜ null（全無）
 // 🎬 有序列幀動畫的怪物名單（單一真相·同步判斷用）：戰鬥/圖鑑靜態顯示點與探測皆據此，避免對 1000+ 無動畫怪發 404。
 //    ⚠️ 新增動畫怪：把幀丟進 assets/anim/<怪名>/（跑 spr2png.js）後，把 <怪名> 加進此 Set（一行）。播放幀數由 _mobAnimProbe 自動偵測。
-const MOB_ANIM_NAMES = new Set(['安塔瑞斯', '哥布林', '妖魔', '妖魔弓箭手', '地靈', '特羅斯王子', '狼']);
+const MOB_ANIM_NAMES = new Set(['安塔瑞斯', '哥布林', '妖魔', '妖魔弓箭手', '地靈', '特羅斯王子', '狼', '依詩蒂公主', '哈士奇', '熊', '牧羊犬', '蘑菇', '骷髏', '漂浮之眼', '人形殭屍', '冰原狼人', '受詛咒的妖魔殭屍', '妖魔殭屍', '安普長老', '怪手', '恐怖的殭屍王', '杜賓狗', '死亡的殭屍王', '狼人', '遺忘之島狼人']);
 // 怪物「靜態顯示圖」候選：有動畫→戰鬥優先 spawn_0、圖鑑優先 idle_0，退回舊靜態 PNG；無動畫→直接舊靜態。回傳 {src, fb:[後備...]}（fb 走 onerror 逐張退·各呼叫點自行在末端補佔位符）。
 function mobStillImg(name, staticUrl, preferSpawn) {
     let base = staticUrl || `assets/icons/monsters/${name}.png`;
