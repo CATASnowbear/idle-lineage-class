@@ -764,12 +764,11 @@
       'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(4 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
 
       /* 🧿 角色狀態圖示列(作者 #status-icon-bar,錨在戰鬥框右上):桌機 38px 圖示在手機矮戰鬥框裡太佔畫面,
-         整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數不能跟著把 font-size 砍半(5px 讀不了、
-         且會被瀏覽器最小字級 clamp 頂住縮不下去)→ 改用 transform:scale(.75) 等比縮(10px→視覺約 7.5px,
-         scale 不受最小字級限制),數字仍可辨識、也不會蓋掉大半張圖示。 */
+         整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數在 19px 小圖上會蓋掉大半張圖 → 手機不顯示
+         (使用者指定,較清爽);桌機不受影響。 */
       'body.m-mobile #status-icon-bar{top:6px !important;right:8px !important;left:8px !important;gap:3px !important;}',
       'body.m-mobile .status-icon{width:19px !important;height:19px !important;flex:0 0 19px !important;border-radius:3px !important;}',
-      'body.m-mobile .status-icon-time{padding:0 1px !important;transform:scale(.75);transform-origin:100% 100%;}',
+      'body.m-mobile .status-icon-time{display:none !important;}',
 
       /* 喝水列下方:鏡射「背包→能力→狀態」(#dt-buffs)。只在戰鬥畫面顯示、村莊隱藏(同喝水列) */
       '#m-battle-buffs{display:none;}',
