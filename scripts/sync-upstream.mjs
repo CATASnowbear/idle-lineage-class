@@ -53,6 +53,7 @@ const PLUGINS = [
   { file: 'afk-pwa.js',      comment: 'PWA:安裝成免網路遊玩 + 自動/手動更新 + 背景預抓離線資源(可獨立維護;原作者更新後重新加回此行即可)' },
   { file: 'afk-storage.js',  comment: '首頁設定鈕:檢查存檔大小(純唯讀列出 localStorage 各 key 用量;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-history.js',  comment: '離線掛機歷史紀錄:首頁設定選單列出各角色最近 5 筆離線收益(純唯讀讀 afk_hist_<slot>;可獨立維護,原作者更新後重新加回此行即可)' },
+  { file: 'afk-mobname.js',  comment: '顯示怪物名稱模式:首頁設定選單三選一(全部常駐/鎖定中常駐/原版;純 CSS+body 屬性;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-training.js', comment: '木人場:選怪→打不死木人→量即時DPS(純測試,效果只在 afk_dummy 假地圖,不擋存檔、離線不結算;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-analytics.js', comment: 'Cloudflare Web Analytics beacon 注入:統計人數/開啟次數(只在正式站台送;可獨立維護,原作者更新後重新加回此行即可)' },
   { file: 'afk-skin.js', comment: '首頁「加掛版」品牌標記 + 外掛區外框(純視覺;需排在其他 afk-* 之後;可獨立維護,原作者更新後重新加回此行即可)' },
