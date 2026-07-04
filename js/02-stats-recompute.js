@@ -384,7 +384,7 @@ d.mr += (baseMr + bonusMr);
     p._setApprentice5 = _shN('學徒') >= 5;       // MP<30% 時技能耗魔減半（getMpCost 套用）
     if (_shN('魔女') >= 2) { d.magicDmg += 3; }
     if (_shN('魔女') >= 3) { d.resWater += 10; d.extraMp += 5; }
-    p._setWitch5 = _shN('魔女') >= 5;            // 🔧 每 5 次共鳴 → 免費冰雪暴（冰雪颶風風暴傷害·不受法師階級加成）
+    p._setWitch5 = _shN('魔女') >= 5;            // 🔧 每 5 次共鳴 → 免費冰雪暴（sk_blizzard·4×2D10 水全體·不受法師階級加成）
     if (!p._setWitch5) p._witchResCnt = 0;       // 卸下套裝即重置共鳴計數
     if (_shN('暗影') >= 2) { d.extraDmg += 7; }   // 🔧 暗影 2/5：額外傷害+7
     p._setShadow3 = _shN('暗影') >= 3;            // 🔧 暗影 3/5：觸發迴避時恢復 2% HP（迴避處套用）

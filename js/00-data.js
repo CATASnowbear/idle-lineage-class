@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v2.7.9';
+const GAME_VERSION = 'v3.0.2';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -954,7 +954,7 @@ const DB = {
         "item_demon_spy":    { n: "妖魔密使首領間諜書", type: "etc", p: 1, c: "text-amber-300", noUse: true, noSell: true, gachaWeight: 0, d: "龍騎士任務道具。可向普洛凱爾兌換龍鱗臂甲或血之渴望書板（1 個）。" },
         "item_yeti_heart":   { n: "雪怪之心", type: "etc", p: 1, c: "text-cyan-300", noUse: true, noSell: true, gachaWeight: 0, d: "龍騎士任務道具。可向普洛凱爾兌換龍騎士斗篷（10 個）。" },
         "item_soulfire_ash": { n: "靈魂之火灰燼", type: "etc", p: 1, c: "text-orange-300", noUse: true, noSell: true, gachaWeight: 0, d: "龍騎士任務道具。50 級試煉第二階段，可向普洛凱爾兌換消滅者鎖鏈劍（1 個）。" },
-        "amr_baphomet": { n: "巴風特盔甲", type: "arm", slot: "armor", ac: 8, immPoison: true, dr: 2, mrPerEn: 1, req: "knight", safe: 4, p: 225300, legend: true, gachaWeight: 1, d: "自惡魔巴風特身上剝下的傳說重甲，魔氣使穿戴者百毒不侵。免疫中毒、傷害減免 +2；每強化 +1 MR +1。" },
+        "amr_baphomet": { n: "巴風特盔甲", type: "arm", slot: "armor", ac: 8, immPoison: true, dr: 2, mrPerEn: 1, req: "knight,dragon", safe: 4, p: 225300, legend: true, gachaWeight: 1, d: "自惡魔巴風特身上剝下的傳說重甲，魔氣使穿戴者百毒不侵。免疫中毒、傷害減免 +2；每強化 +1 MR +1。" },
         "clk_flame_blood": { n: "炎魔的血光斗篷", type: "arm", slot: "cloak", ac: 5, stealth: true, req: "all", safe: 4, p: 150000, legend: true, gachaWeight: 0, d: "以炎魔鮮血浸染而成的斗篷，纏身時身影隱沒於灼熱的暗影裡。穿戴時等同維持隱身（卸下即失效）。" },
         "clk_fallen": { n: "墮落斗篷", type: "arm", slot: "cloak", ac: 2, mhp: 100, con: 1, req: "dark", safe: 4, p: 150000, legend: true, gachaWeight: 1, d: "墮落者遺落的傳說斗篷，腐朽中仍透出不滅的生命力。HP+100、體質+1。" },
         "amr_fallen": { n: "墮落長袍", type: "arm", slot: "armor", ac: 13, mmp: 100, mpR: 5, req: "mage", safe: 0, p: 150000, legend: true, gachaWeight: 1, d: "墮落者的傳說長袍，衣襟間流淌著源源不絕的魔力暗潮。MP+100、MP自然恢復+5。" },

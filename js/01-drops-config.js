@@ -726,7 +726,18 @@ const DARK_CRYSTAL_DROPS = {
     '安塔瑞斯':   [['bk_dark_armorbreak',5]]
 };
 // 脆弱（白鳥5）：受所有主要傷害來源 +20%
-function fragileMult(t) { let m = 1; if (t && t.st) { if (t.st.fragile > 0) m *= 1.2; if (t.st.armorbreak > 0) m *= 1.58; } if (typeof player !== 'undefined' && player && player.buffs && player.buffs.sk_royal_precise > 0) { let _div = (player.mastery === 'k_royal_pledge') ? 10 : 15; m *= (1 + (1 + (player.lv || 1) / _div) / 100); } return m; }   // 🔮 脆弱(白鳥5)+20%、🔧 破壞盔甲+58%；👑 精準目標：場上所有敵人受傷 +[1+(等級/15)]%（🏅 血盟精通→/10）
+function fragileMult(t) {
+    let m = 1;
+    if (t && t.st) { if (t.st.fragile > 0) m *= 1.2; if (t.st.armorbreak > 0) m *= 1.58; }
+    // 👑 精準目標：場上所有敵人受傷 +[1+(施放者等級/15)]%（🏅 血盟精通→/10）。v2.7.92 修稽核：王族「傭兵」施放的也生效——隊長優先、否則取第一個有此 buff 的傭兵（不疊加·單一來源）；v2.6.50 維持閘本就讓傭兵只在隊長沒開時補位＝互補
+    let _pp = null;
+    if (typeof player !== 'undefined' && player) {
+        if (player.buffs && player.buffs.sk_royal_precise > 0) _pp = player;
+        else if (player.allies) { for (let _a of player.allies) { if (_a && !_a._downed && _a.buffs && _a.buffs.sk_royal_precise > 0) { _pp = _a; break; } } }
+    }
+    if (_pp) { let _div = (_pp.mastery === 'k_royal_pledge') ? 10 : 15; m *= (1 + (1 + (_pp.lv || 1) / _div) / 100); }
+    return m;
+}   // 🔮 脆弱(白鳥5)+20%、🔧 破壞盔甲+58%；👑 精準目標（隊長或傭兵擇一）
 
 // ============================================================================
 // 🏅 職業精通系統（威頓村 NPC 漢，Lv50+）

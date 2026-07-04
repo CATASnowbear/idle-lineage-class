@@ -185,6 +185,7 @@ function manualCast(skId) {
         if(KING_ROOMS[mapState.current]) { logSys('<span class="text-red-400">軍王之室的封印之力壓制了傳送術，無法生效。</span>'); return; }
         if(prideTeleportBlocked()) { logSys('<span class="text-red-400">' + (state.riftRun ? '時空裂痕中無法使用傳送術。' : (state.prideRanked ? '排名挑戰中無法使用傳送術。' : '在此樓層需持有對應的傲慢之塔支配符才能使用傳送術。')) + '</span>'); return; }
         if(state.oblivion) { logSys('<span class="text-red-400">遺忘之島的迷霧壓制了傳送術，無法生效。</span>'); return; }
+        if(typeof playSelfFx === 'function') { try { playSelfFx('傳送術'); } catch(e){} }   // 🌀 v2.7.54 傳送術特效（過所有封鎖閘後、實際傳送前播·於戰鬥區中央光柱）
         if (HIDDEN_AREA_PARENT[mapState.current]) {   // 🏛️ 對應地圖手動施放傳送術→進入隱藏狩獵區域（MP 已扣、冷卻照走）
             enterHiddenArea(HIDDEN_AREA_PARENT[mapState.current]);
         } else {
@@ -198,6 +199,7 @@ function manualCast(skId) {
         let eName = { fire:'火', water:'水', wind:'風', earth:'地' }[weak];
         logCombat(eName ? `<span class="${getMobColor(t.lv)}">${t.n}</span> 弱點是 ${eName}屬性。`
                         : `<span class="${getMobColor(t.lv)}">${t.n}</span> 沒有明顯的屬性弱點。`, 'magic');
+        if(typeof playSpellFx === 'function') { try { playSpellFx(sk.n, t); } catch(e){} }   // 🔮 v2.7.44 能量感測：依目標屬性(t.e)播對應變體動畫(byEle·無屬性怪引擎靜默略過)
     // 🔧 魔力奪取已改為轉換技能（type:'convert', drain:true），改由 castSkill 的 convert 分支處理：
     //    命中判定改用 abnormalMagicHit（與迷魅術一致，吃魔法命中/怪MR/等級差），吸取量＝怪物等級/2
     } else if(sk.mEff === 'charm') {
@@ -239,6 +241,7 @@ function castSkill(skId) {
         if (player.mp < _before) manaMasteryRefund(_before - player.mp);
     }
     if (r) { try { playSpellCast(DB.skills[skId] ? DB.skills[skId].n : null); } catch(e){} }   // 🔊 音效：施法成功才出聲（依技能名對應專屬施展音，查無→通用魔法音）
+    if (r && typeof playSelfFx === 'function' && DB.skills[skId] && isSupportSkill(DB.skills[skId])) { try { playSelfFx(DB.skills[skId].n); } catch(e){} }   // 🙏 v2.7.48 自我增益特效：治癒/武器附魔/防禦/屏障等 buff/heal 施放成功→#battle-view 中央疊播(未註冊靜默略過)
     return r;
 }
 // 👑 魔法精通：免費額外施放「目前設定的攻擊技能」（_royalFreeCast → 不耗MP、不受攻擊冷卻；castSkill 內部仍會驗證等級/目標/MP，可施放才施放）
@@ -625,6 +628,7 @@ function castSkillInner(skId) {
                     totalDmgText.push(`對 <span class="${getMobColor(t.lv)}">${t.n}</span> 施放`);
                 }
                 mobWake(t);
+                if(typeof playSpellFx === 'function') { try { playSpellFx(sk.n, t); } catch(e){} }   // ⚡ v2.7.15 法術特效：技能有註冊 SPELL_FX 者於目標身上疊播天堂原版特效(純視覺·只有註冊者會播)
                 if(t.st && t.st.mrhalf > 0) t.st.mrhalf = 0; // 受一次魔法傷害後解除魔抗減半
                 if(sk.lifesteal) { let h = Math.min(totalDmg, player.mhp - player.hp); if(h > 0){ player.hp += h; logCombat(`你吸取了 ${h} 點生命。`, 'heal'); } }
                 if(sk.freeze) applyMobStatus(t, { kind:'freeze', pbase:sk.freeze, dur:6 }, sk.n);

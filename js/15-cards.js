@@ -576,6 +576,25 @@ function cardBookTab(key) { _cardBookRegion = key; renderCardBook(); }
 function cardBookBackdrop(ev) { if (ev && ev.target && ev.target.id === 'card-book') closeCardBook(); }
 
 function _cardMobImg(mob, name) { return mob.img || ('assets/icons/monsters/' + name + '.png'); }
+// 🖼️ v2.7.43 圖鑑縮圖：已收集(非剪影)的動畫怪→合併 idle_s(影子·multiply)＋本體(idle_0)＋idle_w/idle_w2(武器·screen)第一張(同 --multi 共畫布→object-fit:contain 同尺寸像素級對齊)；剪影/無額外圖層→單張本體(維持原樣)。inline style 免依賴 Tailwind class。
+function _codexMobThumbHtml(nm, mi, silh) {
+    let fb = mi.fb.concat(['https://placehold.co/64x64/1e293b/334155?text=%3F']).join('|');
+    let single = `<img src="${mi.src}" data-fb="${fb}" alt="${nm}" class="w-16 h-16 object-contain${silh}" onerror="_mobImgErr(this)">`;
+    if (silh) return single;   // 剪影(未收集)：黑影單張即可
+    if (!(typeof MOB_ANIM_NAMES !== 'undefined' && MOB_ANIM_NAMES.has(nm))) return single;
+    let hasS = (typeof MOB_ANIM_SPRITE_SHADOW !== 'undefined') && MOB_ANIM_SPRITE_SHADOW.has(nm);
+    let hasW = (typeof MOB_ANIM_WEAPON_FX !== 'undefined') && MOB_ANIM_WEAPON_FX.has(nm);
+    let hasW2 = (typeof MOB_ANIM_WEAPON_FX2 !== 'undefined') && MOB_ANIM_WEAPON_FX2.has(nm);
+    if (!hasS && !hasW && !hasW2) return single;   // 純本體動畫怪→單張
+    let enc = encodeURIComponent(nm);
+    let st = 'position:absolute;top:0;left:0;width:64px;height:64px;object-fit:contain;';
+    let L = '';
+    if (hasS) L += `<img src="assets/anim/${enc}/idle_s_0.png" style="${st}mix-blend-mode:multiply" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    L += `<img src="${mi.src}" data-fb="${fb}" alt="${nm}" style="${st}" onerror="_mobImgErr(this)">`;
+    if (hasW) L += `<img src="assets/anim/${enc}/idle_w_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    if (hasW2) L += `<img src="assets/anim/${enc}/idle_w2_0.png" style="${st}mix-blend-mode:screen" alt="" aria-hidden="true" onerror="this.style.display='none'">`;
+    return `<div style="position:relative;width:64px;height:64px">${L}</div>`;
+}
 
 function renderCardBook() {
     let host = document.getElementById('card-book-body'); if (!host) return;
@@ -631,7 +650,7 @@ function renderCardBook() {
         let tierBadge = tier > 0 ? `<span class="absolute top-1 right-1 text-[10px] px-1 rounded ${CARD_TIERS[tier - 1].col} bg-black/50 font-bold">${CARD_TIERS[tier - 1].sfx}</span>` : '';
         return `<div class="relative bg-slate-800/70 border ${tier > 0 ? 'border-slate-600' : 'border-slate-700/60'} rounded-lg p-2 flex flex-col items-center gap-1 w-[136px]">
             ${tierBadge}
-            <img src="${_mi.src}" data-fb="${_mi.fb.concat(['https://placehold.co/64x64/1e293b/334155?text=%3F']).join('|')}" alt="${nm}" class="w-16 h-16 object-contain${silh}" onerror="_mobImgErr(this)">
+            ${_codexMobThumbHtml(nm, _mi, silh)}
             <div class="text-center w-full">${nameHtml}${info2}</div>
         </div>`;
     }).join('');

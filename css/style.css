@@ -128,6 +128,9 @@
         #battle-view.area-fit #mob-list:has(.mob-back) { display: flex; align-items: flex-end; height: 100%; }   /* 🎯 v2.7.1 五怪前後排：填滿固定框高(338)，同上（原 aspect-ratio 隨寬度改，固定框後不需要） */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner { transform: translateY(-30px) scale(1.285); transform-origin: bottom center; }   /* 後排：上移 30px＋統一大小 1.285×→較高較遠(僅位置差·大小同前排) */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(2px) scale(1.285); transform-origin: bottom center; }   /* 前排：統一大小 1.285×＝原前1.55與後1.02平均(<頭目 1.78) */
+        /* 🆕 v2.7.47 動畫怪(.mob-anim)也套前後排「位置高低差」(translateY)但維持原生大小(不 scale)：覆蓋上方 .mob-anim{transform:none} → 動畫怪不再全部同一基線·後排較高前排較低·大小皆原始(含後排頭目) */
+        #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner.mob-anim { transform: translateY(-30px) !important; transform-origin: bottom center; }
+        #battle-view.area-fit #mob-list:has(.mob-back) .mob-front .mob-img-inner.mob-anim { transform: translateY(2px) !important; transform-origin: bottom center; }
         /* ⚠️v2.6.44：怪名列固定單行→前後排「保留名稱高度」一致，怪圖區(.mob-img-wrap flex:1)吸收的剩餘高度才會等高＝前後排怪圖 base 尺寸相同，配合上方統一 1.285× 即渲染同大小。
            不加此列時：後排欄較窄(flex0.8)使長名折成兩行、多吃 ~20px→怪圖區被壓縮→後排怪偏小(即使 scale 相同)。單行溢出由 .mob-target overflow:hidden 收邊、span 補 ellipsis。僅套 5 怪前後排版面。 */
         #battle-view.area-fit #mob-list:has(.mob-back) .mob-name { white-space: nowrap; overflow: hidden; }
@@ -141,10 +144,16 @@
         #battle-view.area-fit .mob-img-wrap img { height: 100%; width: auto; max-width: 100%; max-height: 100%; object-fit: contain; object-position: center bottom; position: relative; z-index: 1; }   /* 🖥️ object-fit:contain+底部對齊→戰鬥框加高後怪物圖維持原比例(不再被拉長)、且腳貼底(影子對齊) */
         /* 🎞️ v2.7.1 動畫怪像素幀專屬：小張像素圖被放大(5~6×)時用 pixelated 保持銳利邊緣(不糊)；一般高解析怪圖(非 .mob-anim)不受影響、維持平滑。 */
         #battle-view .mob-anim img { image-rendering: crisp-edges; image-rendering: pixelated; }
-        /* 🖼️ v2.7.3 用戶要求「怪物圖片不要縮放·維持原始尺寸比例」：動畫怪像素幀改「原生尺寸」顯示——不再 height:100% 撐滿、不套前後排/頭目 scale 放大，只以原生尺寸貼底置中，max 100% 僅防超大幀(如安塔瑞斯425×307)溢出框、比例不失真。
+        /* 🖼️ v2.7.3 用戶要求「怪物圖片不要縮放·維持原始尺寸比例」：動畫怪像素幀改「原生尺寸」顯示——不再 height:100% 撐滿、不套前後排/頭目 scale 放大，只以原生尺寸貼底置中、比例不失真。
+           🆕 v2.7.86 用戶要求「攻擊時不要變形與位移·維持怪物大小·大怪溢出沒關係」：移除 max-height/width:100% 縮放上限→動畫怪一律「原生像素 1:1·永不縮放」。原因：大型動畫怪(安塔瑞斯425×307/血色術士214)被 max 100% 縮到框內＝非整數倍縮放，配 image-rendering:pixelated 產生像素抖動→攻擊快速換幀時被看成「變形＋位移」。改 max:none 後零縮放＝零抖動·怪物真實大小；超出 800×242 的部分由戰鬥框 overflow:hidden 收邊(頭可能被框頂切·用戶接受)。腳仍貼底(align-items:flex-end)。
            ⚠️ 只套 .mob-anim(動畫像素怪)：一般靜態怪圖原生 600×600，若不縮放會爆框→維持上方 height:100% 縮放填滿。transform:none!important 蓋過所有前後排/頭目/jit scale(那些選擇器含 #mob-list 雙 id 特異性高，須 !important)。 */
         #battle-view .mob-img-inner.mob-anim { transform: none !important; }
-        #battle-view .mob-img-inner.mob-anim img { height: auto !important; width: auto !important; max-height: 100% !important; max-width: 100% !important; }
+        #battle-view .mob-img-inner.mob-anim img { height: auto !important; width: auto !important; max-height: none !important; max-width: none !important; }
+        /* 🌑 v2.7.17 真實影子 sprite 圖層：絕對定位、底部置中、與本體同 native 尺寸(同世界錨定畫布)→像素級疊合。DOM 順序影子在前→本體(在後)自然疊於其上；影子沿用上方 .mob-anim img 的 native/pixelated 規則。 */
+        #battle-view .mob-img-inner.mob-anim .mob-anim-shadow { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: multiply; }   /* 🌑 v2.7.43 影子灰階當「濃淡遮罩」multiply(白→透明/黑→濃/灰→淡)：修自帶光源怪(不死鳥/伊弗利特)淺灰影子顯示成一塊灰·改成淡影子·一般近黑怪→濃影子 */
+        /* ⚔️ v2.7.22 武器揮動特效層：與影子同定位(絕對·底部置中·native)但疊在本體「前」(DOM 順序在本體 img 之後)＋screen 加亮(金色刀光弧發光) */
+        #battle-view .mob-img-inner.mob-anim .mob-anim-weapon,
+        #battle-view .mob-img-inner.mob-anim .mob-anim-weapon2 { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: screen; }
         /* 🙈 怪物名字預設隱藏，滑鼠游標移到「怪物圖片」上才顯示（:has 偵測圖片區 hover；img 為 pointer-events:none→hover 落在 .mob-img-wrap；保留名稱列空間避免版面跳動）。.name-show＝JS 依 _hoverMobUid 套用→跨重繪持續顯示(每 tick 換 innerHTML 時 :hover 會瞬失效，靠它穩住不閃) */
         #battle-view .mob-name { opacity: 0; transition: opacity 0.12s ease; }
         #battle-view .mob-target:has(.mob-img-wrap:hover) .mob-name,
@@ -152,8 +161,7 @@
         /* 🏷️ 怪物名字固定白色＋黑邊、永不因受擊/狀態變色或閃動（受擊特效只套在怪物圖片 img 上·名字是獨立元素不受影響）。!important 覆蓋任何等差色/脈動 */
         #battle-view .mob-name, #battle-view .mob-name span { color: #fff !important; text-shadow: 1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000, 0 0 3px #000 !important; animation: none !important; }
         #battle-view .mob-name span.mob-name-boss { color: #ff2222 !important; }   /* 👑 頭目名稱固定鮮紅(非頭目維持白)；黑邊 text-shadow 與 animation:none 沿用上行白鎖規則→紅字黑邊、受擊不變色。優先序(1,0,2,1)>白鎖(1,0,1,1) */
-        #battle-view.area-fit .mob-img-inner::after { content: ''; position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); width: 70%; height: 16px; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.28) 45%, rgba(0,0,0,0) 80%); filter: blur(2px); z-index: 0; pointer-events: none; }   /* 🌑 腳下橢圓接觸陰影：墊在圖後(z-index 0<1)、掛內層非img→固定在地上不隨受擊晃動。加高(16px)+上移(bottom4)+羽化(blur2)→往上擴散覆蓋腳離底5~10px的怪、更圓潤柔和 */
-        #battle-view.area-fit .mob-img-inner.mob-anim::after { display: none; }   /* 🌑 v2.6.96 動畫怪(spr 圖已自帶影子)→隱藏遊戲渲染的橢圓接觸陰影，避免雙重影子；靜態 PNG 怪(無自帶影子)不受影響照舊 */
+        /* 🚫 v2.7.49 移除腳下 CSS 橢圓接觸陰影（受擊/死亡/影子 CSS 特效一併移除）——只保留 sprite 影子層 .mob-anim-shadow(有 _s 圖的動畫怪) */
         /* 👑 方案B：純BOSS房專屬版面——boss 圖放大佔滿整格高度(約1.8×·寬型受框寬限制亦較大)，名字/徽章/狀態/血條改絕對定位疊在圖上(字陰影保可讀)、圖完全不被切(無transform·靠回收上下列空間放大) */
         #battle-view.area-fit:has(.boss-slot) { padding: 0; }   /* 🐉 龍窟：去除框內距(p-4)，怪卡填滿整個戰鬥框高度→約2× */
         #battle-view.area-fit .mob-target.boss-slot { position: relative; overflow: visible; }
@@ -177,7 +185,7 @@
         #battle-view.area-fit .mob-target { min-width: 0; }
         #battle-view.area-fit { min-height: 0; }
         #battle-view .mob-back .mob-img-inner { transform: translateY(-24px) scale(1.1); transform-origin: bottom center; }                      /* 後排：放大 1.1×＋上提→看起來在後方(影子＝::after 內層偽元素隨 scale 一起放大) */
-        #battle-view.area-fit .mob-back .mob-img-inner::after { bottom: 18px; }   /* 🦶 後排怪上提後，影子再往上移對齊後排腳底(原4px→18px·後排專屬·避免影子留在圖下方浮空·數值可調) */
+        /* 🚫 v2.7.49 後排 CSS 橢圓影子位置調整已移除（橢圓影子取消） */
         #battle-view .mob-front:not(.boss-zoom) .mob-img-inner { transform: translateY(6px) scale(1.3); transform-origin: bottom center; }   /* 前排：放大 1.3×、略下→看起來在前方(頭目除外·保留 1.78×；影子＝::after 內層偽元素隨 scale 一起放大) */
         #battle-view.area-fit .mob-back.boss-zoom .mob-img-inner { transform: translateY(-24px) scale(1.78); transform-origin: bottom center; }   /* 👑 後排頭目：保留後排上提(-24)＋頭目放大1.78× */
         #battle-view .mob-back.boss-zoom { z-index: 4; }                                                                                          /* 後排頭目提到前排(z2)之上，避免大圖被前排小怪遮住 */
@@ -216,55 +224,7 @@
         @keyframes flash { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .anim-flash { animation: flash 1s infinite; }
         
-        /* --- 屬性受擊動畫系統 (高速打擊版) --- */
-        /* 1. 一般物理 */
-        /* 🔧 命中特效：恢復晃動，但只做左右(水平)位移、不做上下(垂直)，並保留依屬性的亮起＋光暈 */
-        @keyframes hitNormal {
-            0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-4px); filter: brightness(1.5); }
-            50% { transform: translateX(4px); filter: brightness(1.5); }
-        }
-        .anim-hit-normal { animation: hitNormal 0.12s ease-out; }
-
-        /* 2. 無屬性魔法 */
-        @keyframes hitMagic {
-            0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.7); }
-            50% { transform: translateX(5px); filter: brightness(1.7); }
-        }
-        .anim-hit-magic { animation: hitMagic 0.15s ease-out; }
-
-        /* 3. 火屬性 */
-        @keyframes hitFire {
-            0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.7); }
-            50% { transform: translateX(5px); filter: brightness(1.7); }
-        }
-        .anim-hit-fire { animation: hitFire 0.15s ease-out; }
-
-        /* 4. 水屬性 */
-        @keyframes hitWater {
-            0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.5); }
-            50% { transform: translateX(5px); filter: brightness(1.5); }
-        }
-        .anim-hit-water { animation: hitWater 0.15s ease-out; }
-
-        /* 5. 風屬性 */
-        @keyframes hitWind {
-            0%, 100% { transform: skewX(0deg) translateX(0); filter: brightness(1); }
-            25%, 75% { transform: skewX(-12deg) translateX(-5px); filter: brightness(1.7); }
-            50% { transform: skewX(12deg) translateX(5px); filter: brightness(1.7); }
-        }
-        .anim-hit-wind { animation: hitWind 0.15s ease-out; }
-
-        /* 6. 地屬性 */
-        @keyframes hitEarth {
-            0%, 100% { transform: translateX(0); filter: brightness(1); }
-            25%, 75% { transform: translateX(-5px); filter: brightness(1.4); }
-            50% { transform: translateX(5px); filter: brightness(1.4); }
-        }
-        .anim-hit-earth { animation: hitEarth 0.15s ease-out; }
+        /* 🚫 v2.7.49 移除「屬性受擊動畫系統」（CSS 晃動/亮起 hitNormal/Magic/Fire/Water/Wind/Earth + .anim-hit-* 類別）——怪物受擊改只靠 hurt 序列幀 anim 表現 */
 		
 		/* 祝福物品的螢光邊緣呼吸特效 */
         @keyframes blessGlow {
@@ -392,6 +352,10 @@
         /* ✨ 怪物死亡：衝擊波環 + 白閃殘影（vfxKill 以 element.animate 驅動·邊框色/尺寸由 JS 內聯指定） */
         .vfx-killring { position: absolute; border-radius: 50%; transform: translate(-50%,-50%); border: 4px solid #ff8a5c; pointer-events: none; will-change: transform,opacity; }
         .vfx-ghost { position: absolute; transform: translate(-50%,-50%); object-fit: contain; pointer-events: none; will-change: transform,opacity,filter; }
+        /* ⚡ v2.7.15 法術特效疊加圖層：定位由 JS 內聯(left/top/width/height/mix-blend-mode:screen)；left/top＝螢幕座標(相對 #vfx-layer position:fixed inset:0)；image-rendering 保持像素銳利與怪圖一致 */
+        .vfx-spell { position: absolute; pointer-events: none; image-rendering: pixelated; image-rendering: crisp-edges; will-change: opacity; }
+        .vfx-freeze { opacity: 0.9; }   /* ❄️ v2.7.20 冰凍狀態疊層：略透讓怪身透出·沿用 .vfx-spell 定位/pixelated */
+        .vfx-mobskill { mix-blend-mode: screen; }   /* 🔥 v2.7.22 怪物技能特效(死亡騎士火焰爆發)：screen 加亮·沿用 .vfx-spell 定位/pixelated */
         @keyframes vfxShake {
             0%,100% { transform: translate(0,0); }
             15% { transform: translate(-5px,3px); }   30% { transform: translate(5px,-3px); }

@@ -744,7 +744,7 @@ function getTarget() {
     if (t && t._dead) t = null;   // 🔧 架構#2：已死亡待清算的怪不可作為目標
     // 當前目標不存在（如剛開局或剛擊殺）時，依照「中央(1) -> 左邊(0) -> 右邊(2)」順序鎖定第一個活著的敵人
     if(!t) {
-        let priorityOrder = [1, 0, 2, 3, 4];   // 🆕 前排(中1→左0→右2)優先，其次後排(3,4)；後排為 undefined 時自動略過
+        let priorityOrder = [0, 1, 2, 3, 4];   // 🆕 v2.7.47 前排由左而右(0→1→2)，再後排由左而右(3→4)；死亡不遞補→死亡後自動鎖定序列中下一個活著的位置
         for(let i of priorityOrder) {
             if(mapState.mobs[i] && !mapState.mobs[i]._dead) {
                 setTarget(i);
@@ -962,10 +962,10 @@ function procLightArrow(t) {
     } else {
         renderMobs();
     }
-    // 🔮 魔女 5/5：累計共鳴次數，每 5 次免費發動一次冰雪暴（冰雪颶風風暴傷害·免學·不吃法師階級加成）
+    // 🔮 魔女 5/5：累計共鳴次數，每 5 次免費發動一次冰雪暴（sk_blizzard·4×2D10 水屬性全體·免學·不吃法師階級加成）
     if (player._setWitch5) {
         player._witchResCnt = (player._witchResCnt || 0) + 1;
-        if (player._witchResCnt >= 5) { player._witchResCnt = 0; if (typeof stormBuffTick === 'function' && DB.skills['sk_blizzard_storm']) stormBuffTick(DB.skills['sk_blizzard_storm'], true); }
+        if (player._witchResCnt >= 5) { player._witchResCnt = 0; if (typeof stormBuffTick === 'function' && DB.skills['sk_blizzard']) stormBuffTick(DB.skills['sk_blizzard'], true); }
     }
 }
 // ===== 月光爆裂：對指定目標造成 1D30 + 2×強化等級 的風屬性固定傷害（不受魔法公式影響）=====
@@ -1283,7 +1283,7 @@ function ironGuardSweep() {
     renderMobs();
 }
 
-// 🔮 魔女 5/5：每觸發 5 次共鳴，免費施放一次冰矛圍籬（不耗 MP、不需學會；公式同 castSkill 單體魔法）
+// 🔮 冰矛圍籬（鑽石高崙武器 10% proc·js/07 c.iceLance→本函式）：免費單體水魔法（不耗 MP、不需學會；公式同 castSkill 單體魔法）。⚠️魔女5/5 已改走 stormBuffTick(sk_blizzard)＝冰雪暴，不再用本函式。
 function witchIceLance() {
     let sk = DB.skills['sk_ice_lance'];
     if (!sk) return;
@@ -1312,7 +1312,7 @@ function witchIceLance() {
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
     mobWake(t);
     if (sk.freeze) applyMobStatus(t, { kind:'freeze', pbase:sk.freeze, dur:6 }, sk.n);
-    logCombat(`<span class="font-bold" style="color:#7dd3fc;text-shadow:0 0 6px #0ea5e9;">【魔女 5/5】</span>共鳴引動了 冰矛圍籬，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。${isCrit ? ' (爆擊!)' : ''}`, 'magic');
+    logCombat(`<span class="font-bold" style="color:#7dd3fc;text-shadow:0 0 6px #0ea5e9;">【冰矛圍籬】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。${isCrit ? ' (爆擊!)' : ''}`, 'magic');
     if (t.curHp <= 0) { let ri = mapState.mobs.findIndex(m => m && m.uid === t.uid); if (ri !== -1) killMob(ri); }
     else renderMobs();
 }
