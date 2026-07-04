@@ -754,8 +754,7 @@
       /* 戰鬥框＝背景圖比例(16:9):高度＝寬×9/16=圖片自然高度→背景 cover 剛好貼齊、不放大裁切(顆粒原尺寸);
          flex:0 0 auto 不再吃滿整欄→多的高度留白在下方(使用者指定「最大高度=圖片高度」)。 */
       'body.m-mobile #battle-view.area-fit{flex:0 0 auto !important;height:56.25vw !important;aspect-ratio:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
-      /* 怪名手機一律不顯示(使用者指定):連鎖定/被打的目標也不顯示 */
-      'body.m-mobile #battle-view .mob-name{display:none !important;}',
+      /* 怪名顯示改由「顯示怪物名稱」設定(afk-mobname.js·body[data-afk-mobname])統一控制,手機不再強制隱藏 */
       /* 🔍 矮戰鬥框(=圖片高度)裡格子很小、怪物圖只剩 ~19px→放大 grid 景深倍率讓怪物大顆一點(使用者指定「單獨放大、
          但不要超出背景」)。卡片/圖框 overflow:visible 讓放大的圖露出;整個戰鬥框 overflow:hidden 在圖片高度處收邊。
          🎛️ 倍率再乘一個可調變數 --afk-mobscale(預設 1),由網址參數 ?mobscale=X 設定→方便現場調怪物大小(見下方 readMobScale)。 */
