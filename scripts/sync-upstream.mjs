@@ -20,6 +20,19 @@ function gitBlobSha(buf) {
   return createHash('sha1').update('blob ' + buf.length + '\0').update(buf).digest('hex');
 }
 
+// 所有下載都是逐檔序列跑,單一連線僵住就會卡死整條同步、把後續每 15 分的排程全堵在 concurrency 後面
+// (2026-07-04 踩過:一輪卡 2 小時,站台停在舊版)→ 每個 fetch 一律帶逾時,逾時/網路錯誤重試幾次再放棄。
+async function fetchRetry(url, opts = {}, tries = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      return await fetch(url, { ...opts, signal: AbortSignal.timeout(60_000) });
+    } catch (e) {
+      if (i >= tries) throw e;
+      console.warn(`[warn] fetch 失敗(第 ${i}/${tries} 次,${e.name}: ${e.message}),重試: ${url}`);
+    }
+  }
+}
+
 const UPSTREAM_USER = 'shines871';
 const REPO          = 'idle-lineage-class';
 const UPSTREAM_HTML = `https://${UPSTREAM_USER}.github.io/${REPO}/index.html`;
@@ -73,7 +86,7 @@ const ghHeaders = process.env.GH_TOKEN
   : { 'User-Agent': 'sync-upstream' };
 
 // 1. 抓原版 index.html
-const upstream = await fetch(UPSTREAM_HTML, { cache: 'no-store' }).then((r) => {
+const upstream = await fetchRetry(UPSTREAM_HTML, { cache: 'no-store' }).then((r) => {
   if (!r.ok) throw new Error('抓原版 index.html 失敗: HTTP ' + r.status);
   return r.text();
 });
@@ -104,7 +117,7 @@ const subFiles = [...new Set([...upstream.matchAll(SUBRES_RE)].map((m) => m[1]))
 const subAdded = [], subChanged = [], subRemoved = [];
 const subHash = {};
 for (const path of subFiles) {
-  const buf = Buffer.from(await fetch(`https://${UPSTREAM_USER}.github.io/${REPO}/` + path.split('/').map(encodeURIComponent).join('/'),
+  const buf = Buffer.from(await fetchRetry(`https://${UPSTREAM_USER}.github.io/${REPO}/` + path.split('/').map(encodeURIComponent).join('/'),
     { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error('抓 ' + path + ' 失敗: HTTP ' + r.status); return r.arrayBuffer(); }));
   subHash[path] = createHash('sha1').update(buf).digest('hex').slice(0, 10);
   const isNew = !existsSync(path);
@@ -144,7 +157,7 @@ const assetsAdded = [];
 const assetsChanged = [];
 const assetsRemoved = [];
 try {
-  const tree = await fetch(TREE_API, { headers: ghHeaders }).then((r) => r.json());
+  const tree = await fetchRetry(TREE_API, { headers: ghHeaders }).then((r) => r.json());
   const wanted = (tree.tree || []).filter(
     (t) => t.type === 'blob' && t.path.startsWith('assets/') && !t.path.endsWith('desktop.ini')
   );
@@ -155,7 +168,7 @@ try {
     } else {
       isNew = true;
     }
-    const buf = Buffer.from(await fetch(rawUrl(item.path)).then((r) => {
+    const buf = Buffer.from(await fetchRetry(rawUrl(item.path)).then((r) => {
       if (!r.ok) throw new Error('下載 ' + item.path + ' 失敗: HTTP ' + r.status);
       return r.arrayBuffer();
     }));

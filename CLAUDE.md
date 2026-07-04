@@ -33,6 +33,8 @@ gh workflow run sync-upstream.yml --ref main
 gh run list --workflow=sync-upstream.yml --limit 1 --json databaseId --jq '.[0].databaseId'
 gh run watch <run_id>   # 或輪詢 gh run view <run_id> --json status,conclusion
 ```
+> **⚠ 同步「卡死」的判準與解法(踩過 2026-07-04)**:症狀=站台一直停在舊版(玩家回報「原版有的功能我們沒有」,如怪物動畫 25→399 隻的改版沒跟上),`gh run list` 看到**一筆 sync run `in_progress` 掛了一兩小時、後面每 15 分的 run 全是 `cancelled`**(concurrency 佇列被堵住,cancelled 的連 job 都沒起)。根因:腳本逐檔序列 `fetch`,單一連線僵住就永遠卡住(當時無逾時)。解法:`gh run cancel <卡住的 run id>` → 佇列中的下一輪自動接手(通常幾十秒就跑完)。腳本已加 `fetchRetry`(60s 逾時×3 次重試)防再犯;若再看到同症狀,先 cancel 卡住的 run,再查 run log 是哪個 URL 一直重試失敗。
+
 跑完後看結果回報使用者:
 - **changed=false**:原作者沒更新,什麼都不用做。
 - **跑成功且有推 commit**:同步完成,GitHub Pages 會自動重建;`git pull --ff-only` 把本機同步回來。
