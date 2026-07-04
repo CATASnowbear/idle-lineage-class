@@ -785,6 +785,12 @@
          維持原生像素。55px≈徽章/血條/狀態列的高度,與戰鬥框高 max(56.25vw,300px) 那條連動。 */
       'body.m-mobile #battle-view.area-fit .mob-img-inner.mob-anim img{max-height:calc(max(56.25vw,300px) - 55px) !important;max-width:96vw !important;}',
       'body.m-mobile #battle-view:not(.area-fit) .mob-img-inner.mob-anim img{max-height:185px !important;max-width:96vw !important;}',
+      /* 🧊 特效層 #vfx-layer 是全螢幕 fixed(z-45,螢幕座標):桌機戰鬥框永遠在畫面上沒事;手機切到隊伍/背包分頁後
+         戰鬥畫面隱藏,怪物矩形量不到(r.width===0 → 引擎跳過更新),冰凍貼圖/死亡殘影/傷害數字就凍在原座標
+         蓋住介面,要等特效時限到才消失(使用者回報)。手機在「非戰鬥分頁」與「村莊」直接藏整層;display:none
+         不清元素,計時器照走,切回戰鬥分頁時過期的已自行移除、冰凍層由 _updateFreezeFx 逐幀重新定位,不殘留。 */
+      'body.m-mobile:not(.mview-battle) #vfx-layer{display:none !important;}',
+      'body.m-mobile.m-intown #vfx-layer{display:none !important;}',
 
       /* 🧿 角色狀態圖示列(作者 #status-icon-bar,錨在戰鬥框右上):桌機 38px 圖示在手機矮戰鬥框裡太佔畫面,
          整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數在 19px 小圖上會蓋掉大半張圖 → 手機不顯示
