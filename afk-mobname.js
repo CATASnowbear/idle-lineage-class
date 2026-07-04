@@ -47,9 +47,11 @@
       'body[data-afk-mobname="all"] #battle-view .mob-name{opacity:1 !important;}',
       'body[data-afk-mobname="locked"] #battle-view .mob-target.active .mob-name{opacity:1 !important;}',
       /* 手機:顯示模式開啟時讓怪名「完整顯示」——覆蓋原版/手機版的截斷(area-fit 五格的 nowrap+省略號、
-         非 area-fit 的 -webkit-line-clamp:2)。改成可換行、不裁切、無省略號;那些遊戲規則都沒帶 !important,故此處 !important 即蓋過。 */
-      'body.m-mobile[data-afk-mobname="all"] #battle-view .mob-name,body.m-mobile[data-afk-mobname="locked"] #battle-view .mob-target.active .mob-name{white-space:normal !important;overflow:visible !important;}',
-      'body.m-mobile[data-afk-mobname="all"] #battle-view .mob-name>span,body.m-mobile[data-afk-mobname="locked"] #battle-view .mob-target.active .mob-name>span{white-space:normal !important;overflow:visible !important;text-overflow:clip !important;max-width:none !important;-webkit-line-clamp:unset !important;}',
+         非 area-fit 的 -webkit-line-clamp:2)。使用者指定:不換行、直接超出卡片、左右置中(靠 .mob-name 的
+         flex justify-center,超寬的單行 span 會置中並往左右對稱溢出;battle-view overflow:hidden 在框邊收邊)。
+         那些遊戲規則都沒帶 !important,故此處 !important 即蓋過。 */
+      'body.m-mobile[data-afk-mobname="all"] #battle-view .mob-name,body.m-mobile[data-afk-mobname="locked"] #battle-view .mob-target.active .mob-name{white-space:nowrap !important;overflow:visible !important;}',
+      'body.m-mobile[data-afk-mobname="all"] #battle-view .mob-name>span,body.m-mobile[data-afk-mobname="locked"] #battle-view .mob-target.active .mob-name>span{white-space:nowrap !important;overflow:visible !important;text-overflow:clip !important;max-width:none !important;-webkit-line-clamp:unset !important;}',
       /* 設定 modal */
       '#m-mobname-modal{display:none;position:fixed;inset:0;z-index:1000;background:rgba(2,6,23,0.82);align-items:flex-start;justify-content:center;padding:24px 12px;font-family:system-ui,"Segoe UI",sans-serif;}',
       '#m-mobname-modal.open{display:flex;}',
