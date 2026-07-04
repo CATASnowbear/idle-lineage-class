@@ -759,8 +759,12 @@
          但不要超出背景」)。卡片/圖框 overflow:visible 讓放大的圖露出;整個戰鬥框 overflow:hidden 在圖片高度處收邊。
          🎛️ 倍率再乘一個可調變數 --afk-mobscale(預設 1),由網址參數 ?mobscale=X 設定→方便現場調怪物大小(見下方 readMobScale)。 */
       'body.m-mobile #battle-view.area-fit .mob-target,body.m-mobile #battle-view.area-fit .mob-img-wrap{overflow:visible !important;}',
-      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner{transform:scale(calc(3.5 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
-      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner{transform:scale(calc(4 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
+      /* ⚠️ 放大只能套「靜態圖怪」(:not(.mob-anim)):作者 v2.7.86 起動畫怪=原生像素 1:1、永不縮放(transform:none/translateY
+         !important),我們的 3.5/4× 是當年「動畫圖被 max 100% 壓進小格」時代的補償——套在原生大圖上會變成 4× 巨怪、
+         糊化、突出戰鬥框(2026-07-05 v3.0.2 動畫怪 25→399 隻時爆出,手機怪物位置全跑掉)。動畫怪交回作者原生尺寸
+         ＋前後排 translateY 景深,與桌機一致;靜態圖怪(不在 MOB_ANIM_NAMES 的)仍是小圖、維持放大。 */
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner:not(.mob-anim){transform:scale(calc(3.5 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner:not(.mob-anim){transform:scale(calc(4 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
 
       /* 🧿 角色狀態圖示列(作者 #status-icon-bar,錨在戰鬥框右上):桌機 38px 圖示在手機矮戰鬥框裡太佔畫面,
          整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數在 19px 小圖上會蓋掉大半張圖 → 手機不顯示
