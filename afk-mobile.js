@@ -753,7 +753,10 @@
          不套舊版「條狀矮帶＋絕對定位疊圖」覆寫(上一代 strip 背景時代的,新版 grid 會打架)。 */
       /* 戰鬥框＝背景圖比例(16:9):高度＝寬×9/16=圖片自然高度→背景 cover 剛好貼齊、不放大裁切(顆粒原尺寸);
          flex:0 0 auto 不再吃滿整欄→多的高度留白在下方(使用者指定「最大高度=圖片高度」)。 */
-      'body.m-mobile #battle-view.area-fit{flex:0 0 auto !important;height:56.25vw !important;aspect-ratio:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
+      /* 高度=max(16:9, 300px):作者動畫怪原生像素不縮放後,常見高怪(古代巨人/法利昂 249px)在 16:9 矮框(手機寬
+         ≈219px)必定切頭,使用者指定加高戰鬥畫面。300px≈容納 ~245px 高的怪(扣徽章/血條列);更高的(不死鳥/龍/
+         林德拜爾 300px+)桌機 242px 框同樣切頭,不遷就。平板 16:9 已比 300 高→取 max 維持原比例。 */
+      'body.m-mobile #battle-view.area-fit{flex:0 0 auto !important;height:max(56.25vw,300px) !important;aspect-ratio:auto !important;min-height:0 !important;overflow:hidden !important;background-size:cover !important;background-position:center bottom !important;}',
       /* 怪名顯示改由「顯示怪物名稱」設定(afk-mobname.js·body[data-afk-mobname])統一控制,手機不再強制隱藏 */
       /* 🔍 矮戰鬥框(=圖片高度)裡格子很小、怪物圖只剩 ~19px→放大 grid 景深倍率讓怪物大顆一點(使用者指定「單獨放大、
          但不要超出背景」)。卡片/圖框 overflow:visible 讓放大的圖露出;整個戰鬥框 overflow:hidden 在圖片高度處收邊。
@@ -765,6 +768,10 @@
          ＋前後排 translateY 景深,與桌機一致;靜態圖怪(不在 MOB_ANIM_NAMES 的)仍是小圖、維持放大。 */
       'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner:not(.mob-anim){transform:scale(calc(3.5 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
       'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-front:not(.boss-zoom) .mob-img-inner:not(.mob-anim){transform:scale(calc(4 * var(--jit-scale,1) * var(--afk-mobscale,1))) !important;}',
+      /* 使用者指定(2026-07-05):手機怪物一律站「最前排」同一條地線——作者的後排景深(動畫怪 translateY(-30px)
+         !important)在手機矮戰鬥框(56.25vw≈219px)裡會把後排怪頂到框頂切頭。改成與前排同款 translateY(2px);
+         作者哪天改掉前排的 2px,這裡要跟著對齊。 */
+      'body.m-mobile #battle-view.area-fit #mob-list:has(.mob-back) .mob-back .mob-img-inner.mob-anim{transform:translateY(2px) !important;}',
 
       /* 🧿 角色狀態圖示列(作者 #status-icon-bar,錨在戰鬥框右上):桌機 38px 圖示在手機矮戰鬥框裡太佔畫面,
          整組縮成一半(38→19px、間距 5→3px)。右下角剩餘秒數在 19px 小圖上會蓋掉大半張圖 → 手機不顯示
