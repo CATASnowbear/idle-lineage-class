@@ -60,17 +60,18 @@
     'body.m-mobile #main-menu .m-dex-entry-main,body.m-mobile #main-menu .m-wiki-entry-main{',
       'font-size:16px;padding:14px 12px;}',
 
-    /* 📢 公告跑馬燈:坐在「加掛版」副標下方、標題與首頁按鈕之間;紅底捲動,游標移上去暫停。margin-top 騰開上方浮動的副標。 */
-    /* flex:0 0 auto + min-height:這條是 #creation-screen(手機是高度受限的 flex column)的子層,且自身 overflow:hidden
+    /* 📢 公告跑馬燈:放在 #main-menu 第一個子層(首頁按鈕上方);紅底捲動,游標移上去暫停。
+       (v3.0.40 作者登入頁改成藝術舞台後,標題不再是 #creation-screen 直接子層,改錨定 #main-menu。) */
+    /* flex:0 0 auto + min-height:#main-menu 是 flex column 且自身 overflow:hidden
        →min-height:auto 退化成 0→會被 flex-shrink 壓扁、把文字上下裁掉(使用者回報「高度被裁」)。鎖死不縮、給足高度。 */
-    '#afk-marquee{position:relative;flex:0 0 auto;width:100%;max-width:34rem;min-height:30px;margin:30px auto 0;overflow:hidden;border-radius:8px;border:1px solid rgba(230,110,110,.5);background:linear-gradient(180deg,rgba(96,16,16,.82),rgba(58,8,8,.82));padding:6px 0;box-shadow:inset 0 0 14px rgba(0,0,0,.35);}',
+    '#afk-marquee{position:relative;flex:0 0 auto;width:100%;max-width:34rem;min-height:30px;margin:0 auto;overflow:hidden;border-radius:8px;border:1px solid rgba(230,110,110,.5);background:linear-gradient(180deg,rgba(96,16,16,.82),rgba(58,8,8,.82));padding:6px 0;box-shadow:inset 0 0 14px rgba(0,0,0,.35);}',
     /* 無縫捲動:track 放兩份相同文字,translateX 只移 -50%(=一份寬)→ 看起來連續、且第一份一開始就在可視區
        (動畫沒跑/還沒開始也看得到字,不會像「padding-left:100%」那樣有一段空白期 → 修「字沒出現」)。 */
     '#afk-marquee .afk-mq-track{display:flex;width:max-content;animation:afkMq 26s linear infinite;}',
     '#afk-marquee .afk-mq-seg{flex:0 0 auto;white-space:nowrap;padding:0 1.8rem;font-size:13px;font-weight:700;letter-spacing:1px;color:#fff2f2;text-shadow:0 1px 2px #000,0 0 4px rgba(0,0,0,.8);}',
     '#afk-marquee:hover .afk-mq-track{animation-play-state:paused;}',
     '@keyframes afkMq{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
-    'body.m-mobile #afk-marquee{max-width:94%;margin-top:26px;}',
+    'body.m-mobile #afk-marquee{max-width:94%;}',
     'body.m-mobile #afk-marquee .afk-mq-seg{font-size:12px;letter-spacing:.5px;padding:0 1.3rem;}',
     ''
   ].join('');
@@ -97,13 +98,13 @@
     header.appendChild(b);
   }
 
-  // ---- 公告跑馬燈(加掛版副標下方) ----------------------------------------
+  // ---- 公告跑馬燈(首頁按鈕上方) ------------------------------------------
+  //   v3.0.40 作者登入頁改成藝術舞台(標題被包進 #login-art-stage>#login-title-layer),
+  //   舊錨點「h1 父層是 #creation-screen 直接子層」不再成立、跑馬燈整個不插入(玩家回報消失)。
+  //   改插在 #main-menu 第一個子層:視覺位置同樣在標題之下、按鈕之上,且不依賴作者標題結構。
   function ensureMarquee() {
-    var cs = document.getElementById('creation-screen'); if (!cs) return;
     if (document.getElementById('afk-marquee')) return;
-    var h1 = cs.querySelector('h1'); if (!h1) return;
-    var headerDiv = h1.parentElement;   // 標題+副標的容器(.text-center.border-b);跑馬燈插在它正下方、首頁按鈕之上
-    if (!headerDiv || headerDiv.parentElement !== cs) return;
+    var menu = document.getElementById('main-menu'); if (!menu) return;
     var mq = document.createElement('div'); mq.id = 'afk-marquee';
     var track = document.createElement('div'); track.className = 'afk-mq-track';
     for (var i = 0; i < 2; i++) {   // 兩份文字→無縫捲動;第一份開場即在可視區
@@ -113,7 +114,7 @@
       track.appendChild(seg);
     }
     mq.appendChild(track);
-    cs.insertBefore(mq, headerDiv.nextSibling);
+    menu.insertBefore(mq, menu.firstChild);
   }
 
   // ---- 外掛外框 -----------------------------------------------------------
