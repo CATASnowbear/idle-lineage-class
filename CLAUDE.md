@@ -145,6 +145,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 > 不是放手機/離線檔裡(放錯檔名實不符);純 CSS 覆寫那種「過時自動失效」的不歸這、留在 `afk-mobile.js`。
 > (存檔匯入/匯出原本有 `afk-savedata.js`,原作者已內建匯出入功能後移除。)
 > - **⚠️ 手機 CSS 覆寫「版面容器」時,若寫死 `display:… !important`,小心 specificity 蓋過作者用來『隱藏』該容器的 `.hidden{display:none!important}` → 畫面關不掉(踩過 2026-07-06)**:作者用 `#creation-screen.hidden{display:none!important}`(specificity 1,1,0)隱藏登入/創角畫面;外掛的 `body.m-mobile #creation-screen{display:block!important}` 是 (1,1,1) 更高 → 即使加了 `.hidden` 也被外掛的 `display:block` 壓著不隱藏,載入存檔/建角進遊戲後登入畫面仍蓋在遊戲上,玩家表現=「卡在選角畫面進不去」(且 DOM 上 `.hidden` 有加、`classList.contains('hidden')` 為 true,只有 computed `display` 是 block,極易誤判)。**判準/解法:任何「會被作者用 `.hidden`(或其他隱藏 class)切換顯示」的容器,外掛覆寫它的 `display`/`visibility` 一律加 `:not(.hidden)` 條件**(`body.m-mobile #creation-screen:not(.hidden){…}`),有 `.hidden` 時外掛規則不命中、交還作者的隱藏。自我檢查:改到 `#creation-screen`/`#game-screen` 這種「整屏切換」容器的手機 CSS,有沒有無條件 `display:…!important`?有就補 `:not(.hidden)`,並實測「載入存檔→有真的進到遊戲、登入畫面消失」。
+> - **⚠️ 外掛「插 DOM」的錨點別依賴作者版面的內部結構,錨不到會安靜消失、smoke 也驗不到(踩過 2026-07-06:首頁跑馬燈)**:afk-skin 的公告跑馬燈原本錨定「h1 的父層必須是 `#creation-screen` 直接子層」,作者 v3.0.40 把標題包進 `#login-art-stage>#login-title-layer` 後條件不成立 → `ensureMarquee` 安靜 return、跑馬燈消失,**頁面照常、console 無警告、smoke 照過**,直到玩家回報才發現。同場加映:作者新登入頁的按鈕皮 `#main-menu > button` 只吃「直接子層」,外掛按鈕包在 row/外框內吃不到 → 掉回舊配色(已在 afk-skin 抄同組宣告套上,作者改 css/style.css 該段要跟著換)。**判準/解法:① 外掛插入點優先錨定「穩定的容器 id」(如 `#main-menu`),不要錨「作者標題/包裝層的父子關係」;② 依賴作者 DOM 形狀的視覺注入,作者改首頁版面後要人工掃一輪首頁(跑馬燈/加掛版徽章/外掛框都在,樣式沒退化)——這些不在 smoke 範圍。**
 
 ## 📚 小百科(afk-wiki.js)維護準則
 
