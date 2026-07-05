@@ -1001,6 +1001,7 @@
     { k: 'quest', n: '任務' },
     { k: 'weapon', n: '武器特性' },
     { k: 'ally', n: '傭兵' },
+    { k: 'mercskill', n: '傭兵可用技能' },
     { k: 'doll', n: '魔法娃娃' },
     { k: 'map', n: '地圖' },
     { k: 'sherine', n: '席琳' },
@@ -1165,6 +1166,7 @@
     if (key === 'quest') return renderQuest(cls);
     if (key === 'pets') return renderPets();
     if (key === 'ally') return renderAlly();
+    if (key === 'mercskill') return renderMercSkill();
     if (key === 'set') return renderSet();
     if (key === 'card') return renderCard();
     if (key === 'doll') return renderDoll();
@@ -1219,6 +1221,7 @@
     { key: 'quest', cls: true, label: '任務' },
     { key: 'weapon', cls: false, label: '武器特性' },
     { key: 'ally', cls: false, label: '傭兵' },
+    { key: 'mercskill', cls: false, label: '傭兵可用技能' },
     { key: 'doll', cls: false, label: '魔法娃娃' },
     { key: 'map', cls: false, label: '地圖' },
     { key: 'sherine', cls: false, label: '席琳' },
@@ -2084,35 +2087,74 @@
     return out;
   }
 
-  // ===== 傭兵（協力存檔；本檔維護，內容以 index.html 的 buildAlly/alliesTick/allyXxxAct/mercAggroWeight 等實際邏輯為準）=====
-  //   資料源：js/06-status-allies.js 的 allyXxxAct/allyCubeTick/STORM_BUFF_SKILLS/_isMercSelfBuff/teamAcBonus 等。改版動到這些回來對齊。
-  //   最後一欄「職業專屬自動觸發」只列該職業獨有、免指定就會跑的東西；「所有職業共通的自動維持增益」統一寫在下方「傭兵會繼承本尊哪些能力」卡，不逐職業重複。
-  var MERC_CLASS_ROWS = [
-    { c: '🔵 法師', auto: '光箭（免費魔法普攻、不耗 MP）',
-      atk: '任一傷害魔法（火球／冰箭／隕石…）；緩速／弱化／即死等狀態魔法',
-      aura: '學了冰雪颶風(Lv40)／火牢(Lv32)→戰鬥中常駐轟全體' },
-    { c: '🍃 妖精', auto: '弓普攻，命中後依機率連射追加箭',
-      atk: '三重矢（需裝弓）；學得到的傷害魔法；狀態／即死魔法',
-      aura: '弓連射；有劍術精通→近戰也能看破' },
-    { c: '🗡 黑暗妖精', auto: '物理攻擊；學過劇毒就常駐掛毒',
-      atk: '破壞盔甲（撕甲增傷）；會心一擊（滿魔爆發）；其他狀態／即死技',
-      aura: '自動掛毒；爆擊精通爆擊時追擊' },
-    { c: '⚔️ 騎士', auto: '純物理，含看破／殺戮被動',
-      atk: '衝擊之暈等物理技；學得到的傷害魔法（光箭／冰箭／風刃）',
-      aura: '看破／殺戮；盾＋單手劍格擋必反擊' },
-    { c: '🛡 戰士', auto: '純物理（迅猛雙斧／狂暴等特效）',
-      atk: '只有「咆哮」（對全體固定傷害）有效，其餘印記多為被動',
-      aura: '狂暴（普攻 5% 傷害×2）；迅猛雙斧副手追擊' },
-    { c: '👑 王族', auto: '純物理',
-      atk: '只有「呼喚盟友」（號召全隊各補一刀）當攻擊技有效',
-      aura: '王者加護等被動常駐（招募時就併入戰力，不必施放）' },
-    { c: '🐉 龍騎士', auto: '純物理（鎖鏈劍吸血／弱點曝光）；技能吃 HP 不吃 MP',
-      atk: '傷害龍魔法（岩漿噴吐／之箭／奪命之雷）；屠宰者（物理多段）；控制技（護衛毀滅／恐懼／驚悚死神）',
-      aura: '鎖鏈劍吸血、弱點曝光（依武器）' },
-    { c: '🔮 幻術士', auto: '奇古獸／魔劍（魔法傷害，奇古獸無視魔防）',
-      atk: '心靈破壞／粉碎能量／骷髏毀壞（對不死）／混亂／幻想（傷＋控）／恐慌（純控）',
-      aura: '立方（記憶水晶）學了即常駐光環（全體傷害／緩速／降魔防／回魔）' }
+  // ===== 傭兵可用技能（獨立分頁；逐職業列出「當傭兵」實際放得出的技能）=====
+  //   權威來源：js/06-status-allies.js 的 8 個 allyXxxAct 路由（決定哪些 _atkSkill 真的會放、其餘退普攻）
+  //   ＋ allyMaintainBuffs/_isMercSelfBuff（自動維持增益）＋ allyCubeTick/召喚/淨化/storm 各常駐路徑。改版動到這些回來對齊。
+  var MERC_SKILL_COMMON = [
+    '<b>怎麼看：</b>傭兵能不能「用」某招，看該職業的傭兵 AI 會不會放——隊伍面板的攻擊技下拉會列出他學過的<b>所有</b>攻擊技，但<b>只有各職業①列的才真的會放</b>，選了別的會自動退回普攻。',
+    '<b>自我增益</b>：傭兵只維持「來源角色有勾『自動施放』」的增益（跟他自己玩時一致）；他沒開的不會自己放。',
+    '<b>淨化</b>：學過解毒／聖潔之光／相消的傭兵，會自動幫全隊解異常（一次一人、優先你）。',
+    '⚡ <b>普攻攻速是固定的</b>：由武器種類＋切割／劍術／奇古獸精通決定，<b>不吃任何加速 buff／藥水</b>（加速術／覺醒攻速／血之渴望／勇敢／餅乾都只讓「攻擊技的施放週期」變快、普攻不變快）。',
+    '🚫 <b>不提供／禁用</b>：隊長專屬團隊增益（大地的祝福／鋼鐵防護／水之元氣／幻覺光環）只有本尊<b>當隊長</b>才給全隊；完全免疫類（絕對屏障／大地屏障／魔法屏障）傭兵禁用。'
   ];
+  var MERC_SKILL_ROWS = [
+    { c: '🔵 法師',
+      atk: '所有<b>傷害魔法</b>（光箭～流星雨／究極光裂…）；<b>狀態魔法</b>（緩速／弱化／疾病／闇盲／沉睡…）；<b>起死回生術</b>（對不死即死）。沒選或 MP 不足→免費光箭普攻。',
+      autocast: '造屍術／召喚術（召喚物）；<b>冰雪颶風</b>(Lv40)／<b>火牢</b>(Lv32) 常駐轟全體。',
+      passive: '普攻＝光箭（免費、不耗 MP）。',
+      special: '神聖武器對不死的「+1~20」<b>無效</b>（只剩 +1 傷害／命中）；迷魅術／傳送術／能量感測（手動類·傭兵不會用）；返生術（傭兵陣亡改走復活卷軸）；隱身術／日光術／無所遁形術／負重強化 對傭兵<b>無戰鬥作用</b>。' },
+    { c: '🍃 妖精',
+      atk: '<b>三重矢</b>（需裝弓）；學得到的<b>傷害魔法</b>；<b>狀態／即死魔法</b>。',
+      autocast: '<b>屬性精靈召喚</b>（精靈精通→更多隻）。',
+      passive: '弓連射（普攻追加箭）；有<b>劍術精通</b>→近戰也能看破。',
+      special: '<b>烈焰之魂</b>（近戰擲骰必最大）<b>無效</b>；體能激發／能量激發 對傭兵無作用（傭兵不受負重影響）。' },
+    { c: '🗡 黑暗妖精',
+      atk: '<b>破壞盔甲</b>（撕甲增傷）；<b>會心一擊</b>（MP 滿才放）；可學的<b>一二階法師魔法</b>（Lv12／24）；<b>狀態／即死技</b>。',
+      autocast: '學過<b>劇毒</b>→普攻自動掛毒。',
+      passive: '物理普攻（含雙刀連擊）；<b>爆擊精通</b>爆擊時追擊。',
+      special: '<b>毒性抵抗</b>（中毒減半）<b>無效</b>；行走加速只加快「攻擊技施放」、普攻攻速不變。' },
+    { c: '⚔️ 騎士',
+      atk: '<b>衝擊之暈</b>（物理技）；<b>光箭／冰箭／風刃</b>（Lv16 一階法師魔法）。',
+      autocast: '自我增益（堅固防護／反擊屏障…，依來源勾選）。',
+      passive: '純物理普攻，含<b>看破／殺戮</b>被動；盾＋單手劍<b>格擋必反擊</b>。',
+      special: '—（無特別失效技）' },
+    { c: '🛡 戰士',
+      atk: '<b>咆哮</b>（對全體固定傷害）；<b>光箭／冰箭／風刃</b>（Lv15 一階法師魔法）。',
+      autocast: '自我增益（依來源勾選）。',
+      passive: '純物理普攻（<b>迅猛雙斧</b>副手／<b>狂暴</b> 5%×2／<b>粉碎</b>／<b>護甲身軀</b>減傷）；<b>泰坦：岩石／魔法</b>受擊反射、<b>泰坦：子彈</b>殘血迴避 +50。',
+      special: '<b>戰斧投擲</b>（下一擊出血）與<b>亡命之徒</b>（命中保底）<b>都無效</b>——這兩招的效果只幫玩家本人實作。' },
+    { c: '👑 王族',
+      atk: '<b>呼喚盟友</b>（號召所有傭兵各補一刀）；可學的<b>法師魔法</b>（Lv10／20 一二階＋<b>魔法精通</b> 3~5 階）；<b>狀態／即死技</b>。有魔法精通還會 10% 免 MP 追加施放選定魔法。',
+      autocast: '自我增益（灼熱武器／勇猛意志／閃亮之盾／精準目標，依來源勾選）。',
+      passive: '<b>王者加護</b>（被動：魔防 +10、20% 抗暈）；純物理普攻。',
+      special: '呼喚盟友要「場上有其他傭兵」才有意義。（你是王族<b>當隊長</b>時，帶的傭兵傷害／HP／MP ×(1＋魅力÷100)——見「傭兵」分頁）' },
+    { c: '🐉 龍騎士',
+      atk: '<b>岩漿噴吐／岩漿之箭／奪命之雷</b>（傷害龍魔法）；<b>屠宰者</b>（物理多段）；<b>護衛毀滅／恐懼無助／驚悚死神</b>（控制）。技能吃 HP 不吃 MP。',
+      autocast: '自我增益（覺醒三種／龍之護鎧／血之渴望，依來源勾選）。',
+      passive: '純物理普攻（鎖鏈劍吸血／弱點曝光，依武器）；<b>致命身軀</b>受擊反射。',
+      special: '<b>血之渴望／覺醒的「攻速」對普攻無效</b>（普攻攻速不吃加速）；覺醒其餘加成（免疫／HP／魔防／抗性）正常。' },
+    { c: '🔮 幻術士',
+      atk: '<b>心靈破壞</b>；<b>粉碎能量</b>；<b>骷髏毀壞</b>（對不死）；<b>混亂／幻想</b>（傷＋控）；<b>恐慌</b>（純控）。',
+      autocast: '<b>立方</b>（記憶水晶）學了即<b>常駐光環</b>（全體傷害／緩速／降魔防／回魔）；<b>幻覺歐吉／巫妖／鑽石高崙</b>→召喚幻象（需<b>幻術精通</b>）。',
+      passive: '<b>奇古獸／魔劍</b>普攻（魔法傷害，奇古獸無視魔防）。',
+      special: '幻覺歐吉／巫妖／鑽石高崙的<b>「全隊加成」只由隊長本尊提供</b>（傭兵只出幻象、不出光環）；<b>化身</b>純隊長專屬。' }
+  ];
+  function renderMercSkill() {
+    var note = '<div class="m-wiki-note">每個職業<b>當傭兵時</b>實際放得出來的技能整理。分四塊：<b>①</b> 可指定的攻擊技（會真的放）、<b>②</b> 免指定就自動施放、<b>③</b> 常駐、<b>④</b> 特殊要注意。先讀下面「通用規則」，再看各職業。</div>';
+    function bullets(arr) { return arr.map(function (t) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + t + '</div>'; }).join(''); }
+    var common = '<div class="m-wiki-card"><div class="m-wiki-name">🔧 通用規則（所有職業共通）</div>' + bullets(MERC_SKILL_COMMON) + '</div>';
+    function sec(icon, label, color, html) { return html ? '<div class="m-merc-sec"><b style="color:' + color + ';">' + icon + ' ' + label + '</b><span class="m-merc-sec-b">' + html + '</span></div>' : ''; }
+    var cards = MERC_SKILL_ROWS.map(function (r) {
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(r.c) + '（當傭兵）</div>' +
+        sec('①', '可指定攻擊技', '#7dd3fc', r.atk) +
+        sec('②', '自動施放', '#4ade80', r.autocast) +
+        sec('③', '常駐', '#fcd34d', r.passive) +
+        sec('④', '特殊要注意', '#c4b5fd', r.special) +
+      '</div>';
+    }).join('');
+    return note + common + cards;
+  }
+
   function renderAlly() {
     var wrap = 'style="width:100%;border-collapse:collapse;margin:2px 0;font-size:13px;color:#cbd5e1;"';
     var th = function (t, c) { return '<th style="text-align:' + (c || 'left') + ';padding:5px 6px;border-bottom:1px solid #475569;color:#e2e8f0;font-weight:bold;white-space:nowrap;">' + t + '</th>'; };
@@ -2144,20 +2186,17 @@
       '<b>經驗還你角色</b>：解散／重招／你回村時，累積經驗記成「待領帳本」，<b>那角色下次登入或回村自動一次領取</b>（借去當傭兵不虧）。<b>金幣與掉落全歸你主角</b>。'
     ]});
 
-    // 3. ⭐ 各職業怎麼打(主表)
-    var rows = MERC_CLASS_ROWS.map(function (r) {
-      return '<tr>' + td('<b style="color:#fcd34d;white-space:nowrap;">' + r.c + '</b>') + td(r.auto) + td(r.atk) + td(r.aura) + '</tr>';
-    }).join('');
-    var c3 = card('③ ⭐ 各職業怎麼打、能指定什麼', {
-      html:
-        tbl(th('職業') + th('平常出手（自動普攻）') + th('可指定的攻擊技') + th('職業專屬自動觸發'), rows) +
-        desc('隊伍面板的<b>「攻擊技能」下拉會列出他學過的所有攻擊技，但只有上表那些對該職業真的有效</b>；選了別的（例如叫戰士放光箭）會自動<b>退回普攻</b>——所以<b>戰士／王族實際各只有 1 個</b>攻擊技可用。') +
-        desc('「治癒魔法」是<b>另一格</b>、缺血時自動補（見下方隊伍面板），跟攻擊技分開設。')
+    // 3. 各職業能用哪些技能 → 指向獨立分頁
+    var c3 = card('③ 各職業當傭兵能用哪些技能', {
+      lines: [
+        '每個職業當傭兵時「實際放得出的攻擊技／自動施放／常駐／特殊要注意」都整理在<b>「傭兵可用技能」分頁</b>（上面分頁列切過去）。',
+        '下拉的攻擊技會列出他學過的<b>全部</b>，但只有各職業真正支援的才會放、其餘退回普攻——細節看那頁。'
+      ]
     });
 
     // 4. 隊伍面板設定(表)
     var c4 = card('④ 隊伍面板：每名傭兵各自設定', { html: kvTbl([
-      ['攻擊技能<br>＋ MP&gt;門檻%', '選一個攻擊技當主力（見上表），改為<b>每約 2 秒放一次、平時普攻</b>。<b>MP&gt;x%</b>＝魔力高於此才放技能，未達先普攻回魔（0＝不限）。'],
+      ['攻擊技能<br>＋ MP&gt;門檻%', '選一個攻擊技當主力（可用哪些見「傭兵可用技能」分頁），改為<b>每約 2 秒放一次、平時普攻</b>。<b>MP&gt;x%</b>＝魔力高於此才放技能，未達先普攻回魔（0＝不限）。'],
       ['治癒魔法<br>＋ HP&lt;門檻%', '隊伍（你＋傭兵們）有人 HP 低於門檻（預設 <b>70%</b>）→ 改補最缺血的人；他<b>學過治癒術</b>即可指定。也能指定<b>吸血魔法</b>（寒冷戰慄／吸血鬼之吻），改成傭兵自己血低時對敵吸血。<b>新招募預設不補血、以攻擊為主</b>，要補血得手動指定。'],
       ['轉換技能', '選一個他學過的<b>魂體／心靈轉換／魔力奪取／立方：和諧</b>，把 HP 換 MP（或立方回魔），讓吃魔傭兵不斷魔；受「停耗 HP 技」門檻限制。'],
       ['HP&lt;% 喝藥水', '傭兵血低→<b>喝你道具欄的藥水</b>（扣 1 瓶）；<b>0＝關閉</b>。恢復量吃他自己的體質，約 1 秒可喝一次、硬控中也能喝；你沒那瓶又勾了「自動購買藥水」會自動補貨。'],
@@ -2193,7 +2232,7 @@
       '學過<b>淨化</b>（相消術／聖潔之光／解毒術）會<b>幫全隊解異常</b>（一次一人、優先你）。',
       '⚡ <b>傭兵「普攻」攻速是固定的</b>：由武器種類＋切割／劍術／奇古獸精通決定，<b>不吃任何加速 buff／藥水</b>（加速術／覺醒攻速／血之渴望／勇敢／餅乾都只讓「攻擊技的施放週期」變快、普攻不變快）。',
       '🚫 <b>例外：完全免疫類</b>（絕對屏障／大地屏障／魔法屏障）不給傭兵自動維持（否則近乎無敵）。',
-      '👑 <b>隊長專屬團隊增益</b>（大地的祝福／鋼鐵防護／水之元氣、幻覺光環＝歐吉／巫妖／鑽石高崙／化身）<b>只由「當隊長的本尊」提供給全隊</b>，傭兵不自己放。<b>個別技能的傭兵行為，可在「職業魔法」看每招的紫色「🤝 當傭兵時」備註。</b>'
+      '👑 <b>隊長專屬團隊增益</b>（大地的祝福／鋼鐵防護／水之元氣、幻覺光環＝歐吉／巫妖／鑽石高崙／化身）<b>只由「當隊長的本尊」提供給全隊</b>，傭兵不自己放。<b>各職業當傭兵實際能用哪些技能，見「傭兵可用技能」分頁。</b>'
     ]});
 
     // 7. 王族加成 + 連動
@@ -2862,51 +2901,6 @@
     sk_helm_str2: ['沒有實際戰鬥數值效果(沿用原版「看穿隱身」，本作沒有隱身怪)']
   };
 
-  // 🤝 傭兵行為備註:此角色「當傭兵(協力)」時,某些技能與本尊親自玩不同(逐條追 js/06-status-allies 查證)。
-  //   只標『當傭兵時有差異(無效/禁用/隊長專屬/不使用)』的技能;正常可用的不標(免洗版)。
-  var MERC_NOTE = {
-    // 隊長專屬團隊增益:讀隊長 buff(teamAcBonus/teamDmgReduceMult/teamIlluAura/waterVitalHeal),當傭兵不提供
-    sk_elf_earthbless: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊防禦(AC)加成',
-    sk_elf_steelguard: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊減傷',
-    sk_elf_watervital: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊治癒加倍',
-    sk_illu_avatar: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊減傷與額外傷害',
-    // 幻覺召喚:幻象照常召喚(需幻術精通),但團隊 stat 光環只由隊長提供
-    sk_illu_ogre: '仍會召喚歐吉幻象戰鬥,但全隊額外傷害/命中加成只由隊長本尊提供',
-    sk_illu_lich: '仍會召喚巫妖幻象戰鬥,但全隊魔法傷害加成只由隊長本尊提供',
-    sk_illu_golem: '仍會召喚鑽石高崙幻象戰鬥,但全隊防禦(AC)加成只由隊長本尊提供',
-    // 完全免疫類:傭兵禁用(自動維持會近乎無敵)
-    sk_abs_barrier: '禁用——完全免疫類技能不開放給傭兵(避免無敵)',
-    sk_elf_earthshield: '禁用——完全免疫類技能不開放給傭兵(避免無敵)',
-    sk_magic_shield: '禁用——完全免疫類技能不開放給傭兵(避免無敵)',
-    // 手動/自身專屬:傭兵不會施放
-    sk_teleport: '不會使用(手動施放類)',
-    sk_energy_sense: '不會使用(手動施放類)',
-    sk_resurrection: '無效——傭兵陣亡改由復活卷軸自動復活',
-    // 觸發型 buff 缺傭兵實作:出血只在玩家本人攻擊判定(js/04:183 讀 player.buffs),傭兵攻擊路徑無對應→不附出血
-    sk_warrior_throwaxe: '無效——出血效果只對玩家本人實作,傭兵的攻擊不會附出血(且本身無數值加成,傭兵維持只是白花 MP)',
-    // 觸發/玩家專屬效果缺傭兵實作 → 無效
-    sk_warrior_outlaw: '無效——命中保底(最低 50%)只對玩家本人實作，傭兵的命中判定沒有這條',
-    sk_elf_flamesoul: '無效——「近戰擲骰必最大」只對玩家本人實作，傭兵近戰仍是隨機骰',
-    sk_charm: '不會使用（手動施放類）',
-    sk_dark_poisonres: '無效——「中毒傷害減半」只在玩家受擊路徑實作，傭兵中毒照全額扣',
-    sk_holy_wpn: '半殘——額外傷害／命中 +1 有效，但招牌的「剋不死 +1~20」只對玩家本人實作，傭兵打不死怪吃不到',
-    // 加速類：傭兵「普攻」攻速不吃 spdMult(普攻速度只由武器種類＋切割/劍術/奇古獸精通決定)；只有攻擊技的施放週期吃加速
-    sk_haste_spell: '「普攻」攻速不吃加速（普攻速度只由武器種類＋切割／劍術／奇古獸精通決定）；只加快「攻擊技的施放週期」',
-    sk_greater_haste: '「普攻」攻速不吃加速；只加快「攻擊技的施放週期」',
-    sk_dark_walkhaste: '「普攻」攻速不吃加速；只加快「攻擊技的施放週期」',
-    sk_dragon_bloodlust: '半殘——攻速 +15% 對「普攻」無效（普攻攻速不吃加速）；只影響攻擊技的施放週期',
-    sk_dragon_awaken_antares: '攻速 +20% 那段不影響「普攻」（普攻攻速不吃加速）；其餘（免疫／最大 HP／防禦）正常',
-    sk_dragon_awaken_falion: '攻速 +20% 那段不影響「普攻」；其餘（魔防／屬性抗性）正常',
-    sk_dragon_awaken_baraka: '攻速 +20% 那段不影響「普攻」；其餘（六維／額外命中）正常',
-    // 純 utility：對傭兵無戰鬥作用
-    sk_invisible: '無效——隱身「讓怪停手」是玩家專屬判定，傭兵吃不到',
-    sk_sunlight: '無戰鬥作用（遇怪速度是玩家專屬）',
-    sk_reveal: '無效——顯現隱形怪是玩家專屬判定',
-    sk_load_up: '無戰鬥作用（傭兵不受負重影響）',
-    sk_elf_physboost: '無戰鬥作用（傭兵不受負重懲罰，本來就一直恢復）',
-    sk_elf_energyboost: '無戰鬥作用（傭兵不受負重懲罰，本來就一直恢復）'
-  };
-
   // 🎮 遊戲內技能說明:忠實重現遊戲 buildSkillTipHTML(js/14 IIFE 私有·無法直呼)的內容——
   //   類型·階級 / 消耗·持續·冷卻 / 機制摘要 / 原文 msg(或 passive 的 desc)。刻意不含「需求 Lv」(另用 lvLabel 逐職業標)與技能名(卡片已有)。
   //   骰值換白話範圍(a~a×b)、防禦(AC)走 statDeltaTxt 正確處理正負;作者若改 tooltip 格式,回來對齊這段。
@@ -2957,7 +2951,6 @@
           '<b style="color:#fbbf24;">📐 實際數據</b>' +
           MAGIC_FACT[id].map(function (f) { return '<div style="margin-top:3px;">・' + esc(f) + '</div>'; }).join('') +
         '</div>' : '') +
-        (MERC_NOTE[id] ? '<div class="m-wiki-spell-merc"><b style="color:#a78bfa;">🤝 當傭兵時</b> ' + esc(MERC_NOTE[id]) + '</div>' : '') +
       '</div>' +
     '</div>';
   }
@@ -3124,7 +3117,8 @@
       '.m-wiki-spell-eff{font-size:13px;color:#cbd5e1;line-height:1.55;margin-top:3px;}',
       '.m-wiki-spell-lv{font-size:12px;color:#7dd3fc;margin-top:3px;}',
       '.m-wiki-spell-fact{font-size:12.5px;margin-top:6px;padding:7px 9px;border:1px solid #475569;border-left:3px solid #fbbf24;border-radius:8px;line-height:1.5;}',   /* 📐 實際數據金框(比照職業專精) */
-      '.m-wiki-spell-merc{font-size:12.5px;margin-top:6px;padding:7px 9px;border:1px solid #6d28d9;border-left:3px solid #a78bfa;border-radius:8px;line-height:1.5;background:#1c1633;}',   /* 🤝 傭兵行為備註(紫·對應遊戲協力色) */
+      '.m-merc-sec{margin-top:7px;font-size:13px;color:#cbd5e1;line-height:1.55;}',   /* 傭兵可用技能:四塊分區 */
+      '.m-merc-sec-b{display:block;margin-top:2px;}',
       '.m-wiki-mfilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}',
       '.m-wiki-mfbtn{flex:1 1 auto;min-width:52px;padding:6px 4px;border:1px solid #334155;background:#111c30;color:#cbd5e1;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;}',
       '.m-wiki-mfbtn.on{background:#0e7490;border-color:#22d3ee;color:#fff;}'
