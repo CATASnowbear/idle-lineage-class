@@ -93,6 +93,9 @@
       var orig = window[fnName];
       if (typeof orig !== 'function' || orig.__lockAnchor) return false;
       var wrapped = function () {
+        // 快轉(離線/背景補跑)時原函式第一行就 return、不會動 DOM,錨定完全多餘——
+        // 而 scrolledUp 讀 scrollHeight 會強制排版,補跑每則訊息都白付一次,直接走原函式。
+        if (typeof state !== 'undefined' && state && state.ff) return orig.apply(this, arguments);
         var el = document.getElementById(elId);
         if (!el || !scrolledUp(el)) return orig.apply(this, arguments);   // 在底部(未鎖定):原行為(自動捲到底)
         // 已往上看舊訊息:錨定視窗頂端那則訊息。原函式用 innerHTML+= 會「重建全部子節點」,故不能持有

@@ -287,6 +287,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 - **真正成本 = 戰鬥模擬本身,且 RNG 變異極大**:同一隻角色同圖,跑兩次差很多——沒升級那次每 tick ~0.11ms(24h 純運算約 96 秒)、升到 Lv68 打進更硬戰鬥那次飆到 1~2ms(24h 約 471 秒)。慢不是 bug,就是「真的在一場一場模擬戰鬥」,場面越大越吃運算。
 - **參考數據**:`TICK_MS=100`,24h = 864,000 個 tick。離線外掛 `afk-offline.js` 的「ms」是時間切片預算(`SLICE_MIN_MS=28` 短離線、`SLICE_MAX_MS=250` 長離線≥1h),只影響「讓畫面喘」的額外開銷、不影響純運算那條底;250ms 以上邊際效益已很小。
 - **要真的加速只剩大改方向**(離線時用簡化戰鬥模型估算收益),會動到平衡、且不能改原作者戰鬥碼,CP 值低 → **建議維持現狀,接受它有時要跑幾分鐘**。
+- **2026-07-05 追加驗證(使用者又報慢、懷疑作者更新害的)**:對作者 v2.7.92–96/v3.0.x 大更新(7/4 sync `6d767417`)前後做 A/B 基準——本機起兩個 server(HEAD vs 更新前 commit 的 sparse worktree)、Playwright 同一套合成角色(Lv63/zone_14)各跑 3 輪×36k tick、每輪重新載頁,結果每 tick 5–7µs **無差異,作者更新沒有拖慢快轉**(新特效函式全走 `window.__vfxOff` 總開關,修正#8 的 getter 照罩;`logCombat` 也仍有 `state.ff` 早退)。倒是 CDP profile 抓到**我們外掛在快轉迴圈漏電**:`afk-fixes` 的「日誌捲動錨定」wrapper 在 `state.ff` 時仍對每則 logCombat/logSys 先 `getElementById`+讀 `scrollHeight`(強制排版,約佔合成快轉 10%、真實戰鬥訊息越多越傷)——已加 ff 快速通道直呼原函式。**方法備忘:懷疑效能回歸就 A/B+profile,別用猜的**;profile 其餘熱點(autoSellJunk 每 100 拍全背包掃、`_dpsSnap`/`_dpsDealt` DPS 統計每拍快照、afk-autobuy 的 tick wrapper)都是作者設計或必要成本,佔比小、別動。
 
 ## Git / GitHub
 
