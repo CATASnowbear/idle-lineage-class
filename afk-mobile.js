@@ -963,8 +963,12 @@
          手機改成:舞台還原成滿版直向流,背景圖鋪底(cover·壓暗),標題→選單→版號由上到下堆疊置中、
          按鈕放大好點;逐幀動畫小圖在直式沒有定位意義故隱藏。載入/創角面板仍是舞台內的絕對置中 modal,
          舞台維持 position:relative 即照常置中。scope 全在 body.m-mobile,作者哪天改回/移除這些 id,
-         規則不命中自動失效,桌機不受影響。 */
-      'body.m-mobile #creation-screen{position:fixed !important;inset:0 !important;display:block !important;overflow-y:auto !important;padding:0 !important;}',
+         規則不命中自動失效,桌機不受影響。
+         ⚠ #creation-screen 這條務必 :not(.hidden)——本選擇器 specificity(1,1,1) 高過作者的
+         `#creation-screen.hidden{display:none!important}`(1,1,0),若無條件 `display:block !important`
+         會壓過 .hidden、讓載入/創角後「登入畫面關不掉、蓋在遊戲上」→ 玩家卡在選角畫面(踩過 2026-07-06)。
+         加 :not(.hidden) 後有 .hidden 時本規則不命中,交還作者的隱藏。 */
+      'body.m-mobile #creation-screen:not(.hidden){position:fixed !important;inset:0 !important;display:block !important;overflow-y:auto !important;padding:0 !important;}',
       'body.m-mobile #login-art-stage{position:relative !important;width:100vw !important;max-width:100vw !important;aspect-ratio:auto !important;min-height:var(--app-h,100dvh) !important;display:flex !important;flex-direction:column !important;justify-content:center !important;overflow:visible !important;padding:32px 22px 40px !important;box-shadow:none !important;}',
       'body.m-mobile #login-bg-image{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;object-fit:cover !important;opacity:.35 !important;}',
       'body.m-mobile #login-anim-image{display:none !important;}',
