@@ -950,7 +950,7 @@ const MOB_ANIM_SKILL_FX = {
     '巫師':         { startPfx: 'cast', h: 0.45, ay: 0.5, feet: true, lift: 0.2 },
     '西瑪':         { startPfx: 'cast', h: 0.45, ay: 0.5, feet: true, lift: 0.2 },
     '象牙塔黑長者':  { startPfx: 'cast', h: 0.45, ay: 0.5, feet: true, lift: 0.2 },
-    '地獄犬':       { startPfx: 'skill_effect', h: 1.0, ay: 0.5 },   // 🔥 噴火：單序列 skill_effect(自身畫布 72×62·非影子/武器同步層)·身體中心
+    '地獄犬':       { startPfx: 'skill_effect', anchored: { ox: -37, oy: 28, bw: 69, bh: 65 } },   // 🔥 v3.0.63 噴火改 anchored 對嘴（原 h:1.0 中心比例＝以怪卡高縮放→過大且蓋全身）：本體 origin(18,47)−特效 origin(55,19)＝(−37,28)·與恐怖的地獄犬同 spr 同參數
     // 🌍 v2.7.31 anchored＝「世界格線錨定」模式（像素級精準·零手調）：特效 spr 與本體共用世界格線但「單獨轉檔」（一起 --multi 會把本體畫布撐大→龍上浮），
     //    由兩份 meta 的 latticeOrigin 換算特效畫布在本體畫布內的精確偏移 (ox,oy)＝(本體ox−特效ox, 本體oy−特效oy)；bw/bh＝本體畫布尺寸（算縮放用）。
     //    渲染：特效疊在本體 img rect + 偏移×縮放（.mob-anim 原生尺寸縮放=1·boss-zoom 等 transform 由 rect/bw 自動吸收）·幀與 skill 動作同鐘同步。
