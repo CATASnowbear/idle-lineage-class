@@ -58,7 +58,7 @@
   }
   // 跨頁切換用:關掉小百科模態並交出一層歷史(不呼叫 history.back,避免誤觸掉落查詢的 popstate 連帶誤關),供對方接手顯示
   function closeForNav() { var m = document.getElementById('m-wiki-modal'); if (m && !m.getAttribute('data-standalone')) m.classList.remove('open'); if (_navDepth > 0) _navDepth--; }
-  window.AFK_WIKI_API = { goto: gotoWiki, close: closeForNav, isOpen: _isModalClosable };   // goto 通用跨頁前往小百科;close/isOpen 供跨頁切換(關閉來源、接手歷史層)
+  window.AFK_WIKI_API = { goto: gotoWiki, close: closeForNav, isOpen: _isModalClosable, searchHits: searchHits };   // goto 通用跨頁前往小百科;close/isOpen 供跨頁切換(關閉來源、接手歷史層);searchHits 供掉落查詢統一搜尋
   // 獨立頁:狀態(搜尋字/分頁/職業)←→ 網址,方便複製連結分享(replaceState,不灌爆瀏覽記錄)
   function _wikiParam(n) { try { return new URLSearchParams(location.search).get(n); } catch (e) { return null; } }
   var _tabSet = null, _clsSet = null;
@@ -1330,6 +1330,36 @@
     return h;
   }
 
+  // 供掉落查詢統一搜尋呼叫:輕量回傳「哪些分頁/區塊」含關鍵字(只取標題,不渲染整頁結果)
+  function searchHits(q, max) {
+    q = String(q || '').trim().toLowerCase();
+    if (!q) return [];
+    max = max || 8;
+    var terms = q.split(/\s+/).filter(Boolean);
+    if (!terms.length) return [];
+    var out = [];
+    try {
+      SEARCH_SOURCES.forEach(function (s) {
+        if (out.length >= max) return;
+        var clsList = s.cls ? (s.key === 'quest' ? [{ k: 'all', n: '全職業共通' }].concat(CLASSES) : CLASSES) : [null];
+        clsList.forEach(function (c) {
+          if (out.length >= max) return;
+          var tmp = document.createElement('div');
+          tmp.innerHTML = tabHTML(s.key, c ? c.k : state.cls);
+          var blocks = tmp.querySelectorAll('.m-wiki-card,.m-wiki-spell,.m-wiki-kv');
+          for (var i = 0; i < blocks.length && out.length < max; i++) {
+            var t = blocks[i].textContent.toLowerCase();
+            if (!terms.every(function (w) { return t.indexOf(w) >= 0; })) continue;
+            var nameEl = blocks[i].querySelector('.m-wiki-name,b');
+            var title = ((nameEl ? nameEl.textContent : blocks[i].textContent) || '').trim().slice(0, 28);
+            out.push({ tab: s.key, cls: c ? c.k : null, label: s.label + (c ? '・' + c.n : ''), title: title });
+          }
+        });
+      });
+    } catch (e) {}
+    return out;
+  }
+
   function renderSearch(q) {
     var parts = [];
     var terms = q.split(/\s+/).filter(Boolean);   // 空白分詞=AND:每個詞都要出現(玩家常打「娃娃 兌換」這種多詞,整串當一個字面值會全空)
@@ -1349,6 +1379,19 @@
         }
       });
     });
+    // 📖 統一搜尋:掉落查詢的命中一併列出(點名稱走既有 [data-dexq] 全域委派→gotoDex,模態/獨立頁自動)
+    try {
+      if (window.AFK_DEX_API && AFK_DEX_API.searchSummary) {
+        var dxs = AFK_DEX_API.searchSummary(state.q, 16);
+        if (dxs && (dxs.mobs.length || dxs.items.length)) {
+          var dxl = '';
+          if (dxs.mobs.length) dxl += '<div class="m-wiki-kv"><b>🧟 怪物：</b>' + dxs.mobs.map(function (m) { return '<span class="m-dexlink" data-dexq="' + esc(m.n) + '">' + esc(m.n) + '</span>（Lv' + m.lv + '）'; }).join('、') + '</div>';
+          if (dxs.items.length) dxl += '<div class="m-wiki-kv"><b>🎒 物品：</b>' + dxs.items.map(function (n) { return '<span class="m-dexlink" data-dexq="' + esc(n) + '">' + esc(n) + '</span>'; }).join('、') + '</div>';
+          parts.push('<div class="m-wiki-sub">📖 掉落查詢 <span class="m-wiki-cnt">' + (dxs.mobs.length + dxs.items.length) + '</span></div>' +
+            '<div class="m-wiki-card">' + dxl + '<div class="m-wiki-desc">點名稱前往「掉落查詢」看掉落率／取得方式。</div></div>');
+        }
+      }
+    } catch (e) {}
     return parts.length ? parts.join('') : '<div class="m-wiki-hint">找不到含「' + esc(state.q.trim()) + '」的內容。</div>';
   }
 

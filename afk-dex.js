@@ -244,6 +244,40 @@
     return '<div class="m-dex-card"><div class="m-dex-imatch-h">🔎 符合的物品（點名稱看詳情）</div><div class="m-dex-imatch">' + names + (more ? '　…還有更多，請輸入更精確的名稱' : '') + '</div></div>';
   }
 
+  // ----- 跨外掛統一搜尋 ---------------------------------------------------
+  // 供小百科呼叫:回傳命中的怪物/物品名稱摘要(不渲染、不動面板;索引在 init 就建好,隨時可查)
+  function searchSummary(q, max) {
+    q = String(q || '').trim().toLowerCase();
+    if (!q || !INDEX.length) return null;
+    max = max || 16;
+    var qs = [q];
+    if (q.indexOf(' ') >= 0) qs = qs.concat(q.split(/\s+/).filter(Boolean));   // 多詞時整串優先、再各詞補位(本索引是單字串比對)
+    var mobs = [], items = [], seen = {};
+    qs.forEach(function (w) {
+      for (var i = 0; i < INDEX.length && mobs.length < max; i++) {
+        var e = INDEX[i];
+        if (e.hay.indexOf(w) >= 0 && !seen['m' + e.mob.n]) { seen['m' + e.mob.n] = 1; mobs.push({ n: e.mob.n, lv: e.mob.lv || 0 }); }
+      }
+      for (var j = 0; j < ITEM_INDEX.length && items.length < max; j++) {
+        var it = ITEM_INDEX[j];
+        if (it.hay.indexOf(w) >= 0 && !seen['i' + it.n]) { seen['i' + it.n] = 1; items.push(it.n); }
+      }
+    });
+    return { mobs: mobs, items: items };
+  }
+  // 📚 小百科的命中摘要卡(點任一項→AFK_WIKI_API.goto({q}) 開小百科統一搜尋;gotoWiki 會自動關本模態/獨立頁走網址)
+  function wikiHitsHTML(qRaw) {
+    try {
+      if (!window.AFK_WIKI_API || !AFK_WIKI_API.searchHits) return '';
+      var ws = AFK_WIKI_API.searchHits(qRaw, 8);
+      if (!ws || !ws.length) return '';
+      var rows = ws.map(function (w) {
+        return '<div class="m-dex-wikihit" data-q="' + esc(qRaw) + '">【' + esc(w.label) + '】' + hl(w.title, qRaw.toLowerCase()) + '</div>';
+      }).join('');
+      return '<div class="m-dex-card"><div class="m-dex-imatch-h">📚 小百科相關內容（點任一項前往搜尋）</div>' + rows + '</div>';
+    } catch (e) { return ''; }
+  }
+
   // ----- 搜尋 + 渲染 ------------------------------------------------------
   function doSearch() {
     if (_searchTimer) { clearTimeout(_searchTimer); _searchTimer = null; }   // 直接呼叫(清除鈕/書籤/URL)蓋過待觸發的防抖
@@ -268,20 +302,21 @@
     });
     if (special) { var sp = document.getElementById('m-dex-special'); if (sp) sp.open = true; if (firstHit) try { firstHit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
     var itemHTML = itemMatchesHTML(q);   // 先列出名稱符合的裝備(可點看數值;含沒被怪掉的)
+    var wikiHTML = wikiHitsHTML(input.value.trim());   // 📚 小百科命中一併附在結果尾端(統一搜尋)
     var hits = [];
     for (var i = 0; i < INDEX.length && hits.length <= MAX_RESULTS; i++) if (INDEX[i].hay.indexOf(q) >= 0) hits.push(INDEX[i]);
     if (!hits.length) {
-      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些物品沒有固定掉落的怪，多為商店／製作／兌換／任務取得）</div>'); return; }
-      results.innerHTML = special
+      if (itemHTML) { results.innerHTML = itemHTML + (special ? '<div class="m-dex-hint">另見下方<b>「全域特殊掉落規則」</b>。</div>' : '<div class="m-dex-hint">（上面這些物品沒有固定掉落的怪，多為商店／製作／兌換／任務取得）</div>') + wikiHTML; return; }
+      results.innerHTML = (special
         ? '<div class="m-dex-hint">「' + esc(input.value.trim()) + '」沒有固定掉落的怪物，請見下方<b>「全域特殊掉落規則」</b>。</div>'
-        : '<div class="m-dex-hint">找不到符合的怪物或裝備</div>';
+        : '<div class="m-dex-hint">找不到符合的怪物或裝備</div>') + wikiHTML;
       return;
     }
     var truncated = hits.length > MAX_RESULTS;
     if (truncated) hits = hits.slice(0, MAX_RESULTS);
     var html = itemHTML + hits.map(function (h) { return cardHTML(h, mult, q); }).join('');
     if (truncated) html += '<div class="m-dex-hint">符合的太多,只顯示前 ' + MAX_RESULTS + ' 筆,請輸入更精確的關鍵字。</div>';
-    results.innerHTML = html;
+    results.innerHTML = html + wikiHTML;
   }
 
   var ELE = { fire: '🔥 火', water: '💧 水', earth: '🪨 地', wind: '🌪 風', none: '無' };
@@ -517,7 +552,7 @@
     if (body) return body;
     return '<div class="m-dex-craft"><div class="m-dex-craft-mats" style="color:#94a3b8;">目前沒有固定取得途徑</div></div>';
   }
-  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex, close: closeForNav, isOpen: _isModalClosable };   // goto({q}) 通用跨頁前往掉落查詢;close/isOpen 供跨頁切換(關閉來源、接手歷史層)
+  window.AFK_DEX_API = { acquireHTML: acquireHTML, itemDetailHTML: itemDetailHTML, goto: gotoDex, close: closeForNav, isOpen: _isModalClosable, searchSummary: searchSummary };   // goto({q}) 通用跨頁前往掉落查詢;close/isOpen 供跨頁切換(關閉來源、接手歷史層);searchSummary 供小百科統一搜尋
 
   // ----- 物品詳情彈窗(點掉落物名字 → 顯示遊戲內數值與圖示) ------------------
   var IT_TYPE = { wpn: '武器', arm: '防具', acc: '飾品', pot: '藥水', scroll: '卷軸', skillbk: '魔法書', misc: '道具', etc: '道具' };
@@ -825,6 +860,12 @@
       if (!b) return;
       gotoDex({ q: b.getAttribute('data-dexq') || b.getAttribute('data-item') || '' });
     });
+    // 📚 統一搜尋:點「小百科相關內容」列 → 前往小百科開同字搜尋(gotoWiki 會關本模態/獨立頁走網址)
+    document.addEventListener('click', function (e) {
+      var w = e.target.closest ? e.target.closest('.m-dex-wikihit') : null;
+      if (!w || !window.AFK_WIKI_API || !AFK_WIKI_API.goto) return;
+      AFK_WIKI_API.goto({ q: w.getAttribute('data-q') || '' });
+    });
   }
   function openModal(adopt) { var m = document.getElementById('m-dex-modal'); if (m) { var wasOpen = m.classList.contains('open'); m.classList.add('open'); var i = document.getElementById('m-dex-input'); if (i) i.focus(); if (!wasOpen && !m.getAttribute('data-standalone')) { if (adopt === true) { if (_navDepth < 1) _navDepth = 1; } else _pushNav(); } } }   // adopt===true:接手來源模態交出的歷史層、不另壓(跨頁切換用,避免返回鍵殘留)。嚴格比對 true:按鈕 onclick 會把 MouseEvent 當參數傳進來,不可當 adopt
   function closeModal() { var m = document.getElementById('m-dex-modal'); if (!m || m.getAttribute('data-standalone')) return; m.classList.remove('open'); }
@@ -880,6 +921,8 @@
       '.m-dex-iname{color:#7dd3fc;text-decoration:underline;cursor:pointer;}',
       '.m-dex-iname:active{color:#38bdf8;}',
       '.m-dex-imatch-h{color:#fcd34d;font-weight:bold;font-size:13.5px;margin-bottom:6px;}',
+      '.m-dex-wikihit{color:#cbd5e1;font-size:13.5px;padding:5px 6px;border-radius:6px;cursor:pointer;}',
+      '.m-dex-wikihit:hover{background:#1e293b;color:#fcd34d;}',
       '.m-dex-imatch{font-size:13.5px;line-height:1.9;color:#64748b;}',
       '#m-dex-itempop{display:none;position:absolute;inset:0;z-index:1002;background:rgba(2,6,23,.66);align-items:center;justify-content:center;padding:24px 14px;}',
       '#m-dex-itempop.open{display:flex;}',
