@@ -23,7 +23,7 @@
   'use strict';
 
   var TOAST_MS = 3500;          // 每則 toast 停留時間(毫秒)
-  var MAX_TOASTS = 3;           // 畫面同時最多幾張,超過移除最舊
+  var MAX_TOASTS = 1;           // 畫面同時最多幾張,超過移除最舊(使用者要求只留一張)
   var MAX_LINES_PER_CLICK = 4;  // 單次點擊抓到多則(如某些一鍵操作)時最多顯示幾則
   var FLOOD_CAP = 6;            // 單次點擊產生超過這麼多則 logSys → 視為結算/批次洗版,整批不冒 toast
   var NAV_H = 56;               // 配合 afk-mobile #m-nav 高度,toast 浮在導覽列上方
