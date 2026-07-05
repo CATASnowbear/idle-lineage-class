@@ -192,6 +192,8 @@ function recomputeStats() {
     p.mmp = mpBase + (p.lv - 1) * (mpClsInc + wisInc);
 
     d.aspd = 1.0;
+    d.hitstun = hitstunTicks(p);   // ⚔️ 天堂職業硬直（被直接命中→延遲下次攻擊的 tick·職業定·不隨武器）
+    d.castLock = castLockTicks(p); // 🔮 天堂職業施法冷卻下限（攻擊魔法自動施放間隔最小 tick·法師最快）
 
     // ===== Phase 3：非屬性加成（武器傷害 / 裝備防禦 / 套裝 / 增益 / 變身） =====
     // 武器：依遠近距離分別計入（w.str 已於 Phase 1 計入屬性）
@@ -462,6 +464,14 @@ d.mr += (baseMr + bonusMr);
     let _polyForm = p._setPoly || ((p.buffs.poly > 0 && p.poly) ? p.poly : null);
     if(_polyForm) {
         let pf = _polyForm;
+        // 🆕 v3.0.28 速度覆蓋（凡有 atk 者皆套用）：POLY_TIERS 速度型變身、及套裝變身 SET_POLY_FORMS（現在也帶 atk/wlk/cast/stun）。
+        //   攻擊間隔＝動畫幀換算秒（APM=1440/幀），之後仍照常 ×spdMult（加速/勇敢/精通疊加）；移動速度 pf.wlk 於出怪排程（js/03）影響重生。
+        if(pf.atk != null) {
+            d.aspd = Math.round(pf.atk * 6000 / 1440) / 100;         // 攻擊間隔（秒）
+            if(pf.cast != null) d.castLock = pf.cast;                // 施法冷卻下限（tick）
+            if(pf.stun != null) d.hitstun  = pf.stun;               // 被擊硬直（tick）
+        }
+        // 屬性加成（純速度型 POLY_TIERS 無此欄＝+0；套裝變身保留傷害/命中/魔法等加成，與上方速度並存）
         d.meleeDmg  += (pf.md  || 0); d.meleeHit  += (pf.mh || 0);   // 近距離傷害 / 命中
         d.rangedDmg += (pf.rd  || 0); d.rangedHit += (pf.rh || 0);   // 遠距離傷害 / 命中
         d.extraDmg  += (pf.ed  || 0); d.extraHit  += (pf.eh || 0);   // 額外傷害 / 命中
@@ -471,7 +481,7 @@ d.mr += (baseMr + bonusMr);
         d.ac        += (pf.ac  || 0);                                // AC（規格 AC-1 以 ac:-1 表示）
         d.er        += (pf.er  || 0);                                // ER
         d.mr        += (pf.mr  || 0);                                // MR
-        if(pf.spd) spdMult *= (1 - pf.spd/100);                      // 攻速加快%（與藥水/餅乾相乘疊加）
+        if(pf.spd) spdMult *= (1 - pf.spd/100);                      // 攻速加快%（僅舊存檔的套裝變身可能還有 spd；新設定已改速度覆蓋不帶 spd）
     }
     
     if(p.buffs.sk_soul_up > 0) { p.mhp = Math.floor(p.mhp * 1.2); p.mmp = Math.floor(p.mmp * 1.2); }
@@ -579,95 +589,97 @@ function applyDollCursor() {
 //       er=ER, mr=MR, spd=攻擊速度加快(%)
 // 顏色：Lv49以下白色、Lv50~51淡黃色、Lv52以上金色
 const POLY_TIERS = [
-    { min:0,  max:14, color:"text-white", forms:[
-        { n:"妖魔", md:1, mh:1 },
-        { n:"骷髏", md:1, mh:1 },
-        { n:"那魯加妖魔", md:1, mh:1 },
-        { n:"妖魔弓箭手", rd:1, rh:1 },
-        { n:"長者", sp:2, mpr:1 },
-        { n:"侏儒", ac:-1, spd:10 },
-        { n:"歐姆", ed:1, eh:1 },
-        { n:"巨蟻", eh:1, spd:10 },
-        { n:"奇異鸚鵡", ed:1, sp:1 },
-        { n:"浣熊", eh:1, sp:1 },
-        { n:"果凍怪", mr:4, sp:1 },
+    { min:0, max:9, color:"text-white", forms:[
+        { n:"哥布林", lv:2, atk:23, wlk:19, cast:10, stun:5 },
+        { n:"妖魔", lv:2, atk:33, wlk:20, cast:15, stun:5 },
+        { n:"地靈", lv:3, atk:27, wlk:32, cast:11, stun:6 },
+        { n:"妖魔弓箭手", lv:3, atk:47, wlk:20, cast:15, stun:6 },
+        { n:"侏儒", lv:5, atk:37, wlk:15, cast:15, stun:5 },
+        { n:"人形殭屍", lv:6, atk:26, wlk:50, cast:17, stun:2 },
+        { n:"妖魔鬥士", lv:8, atk:23, wlk:16, cast:15, stun:4 },
+        { n:"狼人", lv:9, atk:21, wlk:16, cast:18, stun:5 },
     ]},
-    { min:15, max:29, color:"text-white", forms:[
-        { n:"妖魔鬥士", md:2, mh:1 },
-        { n:"狼人", md:1, mh:2 },
-        { n:"食人妖精", md:2, mh:2 },
-        { n:"妖魔巡守", rd:2, rh:1 },
-        { n:"夏洛伯", ac:-2, spd:15 },
-        { n:"黑暗妖精運送員", rd:1, rh:2 },
-        { n:"巨大兵蟻", ed:2, eh:1 },
-        { n:"紙人", sp:2, mpr:2 },
-        { n:"雪人", mgd:1 },
+    { min:10, max:19, color:"text-white", forms:[
+        { n:"骷髏", lv:10, atk:23, wlk:16, cast:15, stun:4 },
+        { n:"甘地妖魔", lv:10, atk:26, wlk:16, cast:11, stun:5 },
+        { n:"骷髏弓箭手", lv:12, atk:28, wlk:18, cast:19, stun:5 },
+        { n:"果凍怪", lv:12, atk:32, wlk:36, cast:13, stun:6 },
+        { n:"骷髏槍兵", lv:13, atk:22, wlk:17, cast:18, stun:5 },
+        { n:"骷髏斧手", lv:13, atk:25, wlk:15, cast:18, stun:6 },
+        { n:"羅孚妖魔", lv:13, atk:26, wlk:16, cast:11, stun:5 },
+        { n:"石頭高崙", lv:13, atk:66, wlk:32, cast:28, stun:1 },
+        { n:"妖魔巡守", lv:14, atk:24, wlk:16, cast:10, stun:6 },
+        { n:"阿吐巴妖魔", lv:15, atk:26, wlk:16, cast:11, stun:5 },
+        { n:"都達瑪拉妖魔", lv:15, atk:29, wlk:16, cast:12, stun:5 },
+        { n:"史巴托", lv:16, atk:21, wlk:18, cast:15, stun:4 },
+        { n:"食屍鬼", lv:16, atk:26, wlk:50, cast:17, stun:2 },
+        { n:"黑騎士", lv:16, atk:28, wlk:12, cast:8, stun:5 },
+        { n:"萊肯", lv:17, atk:22, wlk:16, cast:15, stun:5 },
+        { n:"那魯加妖魔", lv:17, atk:29, wlk:16, cast:12, stun:5 },
     ]},
-    { min:30, max:44, color:"text-white", forms:[
-        { n:"萊肯", md:2, mh:2 },
-        { n:"思克巴", mgd:1, mpr:2 },
-        { n:"食人妖精王", md:3, mh:2 },
-        { n:"黑暗妖精警衛(矛)", md:1, mh:3 },
-        { n:"強盜(弓)", rd:2, rh:2 },
-        { n:"黑暗妖精盜賊", rd:2, rh:3 },
-        { n:"黑暗妖精法師", sp:3, mpr:1 },
-        { n:"亞力安", md:1, mh:1, sp:2 },
-        { n:"曼波兔", er:1, spd:15 },
+    { min:20, max:29, color:"text-white", forms:[
+        { n:"暴走兔", lv:20, atk:26, wlk:20, cast:14, stun:6 },
+        { n:"長老", lv:21, atk:45, wlk:20, cast:8, stun:7 },
+        { n:"食人妖精", lv:22, atk:21, wlk:16, cast:17, stun:5 },
+        { n:"歐姆民兵", lv:26, atk:38, wlk:32, cast:21, stun:6 },
+        { n:"歐吉", lv:28, atk:30, wlk:24, cast:15, stun:3 },
+        { n:"多羅", lv:28, atk:30, wlk:24, cast:16, stun:3 },
+        { n:"黑暗妖精運送員", lv:28, atk:38, wlk:24, cast:21, stun:6 },
+        { n:"紙人", lv:28, atk:40, wlk:24, cast:22, stun:6 },
     ]},
-    { min:45, max:49, color:"text-white", forms:[
-        { n:"德雷克", md:3, mh:3 },
-        { n:"布雷哲", md:2, mh:4 },
-        { n:"庫曼", md:1, mh:1, spd:15 },
-        { n:"黑暗妖精警衛(弓)", rd:1, rh:1, spd:15 },
-        { n:"黑暗妖精巡守", rd:3, rh:3 },
-        { n:"巴風特", mgd:1, sp:2, mpr:2 },
+    { min:30, max:39, color:"text-white", forms:[
+        { n:"食人妖精王", lv:30, atk:18, wlk:16, cast:13, stun:4 },
+        { n:"黑暗精靈", lv:30, atk:19, wlk:16, cast:10, stun:5 },
+        { n:"巨人", lv:30, atk:20, wlk:22, cast:11, stun:3 },
+        { n:"格利芬", lv:31, atk:24, wlk:14, cast:13, stun:7 },
+        { n:"卡司特王", lv:33, atk:16, wlk:25, cast:8, stun:3 },
+        { n:"黑暗妖精刺客", lv:33, atk:17, wlk:18, cast:9, stun:5 },
+        { n:"雪怪", lv:33, atk:24, wlk:19, cast:13, stun:3 },
+        { n:"亞力安", lv:34, atk:24, wlk:13, cast:15, stun:5 },
+        { n:"巨大牛人", lv:35, atk:21, wlk:17, cast:12, stun:6 },
+        { n:"阿魯巴", lv:35, atk:24, wlk:16, cast:13, stun:4 },
+        { n:"思克巴", lv:37, atk:20, wlk:16, cast:10, stun:6 },
     ]},
-    { min:50, max:51, color:"text-yellow-200", forms:[
-        { n:"克特", md:3, mh:3, spd:15 },
-        { n:"刺客首領", md:2, mh:2, spd:20 },
-        { n:"小惡魔", rd:1, mgd:1, mpr:3, spd:15 },
-        { n:"黑騎士", md:1, mh:4, spd:10 },
-        { n:"火焰弓箭手", rd:3, rh:3, spd:10 },
-        { n:"黑法師", mgd:1, sp:3, mpr:2, spd:10 },
+    { min:40, max:49, color:"text-white", forms:[
+        { n:"獨眼巨人", lv:40, atk:22, wlk:20, cast:12, stun:4 },
+        { n:"思克巴女皇", lv:41, atk:16, wlk:16, cast:9, stun:5 },
+        { n:"西瑪", lv:42, atk:37, wlk:16, cast:20, stun:6 },
+        { n:"巴土瑟", lv:43, atk:37, wlk:16, cast:20, stun:6 },
+        { n:"小惡魔", lv:44, atk:18, wlk:18, cast:10, stun:4 },
+        { n:"卡士柏", lv:44, atk:37, wlk:16, cast:20, stun:6 },
+        { n:"馬庫爾", lv:45, atk:22, wlk:16, cast:8, stun:6 },
+        { n:"重裝歐姆", lv:48, atk:45, wlk:40, cast:25, stun:6 },
     ]},
-    { min:52, max:54, color:"text-yellow-400", forms:[
-        { n:"死亡騎士", md:3, mh:3, spd:20 },
-        { n:"狂暴將軍", md:5, spd:15 },
-        { n:"黑暗精靈", rd:3, rh:3, spd:20 },
-        { n:"黑長者", mgd:2, sp:1, mpr:2, spd:15 },
-        { n:"巴列斯", mgd:1, sp:2, mpr:4, spd:10 },
+    { min:50, max:59, color:"text-yellow-200", forms:[
+        { n:"巴風特", lv:50, atk:19, wlk:12, cast:10, stun:5 },
+        { n:"賽尼斯", lv:50, atk:20, wlk:18, cast:11, stun:6 },
+        { n:"黑長者", lv:50, atk:22, wlk:16, cast:8, stun:6 },
+        { n:"克特", lv:51, atk:16, wlk:16, cast:9, stun:5 },
+        { n:"死亡騎士", lv:52, atk:15, wlk:16, cast:10, stun:5 },
+        { n:"巴列斯", lv:53, atk:19, wlk:12, cast:10, stun:5 },
+        { n:"艾莉絲", lv:55, atk:16, wlk:16, cast:9, stun:5 },
+        { n:"炎魔", lv:56, atk:17, wlk:18, cast:9, stun:3 },
+        { n:"吸血鬼", lv:56, atk:19, wlk:24, cast:10, stun:6 },
+        { n:"黑暗巡守", lv:57, atk:19, wlk:16, cast:12, stun:5 },
+        { n:"黑暗騎士", lv:58, atk:14, wlk:16, cast:15, stun:5 },
+        { n:"黑暗法師", lv:58, atk:17, wlk:16, cast:9, stun:6 },
+        { n:"銀光巡守", lv:59, atk:19, wlk:16, cast:11, stun:5 },
     ]},
-    { min:55, max:59, color:"text-yellow-400", forms:[
-        { n:"黑暗騎士", md:4, mh:3, spd:20 },
-        { n:"黑暗刺客", md:3, mh:4, spd:20 },
-        { n:"黑暗巡守", rd:4, rh:3, spd:20 },
-        { n:"黑暗法師", mgd:2, sp:2, mpr:3, spd:15 },
+    { min:60, max:69, color:"text-yellow-400", forms:[
+        { n:"銀光騎士", lv:60, atk:14, wlk:16, cast:15, stun:5 },
+        { n:"騎士范德", lv:60, atk:16, wlk:16, cast:9, stun:5 },
+        { n:"銀光法師", lv:60, atk:17, wlk:16, cast:9, stun:6 },
+        { n:"惡魔", lv:61, atk:18, wlk:16, cast:9, stun:4 },
+        { n:"黃金巡守", lv:61, atk:19, wlk:16, cast:11, stun:5 },
+        { n:"黃金騎士", lv:62, atk:14, wlk:16, cast:15, stun:4 },
+        { n:"黃金法師", lv:62, atk:17, wlk:16, cast:9, stun:6 },
+        { n:"白金巡守", lv:63, atk:19, wlk:16, cast:10, stun:5 },
+        { n:"白金騎士", lv:64, atk:14, wlk:16, cast:15, stun:4 },
+        { n:"白金法師", lv:64, atk:17, wlk:16, cast:9, stun:5 },
     ]},
-    { min:60, max:64, color:"text-yellow-400", forms:[
-        { n:"銀光騎士", md:4, mh:3, spd:25 },
-        { n:"銀光刺客", md:3, mh:4, spd:25 },
-        { n:"銀光巡守", rd:4, rh:3, spd:25 },
-        { n:"銀光法師", mgd:2, sp:3, mpr:3, spd:20 },
-    ]},
-    { min:65, max:69, color:"text-yellow-400", forms:[
-        { n:"黃金騎士", md:4, mh:4, spd:25 },
-        { n:"黃金刺客", md:3, mh:5, spd:25 },
-        { n:"黃金巡守", rd:4, rh:4, spd:25 },
-        { n:"黃金法師", mgd:2, sp:5, mpr:3, spd:20 },
-    ]},
-    { min:70, max:74, color:"text-yellow-400", forms:[
-        { n:"白金騎士", md:4, mh:4, spd:30 },
-        { n:"白金刺客", md:3, mh:5, spd:30 },
-        { n:"白金巡守", rd:4, rh:4, spd:30 },
-        { n:"白金法師", mgd:2, sp:5, mpr:3, spd:25 },
-    ]},
-    { min:75, max:9999, color:"text-yellow-400", forms:[
-        { n:"反王肯特", md:4, mh:6, spd:33 },
-        { n:"丹特斯", md:6, mh:4, spd:33 },
-        { n:"海露拜", rd:4, rh:6, spd:33 },
-        { n:"絲莉安", rd:6, rh:4, spd:33 },
-        { n:"賽尼斯", mgd:3, sp:5, mpr:5, spd:30 },
-        { n:"宙斯", mgd:3, sp:6, mpr:4, spd:30 },
+    { min:70, max:9999, color:"text-yellow-400", forms:[
+        { n:"死亡", lv:70, atk:18, wlk:24, cast:10, stun:7 },
+        { n:"反王肯恩", lv:75, atk:20, wlk:18, cast:11, stun:6 },
     ]},
 ];
 
@@ -681,11 +693,12 @@ function findPolyForm(name) {
 }
 function makePolyState(form, color) { return Object.assign({ c: color }, form); }
 // 🗼 套裝專屬變身（不進入隨機變形池）：死亡騎士套裝→真‧死亡騎士、克特套裝→真‧克特、惡魔套裝→惡魔
+// 🗼 v3.0.28 套裝變身改「速度覆蓋＋保留傷害加成」：套用對應速度型變身的速度（atk/wlk/cast/stun），並保留原本傷害/命中提升（ed/eh/rd/rh/mgd 等）。舊 spd% 由速度覆蓋取代故移除。
 const SET_POLY_FORMS = {
-    dk:    { n: "真‧死亡騎士", ed: 6, eh: 6, spd: 35, c: "text-yellow-400" },
-    kurt:  { n: "真‧克特",     ed: 4, eh: 8, spd: 35, c: "text-yellow-400" },
-    demon: { n: "惡魔", ed: 4, eh: 4, mgd: 3, sp: 3, mpr: 3, spd: 33, c: "text-red-400" },
-    darkelf: { n: "高等黑暗精靈", rd: 5, rh: 5, spd: 30, c: "text-violet-300" }
+    dk:      { n: "真‧死亡騎士", ed: 6, eh: 6,                     atk: 15, wlk: 16, cast: 10, stun: 5, c: "text-yellow-400" },   // 速度＝死亡騎士（施法/硬直真值）
+    kurt:    { n: "真‧克特",     ed: 4, eh: 8,                     atk: 16, wlk: 16, cast: 9,  stun: 5, c: "text-yellow-400" },   // 速度＝克特（＝騎士范德·硬直真值/施法估）
+    demon:   { n: "惡魔", ed: 4, eh: 4, mgd: 3, sp: 3, mpr: 3,     atk: 18, wlk: 16, cast: 9, stun: 4, c: "text-red-400" },      // 速度＝惡魔
+    darkelf: { n: "高等黑暗精靈", rd: 5, rh: 5,                    atk: 19, wlk: 16, cast: 10, stun: 5, c: "text-violet-300" }     // 速度＝黑暗精靈
 };
 
 // 是否持有「變形控制戒指」(acc_117)
@@ -759,6 +772,12 @@ function applyPolyForce(stateObj) {
 // 將變身能力整理成可讀文字（給選單顯示）
 function polyFormDesc(f) {
     let p = [];
+    if (f.atk != null) {   // 🆕 v3.0.26 速度型變身：攻擊間隔/施法/硬直/重生（套裝變身另接傷害加成於後）
+        p.push(`攻擊間隔 ${(Math.round(f.atk * 6000 / 1440) / 100).toFixed(2)}秒`);
+        if (f.cast != null) p.push(`施法 ${(f.cast/10).toFixed(1)}秒`);
+        if (f.stun != null) p.push(`硬直 ${(f.stun/10).toFixed(1)}秒`);
+        if (f.wlk != null)  p.push(`重生 ${(5 * f.wlk / 16).toFixed(1)}秒`);
+    }
     if (f.md)  p.push(`近距離傷害+${f.md}`);
     if (f.mh)  p.push(`近距離命中+${f.mh}`);
     if (f.rd)  p.push(`遠距離傷害+${f.rd}`);
@@ -772,12 +791,11 @@ function polyFormDesc(f) {
     if (f.er)  p.push(`ER+${f.er}`);
     if (f.mr)  p.push(`MR+${f.mr}`);
     if (f.spd) p.push(`攻速+${f.spd}%`);
-    return p.join('，');
+    return p.join('・');
 }
 
 // 變形控制戒指：手動使用時開啟「指定變身」選單
 function openPolySelect(uid) {
-    let tier = getPolyTier(player.lv);
     let modal = document.getElementById('poly-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -793,9 +811,13 @@ function openPolySelect(uid) {
         document.body.appendChild(modal);
     }
     let listEl = modal.querySelector('#poly-modal-list');
-    listEl.innerHTML = tier.forms.map(f =>
+    // 🆕 v3.0.31 變形控制戒指：可選「自己等級（含）以下」全部變身（不再限於當前等級帶）；高等在前、同等依攻擊快慢
+    let avail = [];
+    for (const t of POLY_TIERS) for (const f of t.forms) if (player.lv >= f.lv) avail.push({ f, color: t.color });
+    avail.sort((a, b) => (b.f.lv - a.f.lv) || (a.f.atk - b.f.atk));
+    listEl.innerHTML = avail.map(({ f, color }) =>
         '<button class="btn text-left !py-2 !px-3" onclick="confirmPolySelect(\'' + uid + '\',\'' + f.n + '\')">' +
-            '<span class="' + tier.color + ' font-bold">' + f.n + '</span>' +
+            '<span class="' + color + ' font-bold"><span class="text-slate-400 text-xs mr-1">Lv' + f.lv + '</span>' + f.n + '</span>' +
             '<span class="text-slate-400 text-xs block mt-0.5">' + polyFormDesc(f) + '</span>' +
         '</button>'
     ).join('');

@@ -277,6 +277,9 @@ function whWithdraw(uidv, qty){
         let stack = _whStackFind(player.inv, moved);
         if(stack) stack.cnt += qty; else player.inv.push(moved);
     }
+    // 🗡️🧰 v3.0.61 收集冊：「提領＝獲得」也登錄圖鑑（原本只在 gainItem 登錄→倉庫提領不點亮；傳統模式裝備自帶強化、常整批進出倉庫最易踩到）
+    if (typeof registerEquipObtained === 'function') registerEquipObtained(it.id);
+    if (typeof registerMiscObtained === 'function') registerMiscObtained(it.id);
     // 🔧 先存玩家存檔（已收到物品）再存倉庫（已移除物品）：萬一第二次寫入失敗（如 localStorage 容量爆），
     //    結果是「物品重複」而非「庫存消失卻沒領到」，避免領取時遺失物品。
     saveGame(); saveWarehouse(w); renderTabs(true); updateUI();

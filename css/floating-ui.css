@@ -8,6 +8,12 @@
 .equipment-morph-name{flex:0 0 16%;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;font:800 clamp(8px,1.12vw,14px)/1.05 Arial,"Microsoft JhengHei",sans-serif;color:#fde68a;white-space:nowrap}
 .equipment-morph-image{flex:1 1 auto;width:76%;min-height:0;object-fit:contain;filter:drop-shadow(0 2px 4px #000)}
 .equipment-morph-image.no-image{visibility:hidden}
+/* 🎬 v3.0.44 變身立繪動畫（morph.spr 小像素幀）：pixelated 銳利·v3.0.46 大小統一改由 js 以炎魔畫布高(191)為基準設定顯示高 */
+.equipment-morph-image.morph-anim-portrait{image-rendering:crisp-edges;image-rendering:pixelated;object-fit:contain;position:relative;z-index:2}
+/* 🎬 v3.0.46 立繪三層：影子(multiply·墊底) + 本體 + 武器特效(screen·最上)·幾何由 js 同步為本體 offset box */
+#equipment-morph-shadow,#equipment-morph-weapon{position:absolute;pointer-events:none;object-fit:contain;image-rendering:crisp-edges;image-rendering:pixelated;visibility:hidden}
+#equipment-morph-shadow{mix-blend-mode:multiply;z-index:1}
+#equipment-morph-weapon{mix-blend-mode:screen;z-index:3}
 .equipment-morph-bonus{flex:0 0 22%;width:145%;display:flex;align-items:flex-start;justify-content:center;overflow:visible;font:700 clamp(7px,.82vw,11px)/1.15 Arial,"Microsoft JhengHei",sans-serif;color:#dbeafe}
 /* Morph snapshot tuning: larger portrait and a wider, airier two-line bonus caption. */
 .equipment-morph-snapshot{left:44.5%;top:64.5%;width:22%;height:23%}

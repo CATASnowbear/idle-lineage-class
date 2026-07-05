@@ -9,6 +9,124 @@ function _initTabGuard() {
     document.addEventListener('pointerup', _release);
     document.addEventListener('pointercancel', _release);
 }
+
+// ===== 🎨 v3.0.55 1.8 原版風格技能魔法視窗（移植參考版 idle-lineage-class）=====
+//   底圖 assets/ui/skill-window-1.8.png（1023×1537）＋左側階級指示 assets/ui/skill-level/539..548.png。
+//   模式：一般（reqM 通用魔法·1~10 階 tier strip 導覽）／職業（各職 req 欄位技能）／裝備（頭盔授予）。
+//   底部 S.power=玩家魔法傷害(player.d.magicDmg)、M.resist=玩家魔防(player.d.mr) 填入黑框。⚠️格 class 帶 tip-host 讓 Fable5 data-tip-skill tooltip 生效。
+let classicSkillBookState = { mode: 'general', tier: 1, page: 0 };
+function refreshClassicSkillBookOnly() {
+    let div = document.getElementById('tab-skill');
+    if (div) renderClassicSkillBook(div);
+    if (typeof updateSummonLock === 'function') updateSummonLock();
+}
+function classicSkillChooseTier(tier) {
+    classicSkillBookState.mode = 'general';
+    classicSkillBookState.tier = Math.max(1, Math.min(10, parseInt(tier, 10) || 1));
+    refreshClassicSkillBookOnly();
+    requestAnimationFrame(function(){
+        let view = document.querySelector('#tab-skill .classic-skill-grid-scroll');
+        let first = document.querySelector('#tab-skill .classic-skill-cell[data-tier="' + classicSkillBookState.tier + '"]');
+        if (view && first) view.scrollTop = Math.max(0, first.offsetTop);
+    });
+}
+function classicSkillSelectTier(tier) {
+    tier = Math.max(1, Math.min(10, parseInt(tier, 10) || 1));
+    classicSkillBookState.tier = tier;
+    let strip = document.querySelector('#tab-skill .classic-skill-tier-strip');
+    if (strip) strip.style.backgroundImage = "url('assets/ui/skill-level/" + (538 + tier) + ".png')";
+    let heading = document.querySelector('#tab-skill .classic-skill-heading');
+    if (heading && classicSkillBookState.mode === 'general') heading.textContent = tier + '階一般魔法';
+}
+function classicSkillSyncTierFromScroll(view) {
+    if (!view || classicSkillBookState.mode !== 'general') return;
+    let cells = view.querySelectorAll('.classic-skill-cell[data-tier]');
+    let line = view.scrollTop + Math.max(4, view.clientHeight * 0.12), tier = classicSkillBookState.tier;
+    for (let cell of cells) {
+        if (cell.offsetTop <= line) tier = parseInt(cell.dataset.tier, 10) || tier;
+        else break;
+    }
+    if (tier !== classicSkillBookState.tier) classicSkillSelectTier(tier);
+}
+function classicSkillChooseMode(mode) {
+    classicSkillBookState.mode = mode;
+    classicSkillBookState.page = 0;
+    refreshClassicSkillBookOnly();
+}
+function classicSkillClassLabel() {
+    return ({ knight:'騎士技術', mage:'法師魔法', elf:'精靈魔法', dark:'黑妖魔法', illusion:'幻術魔法', dragon:'龍騎魔法', warrior:'戰士技能', royal:'王族魔法' })[player.cls] || '職業技能';
+}
+function classicSkillIsClassSkill(sk) {
+    if (!sk || sk.procOnly) return false;
+    if (player.cls === 'knight') return sk.reqK !== undefined && sk.reqM === undefined;
+    if (player.cls === 'elf') return sk.reqE !== undefined && sk.reqM === undefined;
+    if (player.cls === 'dark') return sk.reqD !== undefined;
+    if (player.cls === 'illusion') return sk.reqI !== undefined && sk.reqM === undefined;
+    if (player.cls === 'dragon') return sk.reqDk !== undefined && sk.reqM === undefined;
+    if (player.cls === 'warrior') return sk.reqW !== undefined;
+    if (player.cls === 'royal') return sk.reqRoy !== undefined;
+    return false;
+}
+function renderClassicSkillBook(sDiv) {
+    if (!sDiv || typeof player === 'undefined' || !player) return;
+    let stateBook = classicSkillBookState;
+    let allIds = Object.keys(DB.skills).filter(id => DB.skills[id] && !DB.skills[id].procOnly && id.indexOf('sk_helm_') !== 0);
+    let accessibleGeneral = allIds.filter(id => { let sk = DB.skills[id]; return sk.reqM !== undefined && skillReqLv(sk, id) !== undefined; });
+    let classSkills = allIds.filter(id => classicSkillIsClassSkill(DB.skills[id]));
+    let granted = (player.grantedSkills || []).filter(id => DB.skills[id]);
+    let classLabel = classicSkillClassLabel();
+    if (stateBook.mode === 'class' && !classSkills.length) stateBook.mode = 'general';
+    if (stateBook.mode === 'equipment' && !granted.length) stateBook.mode = 'general';
+    if (stateBook.mode === 'general' && !accessibleGeneral.length && classSkills.length) stateBook.mode = 'class';   // 🔧 無一般魔法職業(騎士/戰士)→預設顯示職業技能，不留空白格
+
+    let tierAvailable = new Set(accessibleGeneral.map(id => +DB.skills[id].tier));
+    let list = [];
+    if (stateBook.mode === 'class') list = classSkills.map(id => ({ id:id, tier:null }));
+    else if (stateBook.mode === 'equipment') list = granted.map(id => ({ id:id, tier:null }));
+    else {
+        Array.from(tierAvailable).sort((a,b) => a-b).forEach(tier => {
+            let group = accessibleGeneral.filter(id => +DB.skills[id].tier === tier).map(id => ({ id:id, tier:tier }));
+            while (group.length % 4) group.push({ id:null, tier:tier });
+            list.push.apply(list, group);
+        });
+    }
+    while (list.length < 32) list.push({ id:null, tier:null });
+    let cells = list.map(entry => {
+        let id = entry.id;
+        if (!id) return '<div class="classic-skill-cell classic-skill-empty"></div>';
+        let sk = DB.skills[id];
+        let learned = (player.skills || []).includes(id);
+        let grantedSkill = granted.includes(id);
+        let needLv = grantedSkill ? 0 : skillReqLv(sk, id);
+        let elementOk = !sk.reqEle || player.elfEle === sk.reqEle;
+        let elementChosen = !sk.reqEleAny || !!player.elfEle;
+        let usable = learned && elementOk && elementChosen && (grantedSkill || needLv === undefined || player.lv >= needLv);
+        let dim = learned ? (usable ? '' : ' classic-skill-unavailable') : ' classic-skill-unlearned';
+        let img = '<img src="' + getIconUrl(sk, true) + '" onerror="this.style.display=\'none\';" alt="' + sk.n + '">';
+        let tierAttr = entry.tier ? ' data-tier="' + entry.tier + '"' : '';
+        let select = entry.tier ? 'classicSkillSelectTier(' + entry.tier + ');' : '';
+        if (learned && usable && sk.type === 'manual') return '<button class="classic-skill-cell tip-host' + dim + '"' + tierAttr + ' data-tip-skill="' + id + '" title="' + sk.n + '" onclick="' + select + 'manualCast(\'' + id + '\')">' + img + '</button>';
+        return '<div class="classic-skill-cell tip-host' + dim + '"' + tierAttr + ' data-tip-skill="' + id + '" title="' + sk.n + '" onclick="' + select + '">' + img + (!learned ? '<span class="classic-skill-lock">◆</span>' : '') + '</div>';
+    }).join('');
+
+    let tierButtons = '';
+    for (let t = 1; t <= 10; t++) tierButtons += '<button class="classic-skill-tier-hit tier-' + t + (tierAvailable.has(t) ? '' : ' disabled') + '" ' + (tierAvailable.has(t) ? 'onclick="classicSkillChooseTier(' + t + ')"' : 'disabled') + ' title="' + t + '階一般魔法"></button>';
+    let sprite = 538 + stateBook.tier;
+    let modeButtons = '<button class="' + (stateBook.mode === 'general' ? 'active' : '') + '" onclick="classicSkillChooseMode(\'general\')">一般</button>'
+        + (classSkills.length ? '<button class="' + (stateBook.mode === 'class' ? 'active' : '') + '" onclick="classicSkillChooseMode(\'class\')">' + (player.cls === 'elf' ? '精靈' : '職業') + '</button>' : '')
+        + (granted.length ? '<button class="' + (stateBook.mode === 'equipment' ? 'active' : '') + '" onclick="classicSkillChooseMode(\'equipment\')">裝備</button>' : '');
+    let heading = stateBook.mode === 'general' ? (stateBook.tier + '階一般魔法') : (stateBook.mode === 'equipment' ? '裝備授予魔法' : classLabel);
+    let _spv = (player.d && player.d.magicDmg != null) ? Math.round(player.d.magicDmg) : 0;
+    let _mrv = (player.d && player.d.mr != null) ? Math.round(player.d.mr) : 0;
+    sDiv.innerHTML = '<div class="classic-skill-window">'
+        + '<div class="classic-skill-heading">' + heading + '</div>'
+        + '<div class="classic-skill-mode">' + modeButtons + '</div>'
+        + '<div class="classic-skill-tier-strip" style="background-image:url(\'assets/ui/skill-level/' + sprite + '.png\')">' + tierButtons + '</div>'
+        + '<div class="classic-skill-grid-scroll" onscroll="classicSkillSyncTierFromScroll(this)"><div class="classic-skill-grid">' + cells + '</div></div>'
+        + '<div class="classic-skill-stat classic-skill-stat-sp">' + _spv + '</div>'
+        + '<div class="classic-skill-stat classic-skill-stat-mr">' + _mrv + '</div>'
+        + '</div>';
+}
 function renderTabs(force) {
     if(state.ff) return; // 補跑期間不刷新畫面
     // 🚀 使用者正按住分頁面板(點擊中)：延後非強制重建到放開後，避免按鈕被重繪掉而點擊失效
@@ -28,10 +146,10 @@ function renderTabs(force) {
     renderTabs._sig = _sig;
     // 真的要重建時，先記住各分頁的捲動位置，重建後還原（避免跳回頂端）
     let _scroll = {};
-    ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el) _scroll[id] = el.scrollTop; });
+    ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); _scroll[id] = sc ? sc.scrollTop : el.scrollTop; } });   // 🎨 v3.0.40 1.8皮膚：捲動位置存在內層 viewport（技能頁為 .classic-skill-grid-scroll）
 
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
-    { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'text-center py-0.5 mb-1 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
+    { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'classic-list-toolbar text-center py-0.5 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
     const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
     
     let setCheck = {}, _setSeen = {};
@@ -78,13 +196,13 @@ function renderTabs(force) {
             let imgUrl = getIconUrl(d);
             // 👇 判斷如果裝備本身是祝福的，或者物品基底(卷軸)是祝福的，就套用螢光特效
             let glowClass = getGlowClass(eq, d);
-            let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 ml-2 object-contain pointer-events-none ${glowClass}">`;
-            el.innerHTML = `<span class="text-slate-400 w-12">${s.n}</span><div class="flex items-center justify-end flex-1"><span class="${getItemColor(eq)} text-right font-bold">${getItemFullName(eq)}</span>${imgHtml}</div>`;
+            let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="object-contain pointer-events-none ${glowClass}">`;
+            el.innerHTML = `<div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${getItemColor(eq)} font-bold">${getItemFullName(eq)}</span></div>`;
             el.onclick = () => openModal(eq, true, s.k);
         } else {
             let _rlv = (s.k === 'ring3') ? 55 : (s.k === 'ring4') ? 65 : (s.k === 'ear2') ? 50 : 0;   // 🔧 第3/4戒指欄、第2耳環欄等級需求
             let _locked = _rlv && player.lv < _rlv;
-            el.innerHTML = `<span class="text-slate-400 w-12">${s.n}</span><span class="${_locked ? 'text-red-400' : 'text-slate-600'}">${_locked ? '需 Lv' + _rlv : '- 空 -'}</span>`;
+            el.innerHTML = `<div class="classic-icon-box"></div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${_locked ? 'text-red-400' : 'text-slate-500'}">${_locked ? '需 Lv' + _rlv : '- 空 -'}</span></div>`;
         }
         eDiv.appendChild(el);
     });
@@ -142,7 +260,7 @@ player.inv.forEach(i => {
     let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 object-contain pointer-events-none ${glowClass}">`;
     
     // 內容組合 (加入了 statusTag)
-    let _rowInner = `<div class="flex items-center gap-2">${imgHtml}<span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span> ${statusTag} ${i.lock ? '<span class="text-xs text-red-500">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-xs text-amber-400 font-bold">[廢]</span>' : ''}</div>`;
+    let _rowInner = `<div class="classic-item-main"><div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span><span class="classic-item-flags">${statusTag} ${i.lock ? '<span class="text-red-400">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-amber-400 font-bold">[廢]</span>' : ''}</span></div></div>`;   // 🎨 v3.0.40 1.8皮膚列結構
 
     // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
     let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
@@ -159,8 +277,22 @@ player.inv.forEach(i => {
         el.onclick = () => toggleQuickJunkItem(_qjType, i.uid);
     } else {
         el.innerHTML = _rowInner;
-        // 保留點擊開啟 Modal 功能 (所有項目皆可點擊)
-        el.onclick = () => openModal(i, false);
+        // 🖱️ v3.0.38 雙擊快速操作（用戶要求）：可使用型道具（藥水/卷軸/技能書/有效果的 misc）雙擊直接使用、
+        //    裝備（武器/防具/飾品）雙擊直接裝備（equipItem 內建 checkCanEquip 職業判定）。
+        //    單擊延遲 230ms 才開 Modal（雙擊時取消·同 js/19 裝備視窗側欄 clickTimer 模式）；回憶蠟燭維持單擊進配點重置（排除雙擊使用）。
+        const _dblAct = (d.type === 'wpn' || d.type === 'arm' || d.type === 'acc') ? 'equip'
+            : ((i.id !== 'candle' && (d.type === 'pot' || d.type === 'skillbk' || d.type === 'scroll' || (d.type === 'misc' && d.eff && !d.noUse))) ? 'use' : null);
+        if (_dblAct) {
+            el.onclick = () => { clearTimeout(window._invClickTimer); window._invClickTimer = setTimeout(() => openModal(i, false), 230); };
+            el.ondblclick = (ev) => {
+                clearTimeout(window._invClickTimer);
+                ev.preventDefault(); ev.stopPropagation();
+                if (_dblAct === 'equip') equipItem(i); else useItem(i.uid);
+            };
+        } else {
+            // 保留點擊開啟 Modal 功能 (所有項目皆可點擊)
+            el.onclick = () => openModal(i, false);
+        }
     }
     
     // 🎯 物品分流邏輯
@@ -173,76 +305,30 @@ player.inv.forEach(i => {
     }
 });
     
-    let sDiv = document.getElementById('tab-skill'); sDiv.innerHTML = '';
-    let sortedSkills = [...player.skills].filter(s => DB.skills[s] && !DB.skills[s].procOnly).sort((a,b) => (DB.skills[a].tier||0) - (DB.skills[b].tier||0));   // 🏛️ 過濾 procOnly（純武器proc技能如惡魔之吻：不顯示於技能格）
+    // 🎨 v3.0.40 1.8 物品介面：保留原清單事件與功能，只把內容搬入八格皮膚的可捲動區。
+    [eDiv,wDiv,aDiv,iDiv].forEach(decorateClassicInventoryTab);
 
-    // 🎨 已學技能：固定大小 ICON 排版；階級文字置左、4 欄格(至少 4×2)置右
-    // 🔮 依「學習來源」分區：魔法書／技術書／精靈水晶／黑暗精靈水晶 各自獨立，即使同階也分開；裝備授予(sk_helm_*)歸「裝備授予」
-    if (!renderTabs._skillSrc) {   // 由 skillbk 物品名稱前綴建表（一次性快取）：sk → 來源組名（split('(') 避免「黑暗精靈水晶」⊃「精靈水晶」誤判）
-        renderTabs._skillSrc = {};
-        for (let k in DB.items) { let it = DB.items[k]; if (it && it.type === 'skillbk' && it.sk) renderTabs._skillSrc[it.sk] = String(it.n || '').split('(')[0]; }
-    }
-    let _SKILL_SRC = renderTabs._skillSrc;
-    const _CELL = 'width:46px;height:46px;';
-
-    // 分組：來源 → 階級 → [技能id]
-    let _grp = {};
-    sortedSkills.forEach(sid => {
-        let sk = DB.skills[sid]; if (!sk) return;
-        let src = sk.cat ? ({ blood: '熱血', rage: '憤怒', endure: '忍耐', royal: '王族魔法' }[sk.cat] || sk.cat) : (_SKILL_SRC[sid] || '裝備授予');   // ⚔️ 戰士技能依 cat 分熱血/憤怒/忍耐；👑 王族 cat='royal'→王族魔法
-        let tier = (sk.tier === undefined || sk.tier === null || sk.tier === '') ? '_' : sk.tier;
-        (_grp[src] = _grp[src] || {});
-        (_grp[src][tier] = _grp[src][tier] || []).push(sid);
-    });
-    // 來源顯示順序：固定序（不分職業）魔法書→精靈水晶→黑暗精靈水晶→技術書→記憶水晶(幻術士)→龍騎士書板(龍騎士)，裝備授予最後
-    let _srcOrder = ['魔法書', '精靈水晶', '黑暗精靈水晶', '技術書', '記憶水晶', '龍騎士書板', '王族魔法', '熱血', '憤怒', '忍耐'];
-    // 🛡️ 安全網：_grp 內若有 _srcOrder 未涵蓋的來源（日後新增任何技能書類型），補在「裝備授予」之前，永不漏顯（修復幻術士記憶水晶/龍騎士書板技能不顯示）
-    let _renderOrder = _srcOrder.concat(Object.keys(_grp).filter(s => _srcOrder.indexOf(s) === -1 && s !== '裝備授予')).concat(['裝備授予']);
-
-    let _renderCell = (sid) => {
-        let sk = DB.skills[sid];
-        let isAvail = true;
-        let __granted = player.grantedSkills && player.grantedSkills.includes(sid);
-        let needLv = skillReqLv(sk, sid);   // 🏅 集中化：含魔導精通特例
-        if(!__granted && (needLv === undefined || player.lv < needLv)) isAvail = false;
-        if(!__granted && sk.reqEle && player.elfEle !== sk.reqEle) isAvail = false;
-        if(!__granted && sk.reqEleAny && !player.elfEle) isAvail = false;
-        let imgUrl = getIconUrl(sk, true);
-        let _bd = !isAvail ? 'border-slate-600 opacity-50'
-            : (sk.type === 'manual' ? 'border-amber-500'
-            : (sk.type === 'atk' ? 'border-cyan-500'
-            : (sk.type === 'heal' ? 'border-green-500' : 'border-purple-500')));
-        let _img = `<img src="${imgUrl}" onerror="this.style.display='none';" class="object-contain pointer-events-none" style="width:36px;height:36px;">`;
-        if(sk.type === 'manual') {
-            // 手動施放技能：ICON 本身可點擊施放（右下角「施」標記）；保留 id/data-unavail 供 updateSummonLock 控制(迷魅)
-            return `<button id="manual-btn-${sid}" data-tip-skill="${sid}" data-unavail="${isAvail?'0':'1'}" onclick="manualCast('${sid}')" ${isAvail?'':'disabled'} title="${sk.n}"
-                class="tip-host relative flex items-center justify-center rounded border ${_bd} bg-slate-900/40 ${isAvail?'hover:bg-amber-900/40 cursor-pointer':'cursor-not-allowed'}" style="${_CELL}">${_img}<span class="absolute right-0 -bottom-px text-[9px] leading-none font-bold text-amber-300 pointer-events-none">施</span></button>`;
-        }
-        return `<div data-tip-skill="${sid}" title="${sk.n}" class="tip-host flex items-center justify-center rounded border ${_bd} bg-slate-900/40" style="${_CELL}">${_img}</div>`;
-    };
-
-    _renderOrder.forEach(src => {
-        let byTier = _grp[src]; if (!byTier) return;
-        let _tiers = Object.keys(byTier).sort((a,b) => (a === '_' ? 999 : +a) - (b === '_' ? 999 : +b));
-        _tiers.forEach(t => {
-            let list = byTier[t];
-            let _tierLabel = (t === '_') ? '其他' : (t + ' 階');
-            let cells = list.map(_renderCell).join('');
-            // 補空白格至 4 的倍數、且至少 8 格（4×2），維持 4×2 區塊版型
-            let _pad = Math.max(8, Math.ceil(list.length / 4) * 4);
-            for(let i = list.length; i < _pad; i++) cells += `<div class="rounded border border-slate-800/40 bg-slate-900/20" style="${_CELL}"></div>`;
-            let section = document.createElement('div');
-            // 階級文字置左、4×2 ICON 置右；區塊間以細分隔線區隔（首區不畫上邊線）
-            let _sepCls = sDiv.children.length ? ' border-t border-slate-700/50' : '';
-            section.className = 'flex items-center gap-2 py-2' + _sepCls;
-            section.innerHTML = `<div class="flex flex-col justify-center shrink-0" style="width:82px;"><div class="text-sm font-bold text-slate-300 leading-tight">${_tierLabel}</div><div class="text-[11px] text-slate-500 leading-tight">${src}</div></div><div class="grid gap-1.5 shrink-0" style="grid-template-columns:repeat(4,46px);">${cells}</div>`;
-            sDiv.appendChild(section);
-        });
-    });
+    // 🎨 v3.0.55 技能欄改用 1.8 原版風格技能魔法視窗（skill-window-1.8.png 皮膚·tier strip 導覽·底部 S.power=魔法傷害/M.resist=MR）。
+    //    取代原「依學習來源分組 ICON」排版；仍走 data-tip-skill tooltip、manualCast、updateSummonLock。
+    let sDiv = document.getElementById('tab-skill');
+    renderClassicSkillBook(sDiv);
     // 還原各分頁捲動位置
-    ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el && _scroll[id] != null) el.scrollTop = _scroll[id]; });
+    ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el && _scroll[id] != null) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); if(sc)sc.scrollTop=_scroll[id]; else el.scrollTop=_scroll[id]; } });   // 🎨 v3.0.40 1.8皮膚：捲動位置還原到內層 viewport（技能頁為 .classic-skill-grid-scroll）
     updateSummonLock();
     if (typeof refreshEquipmentWindow === 'function') refreshEquipmentWindow();
+}
+
+// 🎨 v3.0.40 1.8 風格道具欄皮膚（移植自參考版）：把分頁內容搬進「八格框底圖」的可捲動 viewport，
+//    工具列（負重/快速強化/快速廢品 sticky 列）保留在 viewport 外恆顯。列事件（點擊/雙擊）掛在 .list-item 上不受影響。
+function decorateClassicInventoryTab(div){
+    if(!div)return;
+    div.classList.add('classic-inventory-tab');
+    let viewport=document.createElement('div');
+    viewport.className='classic-inventory-viewport';
+    Array.from(div.children).filter(x=>!x.classList.contains('classic-list-toolbar')&&!x.classList.contains('sticky')).forEach(x=>viewport.appendChild(x));
+    let quick=Array.from(div.children).find(x=>x.classList.contains('sticky'));
+    if(quick)quick.classList.add('classic-list-toolbar');
+    div.appendChild(viewport);
 }
 
 // ===== 召喚類技能互斥：迷魅 / 召喚 / 造屍 / 召喚屬性精靈 / 召喚強力屬性精靈 同時只能開啟一個 =====
@@ -498,6 +584,8 @@ function buildItemDescHTML(item) {
         if (typeof atkSpdApm === 'function' && typeof player !== 'undefined' && player && player.cls && atkSpdFamily(item.id)) {   // 箭矢等非揮擊武器不顯示
             let _apm = atkSpdApm(player, item.id);
             if (_apm) desc += `<br><span class="text-orange-200">攻擊速度: 每分鐘 ${_apm} 次（${player.avatar || '依職業性別'}）</span>`;
+            // 🏛️ 天堂職業速度：硬直（被擊延遲攻擊）＋施法冷卻下限（皆隨職業·不隨此武器）
+            if (typeof hitstunTicks === 'function') desc += `<br><span class="text-slate-400 text-xs">硬直 ${(hitstunTicks(player)/10).toFixed(1)}秒 · 施法冷卻下限 ${(castLockTicks(player)/10).toFixed(1)}秒</span>`;
         }
         if((item.en || 0) >= 1) desc += `<br><span class="text-amber-300">強化最終傷害 ×${enhanceWpnFinalMult(item.en, d).toFixed(2)}</span>`;   // 🔧 武器強化最終傷害倍率（+1 起·依潘朵拉權重分級·最高 ×1.02~×2.50）
 
@@ -1052,7 +1140,7 @@ function _quickEnhanceUnit(d, startEn, goal, scrollStacks, useBless) {
 function buildQuickEnhanceHeader(type) {
     let st = quickEnh[type];
     let hdr = document.createElement('div');
-    hdr.className = 'sticky top-0 z-10 bg-slate-800 pb-2';   // 🔧 遮擋條改用與框底色(.panel=#1e293b=slate-800)相同色→融入面板不突兀；仍為不透明：滾動時物品不會從按鈕上/下方透出
+    hdr.className = 'classic-list-toolbar sticky top-0 z-10 bg-slate-800 pb-2';   // 🔧 遮擋條改用與框底色(.panel=#1e293b=slate-800)相同色→融入面板不突兀；仍為不透明：滾動時物品不會從按鈕上/下方透出；🎨 v3.0.40 1.8皮膚：標記工具列（保留在 viewport 外）
     // 🔧 表頭上緣亦覆蓋容器的 12px 上內距(p-3)：往上拉時 sticky 黏在裁切邊(top/margin-top:-12)、paddingTop:12 維持按鈕原位 → 物品也不會從按鈕「上方」透出（滾動後＝滾動前）。用 inline style（Tailwind CDN JIT 不保證新 class 即時生成）
     hdr.style.top = '-12px'; hdr.style.marginTop = '-12px'; hdr.style.paddingTop = '12px';
     if (!st.active) {

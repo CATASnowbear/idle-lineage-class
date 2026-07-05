@@ -1,6 +1,6 @@
 /** 遊戲核心資料庫 */
 // 🏷️ 遊戲版本號（顯示於登入頁面下方·單一真相來源）：更新版本時只改這一行，登入頁面自動同步。
-const GAME_VERSION = 'v3.0.13';
+const GAME_VERSION = 'v3.0.61';
 // ===== 💾 存檔壓縮（LZString compressToUTF16/decompressFromUTF16·MIT, Pieroxy）：localStorage 內部以 UTF-16 壓縮，省 ~89%，繞過 5MB 上限 =====
 //  ⚠️ 只壓 localStorage（存檔位/倉庫/共用桶/_bak）；匯出檔維持明文 JSON（可攜·importSave 用 JSON.parse 驗證）。_lzGet 相容舊明文存檔（無 'LZ1:' 前綴→原樣回傳）。
 var LZString = (function () {
@@ -398,7 +398,7 @@ const DB = {
         "hlm_bone": { n: "骷髏頭盔", type: "arm", slot: "helm", ac: 3, req: "all", safe: 0, p: 100, gachaWeight: 100 },
         "hlm_steel": { n: "鋼鐵頭盔", type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 18250, gachaWeight: 20 },
         "hlm_mage": { n: "法師之帽", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 4250, gachaWeight: 50 },
-        "hlm_dk": { n: "死亡騎士頭盔", legend: true, type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 36000, gachaWeight: 1, d: "死亡騎士頭盔，殘存的怨念在頭盔深處幽幽燃燒。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
+        "hlm_dk": { n: "死亡騎士頭盔", legend: true, type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 36000, gachaWeight: 1, d: "死亡騎士頭盔，殘存的怨念在頭盔深處幽幽燃燒。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、套用死亡騎士的攻擊速度）。" },
         "arm_50": { n: "精靈敏捷頭盔", type: "arm", slot: "helm", ac: 1, req: "elf", safe: 6, p: 4800, dex: 1, gachaWeight: 20 },
         "arm_51": { n: "精靈體質頭盔", type: "arm", slot: "helm", ac: 1, req: "elf", safe: 6, p: 4800, con: 1, gachaWeight: 20 },
         "arm_53": { n: "紅騎士頭巾", type: "arm", slot: "helm", ac: 2, req: "knight", safe: 6, p: 6500, gachaWeight: 20 },
@@ -406,7 +406,7 @@ const DB = {
         "arm_55": { n: "卡士柏之帽", legend: true, type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 23500, mmp: 25, gachaWeight: 1 },
         "arm_56": { n: "馬庫爾之帽", legend: true, type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 23500, int: 1, gachaWeight: 1 },
         "arm_57": { n: "西瑪之帽", legend: true, type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 23500, mmp: 15, mpR: 2, gachaWeight: 1 },
-        "hlm_kurt": { n: "克特頭盔", legend: true, type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 32000, gachaWeight: 1, d: "曾屬於墮落者克特的頭盔，盔影下不見生人氣息。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
+        "hlm_kurt": { n: "克特頭盔", legend: true, type: "arm", slot: "helm", ac: 3, req: "knight", safe: 4, p: 32000, gachaWeight: 1, d: "曾屬於墮落者克特的頭盔，盔影下不見生人氣息。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、套用克特的攻擊速度）。" },
         "amr_plate": { n: "金屬盔甲", type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 51800, gachaWeight: 30 },
         "arm_59": { n: "水晶盔甲", type: "arm", slot: "armor", ac: 8, req: "knight", safe: 4, p: 48000, gachaWeight: 20 },   // 🔧 由 惡魔(10%)／密密(0.1%)／黑暗復仇者(0.1%) 掉落；潘朵拉權重 20（進黑市/血盟野外抽獎池）
         "arm_60": { n: "青銅盔甲", type: "arm", slot: "armor", ac: 6, req: "knight", safe: 4, p: 22400, gachaWeight: 50 },
@@ -438,9 +438,9 @@ const DB = {
         "arm_81": { n: "地龍鱗盔甲", legend: true, type: "arm", slot: "armor", ac: 9, resEarth: 20, req: "all", safe: 4, p: 336000, gachaWeight: 1 },
         "arm_82": { n: "火龍鱗盔甲", legend: true, type: "arm", slot: "armor", ac: 9, resFire: 20, req: "all", safe: 4, p: 336000, gachaWeight: 1 },
         "arm_83": { n: "風龍鱗盔甲", legend: true, type: "arm", slot: "armor", ac: 9, resWind: 20, req: "all", safe: 4, p: 336000, gachaWeight: 1 },
-        "amr_dk": { n: "死亡騎士盔甲", legend: true, type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 128000, gachaWeight: 1, d: "死亡騎士的胸甲，甲面浮現著不滅的死亡紋章。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
+        "amr_dk": { n: "死亡騎士盔甲", legend: true, type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 128000, gachaWeight: 1, d: "死亡騎士的胸甲，甲面浮現著不滅的死亡紋章。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、套用死亡騎士的攻擊速度）。" },
         "arm_84": { n: "黑長者長袍", legend: true, type: "arm", slot: "armor", ac: 5, req: "mage", safe: 4, p: 124000, mmp: 50, mpR: 5, gachaWeight: 1 },
-        "amr_kurt": { n: "克特盔甲", legend: true, type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 126000, gachaWeight: 1, d: "克特生前征戰所披的盔甲，鎧縫間仍滲著陳年的血鏽。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
+        "amr_kurt": { n: "克特盔甲", legend: true, type: "arm", slot: "armor", ac: 7, req: "knight", safe: 4, p: 126000, gachaWeight: 1, d: "克特生前征戰所披的盔甲，鎧縫間仍滲著陳年的血鏽。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、套用克特的攻擊速度）。" },
         "tsh_tshirt": { n: "T恤", type: "arm", slot: "tshirt", ac: 0, req: "all", safe: 4, p: 8500, gachaWeight: 50 },
         "arm_85": { n: "精靈T恤", type: "arm", slot: "tshirt", ac: 0, req: "elf", safe: 6, p: 6600, gachaWeight: 20 },
         "clk_elf": { n: "精靈斗篷", type: "arm", slot: "cloak", ac: 1, req: "all", safe: 6, p: 900, gachaWeight: 100 },
@@ -458,9 +458,9 @@ const DB = {
         "arm_93": { n: "皮長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 720, gachaWeight: 100 },
         "arm_94": { n: "鋼鐵長靴", type: "arm", slot: "boots", ac: 3, req: "all", safe: 4, p: 16500, gachaWeight: 20 },
         "arm_95": { n: "深水長靴", type: "arm", slot: "boots", ac: 2, req: "all", safe: 4, p: 36500, mpR: 1, gachaWeight: 10 },
-        "bot_dk": { n: "死亡騎士長靴", legend: true, type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 24000, gachaWeight: 1, d: "死亡騎士的戰靴，所踏之地寸草不生。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
+        "bot_dk": { n: "死亡騎士長靴", legend: true, type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 24000, gachaWeight: 1, d: "死亡騎士的戰靴，所踏之地寸草不生。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、套用死亡騎士的攻擊速度）。" },
         "arm_96": { n: "黑長者涼鞋", legend: true, type: "arm", slot: "boots", ac: 2, req: "mage", safe: 4, p: 21000, mmp: 25, mpR: 5, gachaWeight: 1 },
-        "arm_97": { n: "克特長靴", legend: true, type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 22000, gachaWeight: 1, d: "克特踏遍沙場的長靴，靴底沾染著無數亡者的塵土。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
+        "arm_97": { n: "克特長靴", legend: true, type: "arm", slot: "boots", ac: 3, req: "knight", safe: 4, p: 22000, gachaWeight: 1, d: "克特踏遍沙場的長靴，靴底沾染著無數亡者的塵土。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、套用克特的攻擊速度）。" },
         "glv_glove": { n: "手套", type: "arm", slot: "gloves", ac: 0, req: "all", safe: 4, p: 1720, gachaWeight: 100 },
         "glv_official": { n: "武官手套", type: "arm", slot: "gloves", ac: 1, mhp: 10, req: "knight,dark", safe: 6, p: 5900, gachaWeight: 10 },
         "bot_official": { n: "武官長靴", type: "arm", slot: "boots", ac: 2, mhp: 20, req: "knight,dark", safe: 6, p: 8900, gachaWeight: 10 },
@@ -469,7 +469,7 @@ const DB = {
         "arm_99": { n: "力量手套", type: "arm", slot: "gloves", ac: 0, req: "all", safe: 4, p: 19800, str: 2, gachaWeight: 5 },
         "glv_reaper": { n: "死神之手", type: "arm", slot: "gloves", ac: 1, mmp: 20, mpR: 3, wis: 1, req: "mage,dark", safe: 0, p: 79000, gachaWeight: 1, d: "死神親手脫下的枯骨之手，攥緊時透出徹骨的寒意。" },
         "arm_100": { n: "鋼鐵手套", type: "arm", slot: "gloves", ac: 1, req: "all", safe: 4, p: 11550, gachaWeight: 20 },
-        "glv_dk": { n: "死亡騎士手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 18500, gachaWeight: 1, d: "死亡騎士的鐵手套，曾握緊過奪命的鋒刃。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、攻速+35%）。" },
+        "glv_dk": { n: "死亡騎士手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 18500, gachaWeight: 1, d: "死亡騎士的鐵手套，曾握緊過奪命的鋒刃。死亡騎士套裝之一。<br>【死亡騎士套裝】4 件齊：AC-4、變身「真‧死亡騎士」（額外傷害+6、額外命中+6、套用死亡騎士的攻擊速度）。" },
         "arm_shadowglove": { n: "影子手套", type: "arm", slot: "gloves", ac: 1, con: 1, req: "dark", safe: 6, p: 1720, gachaWeight: 50 },   // 🔧 黑暗妖精：倫得以死亡誓約兌換
         "arm_shadowmask": { n: "影子面具", type: "arm", slot: "helm", ac: 2, req: "dark", safe: 6, p: 1240, gachaWeight: 50 },   // 🔧 黑暗妖精：康以妖魔長老首級兌換
         "arm_shadowboots": { n: "影子長靴", type: "arm", slot: "boots", ac: 2, mhp: 50, hpR: 4, req: "dark", safe: 4, p: 2660, gachaWeight: 50 },   // 🔧 黑暗妖精：布魯迪卡以雪怪首級兌換
@@ -481,7 +481,7 @@ const DB = {
         "amr_darkmage_robe": { n: "黑法師長袍", type: "arm", slot: "armor", ac: 4, mmp: 5, mpR: 5, req: "mage", safe: 4, p: 53100, gachaWeight: 10 },
         "amr_summoner_robe": { n: "喚獸師長袍", type: "arm", slot: "armor", ac: 4, mhp: 5, mpR: 5, req: "mage", safe: 4, p: 53100, gachaWeight: 10 },
         "shd_rasta": { n: "拉斯塔巴德圓盾", type: "arm", slot: "shield", ac: 2, req: "all", safe: 4, p: 500, gachaWeight: 100, block: 35 },
-        "arm_101": { n: "克特手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1, d: "克特的戰手套，指節間還殘留著最後一戰的握痕。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、攻速+35%）。" },
+        "arm_101": { n: "克特手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "knight", safe: 4, p: 17500, gachaWeight: 1, d: "克特的戰手套，指節間還殘留著最後一戰的握痕。克特套裝之一。<br>【克特套裝】4 件齊：AC-4、變身「真‧克特」（額外傷害+4、額外命中+8、套用克特的攻擊速度）。" },
         "arm_102": { n: "保護者手套", type: "arm", slot: "gloves", ac: 0, req: "elf", safe: 4, p: 4500, mhp: 20, mmp: 20, gachaWeight: 30 },
         "arm_103": { n: "小盾牌", type: "arm", slot: "shield", ac: 1, req: "all", safe: 4, p: 84, gachaWeight: 100, block: 20 },
         "shd_elf": { n: "精靈盾牌", type: "arm", slot: "shield", ac: 2, req: "all", safe: 6, p: 3200, gachaWeight: 100, block: 40 },
@@ -539,10 +539,10 @@ const DB = {
         "clk_marcus": { n: "馬昆斯斗篷", legend: true, type: "arm", slot: "cloak", ac: 2, mhp: 60, hpR: 4, mr: 3, mrPerEn: 3, req: "mage,dark", safe: 6, p: 123000, gachaWeight: 1 },
         "clk_silver_light": { n: "銀光斗篷", type: "arm", slot: "cloak", ac: 2, mpR: 4, mr: 15, req: "mage,elf,dark", safe: 4, p: 63000, gachaWeight: 1 },
         "clk_lich": { n: "巫妖斗篷", legend: true, type: "arm", slot: "armor", ac: 7, mmp: 50, mpR: 15, mdmgEnFrom4: true, req: "mage", safe: 4, p: 363000, gachaWeight: 1, d: "巫妖未散的怨念縈繞其上的法袍，愈是浸染暗魔力愈見威能。強化 +4 時魔法傷害 +1，之後每強化 +1 魔法傷害再 +1，最高 +9（魔法傷害 +6）；+10 以上不再額外增加。" },
-        "hlm_demon": { n: "惡魔頭盔", legend: true, type: "arm", slot: "helm",   ac: 2, req: "all", safe: 4, p: 25000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
-        "amr_demon": { n: "惡魔盔甲", legend: true, type: "arm", slot: "armor",  ac: 6, req: "all", safe: 4, p: 33000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
-        "glv_demon": { n: "惡魔手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "all", safe: 4, p: 18000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
-        "bot_demon": { n: "惡魔長靴", legend: true, type: "arm", slot: "boots",  ac: 3, req: "all", safe: 4, p: 18000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、攻速+33%，可與加速/勇敢/餅乾疊加）。" },
+        "hlm_demon": { n: "惡魔頭盔", legend: true, type: "arm", slot: "helm",   ac: 2, req: "all", safe: 4, p: 25000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、套用惡魔的攻擊速度，可與加速/勇敢/餅乾疊加）。" },
+        "amr_demon": { n: "惡魔盔甲", legend: true, type: "arm", slot: "armor",  ac: 6, req: "all", safe: 4, p: 33000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、套用惡魔的攻擊速度，可與加速/勇敢/餅乾疊加）。" },
+        "glv_demon": { n: "惡魔手套", legend: true, type: "arm", slot: "gloves", ac: 2, req: "all", safe: 4, p: 18000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、套用惡魔的攻擊速度，可與加速/勇敢/餅乾疊加）。" },
+        "bot_demon": { n: "惡魔長靴", legend: true, type: "arm", slot: "boots",  ac: 3, req: "all", safe: 4, p: 18000, gachaWeight: 1, d: "惡魔套裝之一。<br>【惡魔套裝】頭盔＋盔甲＋手套＋長靴 集齊：AC-2、HP自然恢復+5、變身「惡魔」（額外傷害+4、額外命中+4、魔法傷害+3、額外MP+3、MP自然恢復+3、套用惡魔的攻擊速度，可與加速/勇敢/餅乾疊加）。" },
         "rng_mr": { n: "抗魔戒指", type: "acc", slot: "ring", ac: 0, mr: 5, req: "all", safe: 0, p: 10000, gachaWeight: 1 },
         "acc_demonbane": { n: "滅魔戒指", type: "acc", slot: "ring", ac: 0, mr: 10, req: "all", safe: 0, p: 100000, gachaWeight: 1, d: "蘊含滅魔之力的戒指。" },
         "acc_doro": { n: "多羅戒指", type: "acc", slot: "ring", ac: 0, mhp: 5, weightCap: 5, req: "all", safe: 0, p: 20000, gachaWeight: 20, d: "多羅的戒指。HP+5、負重上限 +5。" },
@@ -1003,9 +1003,9 @@ const DB = {
         "wpn_shaha_arrow": { n: "沙哈之箭", type: "wpn", isArrow: true, dmgS: 15, dmgL: 12, hit: 0, p: 0, gachaWeight: 0, shahaArrow: true, noSell: true, d: "沙哈之弓憑風凝成的箭矢，取之不竭（卸下沙哈之弓即消失）。" },
         // ===== 🏝️ 遺忘之島：防具 =====
         "hlm_wind": { n: "風之頭盔", type: "arm", slot: "helm", ac: 2, req: "mage", safe: 4, p: 26000, gachaWeight: 10, windHelm: true, d: "以疾風祝福鍛成的頭盔，戴上時身形彷彿被風托起。施放加速術、強力加速術不消耗 MP（裝備或放在背包都有效）。" },
-        "hlm_darkelf": { n: "黑暗妖精頭箍", type: "arm", slot: "helm", ac: 1, req: "elf,dark", safe: 6, p: 6000, gachaWeight: 30, d: "承載著高等黑暗精靈血脈記憶的頭箍，集齊全套方能喚醒沉睡的暗夜之姿。<br>【黑暗妖精套裝】3 件齊：AC-3、HP自然恢復-2、MP自然恢復-7、力量-2、敏捷+2，變身「高等黑暗精靈」（遠距離傷害+5、遠距離命中+5、攻速+30%，可與自我加速藥水/勇水/妖精餅乾疊加）。" },
-        "amr_darkelf": { n: "黑暗妖精鱗甲", type: "arm", slot: "armor", ac: 1, req: "elf,dark", safe: 6, p: 10000, gachaWeight: 30, d: "以暗影精煉而成的鱗甲，與其餘部件呼應時便流轉著幽冷光澤。<br>【黑暗妖精套裝】3 件齊：AC-3、HP自然恢復-2、MP自然恢復-7、力量-2、敏捷+2，變身「高等黑暗精靈」（遠距離傷害+5、遠距離命中+5、攻速+30%，可與自我加速藥水/勇水/妖精餅乾疊加）。" },
-        "bot_darkelf": { n: "黑暗妖精涼鞋", type: "arm", slot: "boots", ac: 1, req: "elf,dark", safe: 6, p: 6000, gachaWeight: 30, d: "步履無聲的黑暗妖精涼鞋，齊備全套時方顯其敏捷真章。<br>【黑暗妖精套裝】3 件齊：AC-3、HP自然恢復-2、MP自然恢復-7、力量-2、敏捷+2，變身「高等黑暗精靈」（遠距離傷害+5、遠距離命中+5、攻速+30%，可與自我加速藥水/勇水/妖精餅乾疊加）。" },
+        "hlm_darkelf": { n: "黑暗妖精頭箍", type: "arm", slot: "helm", ac: 1, req: "elf,dark", safe: 6, p: 6000, gachaWeight: 30, d: "承載著高等黑暗精靈血脈記憶的頭箍，集齊全套方能喚醒沉睡的暗夜之姿。<br>【黑暗妖精套裝】3 件齊：AC-3、HP自然恢復-2、MP自然恢復-7、力量-2、敏捷+2，變身「高等黑暗精靈」（遠距離傷害+5、遠距離命中+5、套用黑暗精靈的攻擊速度，可與自我加速藥水/勇水/妖精餅乾疊加）。" },
+        "amr_darkelf": { n: "黑暗妖精鱗甲", type: "arm", slot: "armor", ac: 1, req: "elf,dark", safe: 6, p: 10000, gachaWeight: 30, d: "以暗影精煉而成的鱗甲，與其餘部件呼應時便流轉著幽冷光澤。<br>【黑暗妖精套裝】3 件齊：AC-3、HP自然恢復-2、MP自然恢復-7、力量-2、敏捷+2，變身「高等黑暗精靈」（遠距離傷害+5、遠距離命中+5、套用黑暗精靈的攻擊速度，可與自我加速藥水/勇水/妖精餅乾疊加）。" },
+        "bot_darkelf": { n: "黑暗妖精涼鞋", type: "arm", slot: "boots", ac: 1, req: "elf,dark", safe: 6, p: 6000, gachaWeight: 30, d: "步履無聲的黑暗妖精涼鞋，齊備全套時方顯其敏捷真章。<br>【黑暗妖精套裝】3 件齊：AC-3、HP自然恢復-2、MP自然恢復-7、力量-2、敏捷+2，變身「高等黑暗精靈」（遠距離傷害+5、遠距離命中+5、套用黑暗精靈的攻擊速度，可與自我加速藥水/勇水/妖精餅乾疊加）。" },
         // ===== 🏝️ 遺忘之島：飾品 =====
         "rng_harpy": { n: "哈維戒指", type: "acc", slot: "ring", ac: 0, resWind: 10, mpR: 1, req: "all", safe: 0, p: 100000, gachaWeight: 1, d: "鑲嵌哈維羽風的戒指，戴上時指間隱隱有微風盤旋。風屬性抗性+10、MP自然恢復+1。" },
         // ===== 🏝️ 遺忘之島：製作材料 =====

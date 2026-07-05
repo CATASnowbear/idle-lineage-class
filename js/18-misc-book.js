@@ -133,13 +133,16 @@ function ensureMiscDex() {
     if (!player || !Array.isArray(player.inv)) return;
     if (!player.miscDex) player.miscDex = {};
     var changed = false;
-    player.inv.forEach(function (i) {
+    var reg = function (i) {
         if (!i || !i.id) return;
         var d = DB.items[i.id]; if (!d) return;
         var ck = miscCatKey(i.id, d); if (!ck) return;
         if (!MISC_ITEM_CAT[i.id]) { if (!MISC_CAT_ITEMS[ck]) MISC_CAT_ITEMS[ck] = []; MISC_CAT_ITEMS[ck].push(i.id); MISC_ITEM_CAT[i.id] = ck; }
         if (!player.miscDex[i.id]) { player.miscDex[i.id] = true; changed = true; }
-    });
+    };
+    player.inv.forEach(reg);
+    // 🏛️ v3.0.61 倉庫庫存也補登錄（唯讀當前模式倉庫桶·同 ensureEquipBook）：收集冊上線前入倉的道具從未經 gainItem 登錄→讀檔時一併點亮
+    try { if (typeof loadWarehouse === 'function') { var _w = loadWarehouse(); if (_w && Array.isArray(_w.items)) _w.items.forEach(reg); } } catch (e) {}
     if (changed && typeof saveMiscDex === 'function') saveMiscDex();
     _miscModeAutoComplete();   // 🔒 經典/傳統：無法獲得的卷軸預設已收集
 }

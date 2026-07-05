@@ -87,7 +87,11 @@ function playSfx(key) {
     if (!_sfxCfg.on) return;
     var def = SFX_DEFS[key]; if (!def) return;
     var poolKey = key;
-    if (key === 'attack' || key === 'hurt') {   // 依職業群組+性別挑變體；變體未備／未載完 → 退回通用 key
+    if (key === 'hurt') {   // 🧝 v3.0.47 變身受傷音優先（怪物編號音／騎士/法師職業語音）；未備/未載完→退回本職變體→通用
+        var _mk = (typeof _morphHurtOverride === 'function') ? _morphHurtOverride() : null;
+        if (_mk && _sfxPool[_mk] && _sfxPool[_mk].length) poolKey = _mk;
+        else { var vkh = _sfxVariantKey(key); if (vkh && _sfxPool[vkh] && _sfxPool[vkh].length) poolKey = vkh; }
+    } else if (key === 'attack') {   // 依武器類型挑變體；變體未備／未載完 → 退回通用 key
         var vk = _sfxVariantKey(key);
         if (vk && _sfxPool[vk] && _sfxPool[vk].length) poolKey = vk;
     }
@@ -163,7 +167,8 @@ const MOB_HURT_SFX = {
   "哈汀之影": 35, "象牙塔炎魔的奴隸": 427, "象牙塔小惡魔": 427, "象牙塔巴風特之影": 67, "象牙塔翼魔": 427, "象牙塔炎魔之影": 427, "象牙塔惡魔之影": 427, "白螞蟻群": 213,
   "巨大白螞蟻": 213, "強化巨蟻": 213, "強化白螞蟻群": 213, "巨大突擊螞蟻": 213, "巨大強化白螞蟻": 213, "巨大守護螞蟻": 213, "狂野之毒": 83, "狂暴蜥蜴人": 494,
   "狂野毒牙": 83, "狂野之魔": 83, "高等蜥蜴人": 494, "藍尾蜥蜴": 83, "奇異鸚鵡": 83, "藏寶箱": 93, "海賊骷髏": 57, "重裝蜥蜴人": 494, "海賊骷髏士兵": 57,
-  "海賊骷髏刀手": 57, "海賊骷髏首領": 57, "德雷克": 57,
+  "海賊骷髏刀手": 57, "海賊骷髏首領": 57, "德雷克": 57, "炎魔": 427,
+  "巨大牛人": 519, "暴走兔": 83, "果凍怪": 60, "重裝歐姆": 106, "黑暗妖精運送員": 458,   // 🧝 v3.0.58 變身借音：遺忘之島巨大牛人/夢幻之島暴走兔/象牙塔果凍怪/重裝歐姆戰士·v3.0.59 運送員=黑暗妖精警衛
 };
 const SPELL_SFX = {
   "致命落雷": 34, "極道落雷": 34, "奪命之雷": 34, "光箭": 97, "火箭": 99, "燃燒的火球": 99, "岩漿之箭": 99, "壞物術": 100, "極光雷電": 101, "雷霆風暴": 101,
@@ -241,7 +246,8 @@ const MOB_KILL_SFX = {
   "哈汀之影": 36, "象牙塔炎魔的奴隸": 424, "象牙塔小惡魔": 424, "象牙塔巴風特之影": 68, "象牙塔翼魔": 424, "象牙塔炎魔之影": 424, "象牙塔惡魔之影": 424, "白螞蟻群": 196,
   "巨大白螞蟻": 196, "強化巨蟻": 196, "強化白螞蟻群": 196, "巨大突擊螞蟻": 196, "巨大強化白螞蟻": 196, "巨大守護螞蟻": 196, "狂野之毒": 84, "狂暴蜥蜴人": 496,
   "狂野毒牙": 84, "狂野之魔": 84, "高等蜥蜴人": 496, "藍尾蜥蜴": 84, "奇異鸚鵡": 84, "藏寶箱": 94, "海賊骷髏": 58, "重裝蜥蜴人": 496, "海賊骷髏士兵": 58,
-  "海賊骷髏刀手": 58, "海賊骷髏首領": 58, "德雷克": 58,
+  "海賊骷髏刀手": 58, "海賊骷髏首領": 58, "德雷克": 58, "炎魔": 424,
+  "巨大牛人": 530, "暴走兔": 84, "果凍怪": 61, "重裝歐姆": 105, "黑暗妖精運送員": 460,   // 🧝 v3.0.58 變身借音：遺忘之島巨大牛人/夢幻之島暴走兔/象牙塔果凍怪/重裝歐姆戰士·v3.0.59 運送員=黑暗妖精警衛
 };
 
 var _sfxDynTried = {}, _mobHurtLast = 0, _spellCastLast = 0, _killLast = 0;
@@ -288,6 +294,32 @@ function playMobKill(mob) {
     var key = 'kill_' + n;
     if (_sfxPool[key] === undefined) { _sfxDynLoad(key, '' + n); playSfx('kill'); return; }   // 首次載入時先用通用擊殺音墊著
     if (!_sfxPlayPool(key, 0.60)) playSfx('kill');   // 缺檔(null)→退回通用擊殺音
+}
+
+// ===== 🧝 v3.0.47 變身音效（Phase 3）：變身為 15 動畫形態之一時，玩家「受傷/死亡」改播該原始怪物音效 =====
+//   有怪物音效對應（MOB_HURT_SFX/MOB_KILL_SFX 查得到·克特/卡司特王/思克巴女皇/死亡騎士/艾莉絲/騎士范德）→ 直接用怪物編號音。
+//   無對應（用戶指定）：黃金/白金/銀光/黑暗「騎士」→ 男騎士(hurt_knight_m)；黃金/白金/銀光/黑暗「法師」→ 男法師(hurt_mage_m)。
+//   ⚠️炎魔 兩表皆無對應且用戶未指定 → 維持玩家本職音效（日後補 MOB_HURT_SFX["炎魔"] 編號即自動生效）。
+//   攻擊音維持「武器類型」變體（怪物表無攻擊音）；施法音維持 per-法術（playSpellCast）。
+const MORPH_CLASS_VOICE = { '黃金騎士': 'knight_m', '白金騎士': 'knight_m', '銀光騎士': 'knight_m', '黑暗騎士': 'knight_m',
+                            '黃金法師': 'mage_m', '白金法師': 'mage_m', '銀光法師': 'mage_m', '黑暗法師': 'mage_m',
+                            '黃金巡守': 'royal_m', '白金巡守': 'royal_m', '銀光巡守': 'royal_m', '黑暗巡守': 'royal_m' };   // 🧝 v3.0.57 四巡守→王子(王族男)語音
+function _morphSfxName() { return (typeof _playerMorphName === 'function') ? _playerMorphName() : null; }   // js/09 的 15 形態解析（含套裝別名）
+function _morphHurtOverride() {   // 回傳受傷音 pool key（並確保已排載）；無覆蓋→null
+    var mn = _morphSfxName(); if (!mn) return null;
+    var n = (typeof MOB_HURT_SFX !== 'undefined') ? MOB_HURT_SFX[mn] : undefined;
+    if (n !== undefined) { var k = 'mob_' + n; if (_sfxPool[k] === undefined) _sfxDynLoad(k, '' + n); return k; }
+    var v = MORPH_CLASS_VOICE[mn];
+    if (v) { var k2 = 'hurt_' + v; if (!_sfxVariantTried[k2]) { _sfxVariantTried[k2] = true; _sfxTryLoad(k2, { file: k2 }); } return k2; }
+    return null;
+}
+function playMorphDeathSfx() {   // js/09 玩家變身死亡動作首次觸發時呼叫：播該怪物死亡音（無對應→職業語音·再無→靜默）
+    if (!_sfxCfg.on) return;
+    var mn = _morphSfxName(); if (!mn) return;
+    var n = (typeof MOB_KILL_SFX !== 'undefined') ? MOB_KILL_SFX[mn] : undefined;
+    if (n !== undefined) { var k = 'kill_' + n; if (_sfxPool[k] === undefined) { _sfxDynLoad(k, '' + n); return; } _sfxPlayPool(k, 0.60); return; }
+    var v = MORPH_CLASS_VOICE[mn];
+    if (v) { var k2 = 'hurt_' + v; if (!_sfxVariantTried[k2]) { _sfxVariantTried[k2] = true; _sfxTryLoad(k2, { file: k2 }); return; } _sfxPlayPool(k2, 0.60); }
 }
 
 // ===== 🎵 背景音樂（分場景 · HTMLAudio 雙元素交叉淡入淡出 · 自我輪詢偵測場景，無戰鬥碼掛鉤）=====

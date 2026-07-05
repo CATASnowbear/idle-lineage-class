@@ -1,6 +1,7 @@
 function playerAttack() {
     let target = getTarget();
     if(!target) return;
+    if (typeof _playerMorphTrigger === 'function') { try { _playerMorphTrigger('attack'); } catch (e) {} }   // 🧝 v3.0.46 玩家變身 sprite：攻擊動作（含被迴避＝有揮擊）
     // 🔮 幻術士 奇古獸攻擊：裝備奇古獸(必中魔法)或魔劍精通(任意非弓武器套用奇古獸公式) → 走奇古獸路徑，繞過物理命中/迴避
     if (player.cls === 'illusion') {
         let _qw = player.eq.wpn ? DB.items[player.eq.wpn.id] : null;
@@ -434,7 +435,7 @@ function procFreeMagicSkill(t, skId, en) {
     });
     total = Math.floor(total * enhanceWpnFinalMult(en, player.eq.wpn && DB.items[player.eq.wpn.id]));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/20)）
     if (total > 0) {
-        t.curHp -= total; t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic'; mobWake(t);
+        t.curHp -= total; t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic'; t._spellHurt = true; mobWake(t);   // 🎬 v3.0.14 法術傷害→hurt(含頭目)
         if(typeof playSpellFx === 'function') { try { playSpellFx(sk.n, t); } catch(e){} }   // ⚡ v2.7.16 娃娃/寵物免費施放(如娃娃克特/聖伯納→極道落雷)也疊法術特效
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【${sk.n}】</span>額外施放，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 <span class="${isCrit ? 'text-yellow-500 font-bold' : 'text-cyan-300'}">${total}</span> 點傷害${isCrit ? '（爆擊!）' : ''}。`, 'player-special');
@@ -524,6 +525,7 @@ function _procWeaponSpellHit(t, sp, en) {
     d = illusionMagicDmg(d, true);   // 🔮 幻覺2/5回MP＋5/5：武器附魔施放魔傷二次傷害
     t.curHp -= d;
     t.justHit = (sp.ele && sp.ele !== 'none') ? sp.ele : 'magic';
+    t._spellHurt = true;   // 🎬 v3.0.14 法術傷害→hurt(含頭目)
     mobWake(t);
     if(typeof playSpellFx === 'function') { try { playSpellFx(sp.skn, t); } catch(e){} }   // ⚡ v2.7.16 武器附魔施放(如克特之劍→極道落雷 15% proc)也疊法術特效
     if (sp.heal && d > 0) { player.hp = Math.min(player.mhp, player.hp + Math.floor(d * sp.heal)); }   // 🐉 寒冰鎖鏈劍·冰之地裂術：恢復造成傷害的指定比例 HP
@@ -570,7 +572,7 @@ function laiaWandHitProc(t) {
     d = Math.max(1, Math.floor(d * enhanceWpnFinalMult(en, w)));   // 🔧 武器強化 +11~+20：最終傷害倍率（取代舊 (1+強化/10)）
     d = Math.max(1, Math.floor(d * rlFuryMult()));   // 🔮 紅獅5/5＋😡狂怒5/5 最終傷害
     if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
-    t.curHp -= d; t.justHit = sp.ele; mobWake(t);
+    t.curHp -= d; t.justHit = sp.ele; t._spellHurt = true; mobWake(t);   // 🎬 v3.0.14 法術傷害→hurt(含頭目)
     if(typeof playSpellFx === 'function') { try { playSpellFx(sp.skn || '冰裂術', t); } catch(e){} }   // ⚡ v2.7.16 蕾雅魔杖命中觸發也疊法術特效（未註冊者自動略過）
     logCombat(`<span class="font-bold" style="color:#93c5fd;text-shadow:0 0 6px #2563eb;">【${sp.skn || '冰裂術'}】</span>對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${d} 點水屬性魔法傷害${wasFrozen ? '（冰碎!）' : ''}。`, 'player-special');
     if (t.curHp <= 0) { let ri = mapState.mobs.findIndex(x => x && x.uid === t.uid); if (ri !== -1) killMob(ri); return; }
@@ -763,6 +765,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         totalDmg = Math.floor(totalDmg * riftDamageMult());   // 🌀 時空裂痕 30 分後每分鐘 +20% 怪物攻擊力
         totalDmg = dollDamageReduced(totalDmg);   // 🪆 魔法娃娃：受傷機率傷害減免（史巴托/巫妖）
         player.hp -= totalDmg;
+        if (totalDmg > 0 && typeof applyPlayerHitstun === 'function') applyPlayerHitstun();   // ⚔️ 天堂職業硬直：被物理直接命中→延遲下次攻擊
         if (totalDmg > 0) { try { playSfx('hurt'); } catch(e){} }   // 🔊 音效：玩家受到物理傷害
         if (player._setIron5 && totalDmg > 0 && player.hp > 0) ironGuardSweep();   // 🔮 鐵衛 5/5：受到（物理）傷害時，對全體必中反擊（每 tick 節流）
         try { vfxPlayerHit(totalDmg); } catch(e){}   // ✨ VFX：較大一擊→戰場震動＋HP條紅閃
@@ -906,6 +909,7 @@ function enemyAttackAlly(mob, ally) {
     totalDmg = Math.max(1, Math.floor(Math.max(1, totalDmg) * riftDamageMult()));   // 🌀 裂痕加成（與玩家一致）
     totalDmg = allyDollDamageReduced(ally, totalDmg);   // 🆕 v2.6.10 #3：魔法娃娃機率減免（受物理傷害）
     ally.curHp -= totalDmg;
+    if (totalDmg > 0 && !ally._stunCycle) { ally._atkCd = (ally._atkCd || 0) + ((ally.d && ally.d.hitstun) || 0); ally._stunCycle = true; }   // ⚔️ 天堂職業硬直（傭兵·物理）：延遲下次攻擊·每週期一次
     logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 攻擊 <span class="text-sky-300 font-bold">協力·${ally._allyName}</span>，造成 ${totalDmg} 點傷害。`, 'enemy', 'enemy');
     allyReflectOnHit(ally, mob, totalDmg, false);   // 🆕 v2.6.14 #5c：受物理反射（疼痛歡愉/致命身軀/泰坦岩石）
     if (ally._setIron5 && ally.eq && ally.eq.wpn && ally._ironSweepTick !== state.ticks) { ally._ironSweepTick = state.ticks; allyIronGuardSweep(ally, '受擊'); }   // 🆕 v2.6.14 #5c：鐵衛5/5 受擊橫掃（每 tick 節流）
@@ -941,9 +945,9 @@ function killPlayer() {
     }
     // 🔧 盟主祝福不再因死亡清空：只有時間到才會消失（亦不受攻城影響）
     let msg = "你的角色已經死亡。（死亡不損失經驗值。）";
-    // 🎮 經典模式：死亡損失「該等級最大經驗」的 10%（per-level 進度，最多扣到該等級 0% → 不會降等）
+    // 🎮 經典模式：死亡損失「該等級最大經驗」的 5%（v3.0.15 由 10% 調降·per-level 進度，最多扣到該等級 0% → 不會降等）
     if (player.classicMode) {
-        let _lossCap = Math.floor((getExpReq(player.lv) || 0) * 0.1);
+        let _lossCap = Math.floor((getExpReq(player.lv) || 0) * 0.05);
         let _before = player.exp;
         player.exp = Math.max(0, player.exp - _lossCap);
         msg = `你的角色已經死亡。<span class="text-red-300">（經典模式：損失了 ${_before - player.exp} 點經驗）</span>`;
@@ -1018,6 +1022,7 @@ function applyMobMagicToAlly(mob, sk, ally) {
         dmg = Math.max(1, Math.floor(Math.max(1, dmg) * riftDamageMult()));
         dmg = allyDollDamageReduced(ally, dmg);   // 🆕 v2.6.10 #3：魔法娃娃機率減免（受魔法傷害）
         ally.curHp -= dmg;
+        if (dmg > 0 && !ally._stunCycle) { ally._atkCd = (ally._atkCd || 0) + ((ally.d && ally.d.hitstun) || 0); ally._stunCycle = true; }   // ⚔️ 天堂職業硬直（傭兵·魔法）：延遲下次攻擊·每週期一次
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對 ${nm} 造成 ${dmg} 點魔法傷害。`, 'enemy');
         if (sk.vamp || sk.vampFull) { let heal = sk.vampFull ? dmg : roll(sk.vamp[0], sk.vamp[1]); mob.curHp = Math.min(mob.hp, mob.curHp + heal); }
         if (sk.sec) {   // 二次狀態（比照玩家：freeze/stun/sleep/paralyze/burn/scald/bleed/poison）；🆕 v2.6.11 #4：freeze/stun/sleep/paralyze/poison 受裝備抵抗/免疫（傷害照樣結算，只擋附帶狀態）
@@ -1318,6 +1323,7 @@ function applyMobMagic(mob, sk) {
 
         dmg = dollDamageReduced(dmg);   // 🪆 魔法娃娃：受傷機率傷害減免（史巴托/巫妖）
         player.hp -= dmg;
+        if (dmg > 0 && typeof applyPlayerHitstun === 'function') applyPlayerHitstun();   // ⚔️ 天堂職業硬直：被魔法直接命中→延遲下次攻擊
         if (dmg > 0) { try { playSfx('hurt'); } catch(e){} }   // 🔊 音效：玩家受到魔法傷害
         if (player._setIron5 && dmg > 0 && player.hp > 0) ironGuardSweep();   // 🔮 鐵衛 5/5：受到（魔法）傷害時亦觸發（每 tick 節流）
         logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 施放${sk.skn || '魔法'}，對你造成 ${dmg} 點魔法傷害。`, 'enemy');

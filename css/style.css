@@ -112,6 +112,7 @@
         #battle-view.has-bg .mob-target { background: transparent !important; border-color: transparent !important; box-shadow: none; text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.85); }   /* 🔧 狩獵區去框：怪物原圖直接呈現於背景，只保留名稱/血量/狀態(加字陰影保可讀) */
         #battle-view.has-bg .mob-target.active { background: transparent !important; border-color: transparent !important; }   /* 選取中：去框 */
         #battle-view.has-bg .mob-target.active .mob-img-inner { filter: drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 7px #ef4444); }   /* 🔴 紅色鎖定光暈只套在「怪物圖」上(沿輪廓)，不影響名字/徽章/狀態 */
+        #battle-view.has-bg .mob-target.active .mob-img-inner.mob-shadow-tint { filter: brightness(0) drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 7px #ef4444); }   /* 🌑 v3.0.39 剪影怪被鎖定時：filter 不跨規則疊加→上行鎖定光暈會「取代」brightness(0)＝影魔被攻擊瞬間變回灰白。合併寫法＝黑影+紅光暈並存 */
         #battle-view.has-bg .mob-target:hover:not(.active) { background: transparent !important; }
         /* 🏜️ 條狀比例背景(沙漠等·套 area-fit)：戰鬥框高度鎖定＝圖片比例(1920/580)，背景滿版貼齊、任何視窗寬度都無上下黑邊；省下的高度由下方戰鬥日誌(flex-1)自動吸收長高。 */
         /* ⚠️v2.6.37 用戶要求「狩獵區域改回 1920×580 比例」：戰鬥框本身鎖 aspect-ratio 1920/580(＝條狀·不再 flex:1 吃滿整個地圖面板成 16:9)；背景 cover 貼齊此條狀框。省下的高度由 #log-row(下方 :has 規則改 flex:1)吸收。安全區(town·無 area-fit)與攻城/裂痕(16:9·非 area-fit)不受影響。 */
@@ -149,11 +150,25 @@
            ⚠️ 只套 .mob-anim(動畫像素怪)：一般靜態怪圖原生 600×600，若不縮放會爆框→維持上方 height:100% 縮放填滿。transform:none!important 蓋過所有前後排/頭目/jit scale(那些選擇器含 #mob-list 雙 id 特異性高，須 !important)。 */
         #battle-view .mob-img-inner.mob-anim { transform: none !important; }
         #battle-view .mob-img-inner.mob-anim img { height: auto !important; width: auto !important; max-height: none !important; max-width: none !important; }
+        /* 🖥️ v3.0.20 超大動畫怪高度上限：不死鳥(477)/幻象眼魔/古代巨人/水靈之主 等 15 隻原生高度 > 800×242 固定戰鬥框→爆框看不到＋死亡殘影(依 .mob-img-inner 方框 r.height 定尺寸)相對縮小。改：非龍窟頭目格(boss-slot)的動畫怪，本體+影子+武器層一律上限＝影像帶高(max-height:100%＝.mob-img-inner 高)→大怪縮到帶內(三層同畫布同比例→仍逐幀對齊)、死亡殘影方框≈本體不再縮小；小怪(<帶高)維持原生。boss-slot(龍窟大圖)不套維持巨大。 */
+        #battle-view.area-fit .mob-target:not(.boss-slot):not(.boss-zoom) .mob-img-inner.mob-anim img { max-height: 100% !important; }
+        /* 👑 v3.0.25 頭目(boss-zoom·非龍窟)動畫怪：放寬高度上限＝185px（＞一般怪帶高 ~134·<戰鬥框底到頂 194 不爆圖），修「大畫布飛行系頭目(不死鳥640×477/飛龍370×307/伊弗利特135×203)被 v3.0.20 帶高上限縮到比一般怪還小」。原因＝v2.7.86 的 transform:none!important 讓動畫頭目吃不到 .boss-zoom 的 scale(1.78)(避免非整數縮放像素抖動)→頭目大小全靠此 max-height 上限決定·故給頭目專屬較大上限。小畫布頭目(<185)維持原生不拉伸。 */
+        #battle-view.area-fit .mob-target.boss-zoom .mob-img-inner.mob-anim img { max-height: 185px !important; }
+        /* 🐉 v3.0.37 大畫布「非頭目」動畫怪(MOB_ANIM_BIG·js/09 加 .mob-anim-big)：同頭目 185px 上限——遺忘之島飛龍與飛龍同 370×307 大畫布，但非 boss 吃 v3.0.20 帶高上限被縮得比一般怪小。此規則在 v3.0.20 規則之後→同權重下 source order 勝出。 */
+        #battle-view.area-fit .mob-target:not(.boss-slot) .mob-img-inner.mob-anim.mob-anim-big img { max-height: 185px !important; }
+        /* 🧝 v3.0.46 玩家變身戰鬥 sprite（js/09 _playerMorphApply 懶建）：狩獵區最下方中間偏左·原生像素三層(影子 multiply/本體/武器 screen)。
+           ⚠️容器與各層皆不用 transform（隔離群組會使 _w 的 screen blend 失效＝黑框病根 v3.0.19）→ 置中由 js 以 left:calc(44% - 寬/2) 完成。 */
+        #player-morph-sprite { position: absolute; bottom: 4px; height: 1px; z-index: 2; pointer-events: none; overflow: visible; }
+        #player-morph-sprite img { position: absolute; left: 0; bottom: 0; image-rendering: crisp-edges; image-rendering: pixelated; }
+        #player-morph-sprite .pm-shadow { mix-blend-mode: multiply; }
+        #player-morph-sprite .pm-weapon { mix-blend-mode: screen; }
         /* 🌑 v2.7.17 真實影子 sprite 圖層：絕對定位、底部置中、與本體同 native 尺寸(同世界錨定畫布)→像素級疊合。DOM 順序影子在前→本體(在後)自然疊於其上；影子沿用上方 .mob-anim img 的 native/pixelated 規則。 */
         #battle-view .mob-img-inner.mob-anim .mob-anim-shadow { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: multiply; }   /* 🌑 v2.7.43 影子灰階當「濃淡遮罩」multiply(白→透明/黑→濃/灰→淡)：修自帶光源怪(不死鳥/伊弗利特)淺灰影子顯示成一塊灰·改成淡影子·一般近黑怪→濃影子 */
         /* ⚔️ v2.7.22 武器揮動特效層：與影子同定位(絕對·底部置中·native)但疊在本體「前」(DOM 順序在本體 img 之後)＋screen 加亮(金色刀光弧發光) */
         #battle-view .mob-img-inner.mob-anim .mob-anim-weapon,
         #battle-view .mob-img-inner.mob-anim .mob-anim-weapon2 { position: absolute !important; left: 50%; bottom: 0; transform: translateX(-50%); pointer-events: none; mix-blend-mode: screen; }
+        /* 🌑 v3.0.24 灰白剪影怪(影魔/象牙塔影魔·天堂 silhouette gfx1571)→半透明黑影：brightness(0) 把淺灰白 spr 全轉黑(保留 alpha 軟邊)、opacity 半透明煙感。掛父層→受擊 keyframe 的 brightness 亮度被此層歸零(不閃回灰)、img 的 translateX 晃動照常。 */
+        #battle-view .mob-img-inner.mob-shadow-tint { filter: brightness(0); opacity: .62; }
         /* 🙈 怪物名字預設隱藏，滑鼠游標移到「怪物圖片」上才顯示（:has 偵測圖片區 hover；img 為 pointer-events:none→hover 落在 .mob-img-wrap；保留名稱列空間避免版面跳動）。.name-show＝JS 依 _hoverMobUid 套用→跨重繪持續顯示(每 tick 換 innerHTML 時 :hover 會瞬失效，靠它穩住不閃) */
         #battle-view .mob-name { opacity: 0; transition: opacity 0.12s ease; }
         #battle-view .mob-target:has(.mob-img-wrap:hover) .mob-name,
@@ -422,3 +437,76 @@
 /* 🔧 v2.6.74 自動化設定改「分頁內嵌」#tab-automation（v2.6.73 浮動視窗取消）：flex 直排＋卡片間距；.hidden 顯式覆蓋（ID 特異性高於 Tailwind .hidden） */
 #tab-automation { display: flex; flex-direction: column; gap: 1rem; }
 #tab-automation.hidden { display: none; }
+
+/* ===== 🎨 v3.0.40 1.8 風格物品清單（裝備／武器／防具／道具·移植自參考版 idle-lineage-class-main-test） ===== */
+.classic-inventory-tab { padding:0 !important; overflow:hidden !important; min-height:0; background:#0b0d12; }
+.classic-inventory-tab:not(.hidden) { display:flex !important; flex-direction:column; }
+.classic-list-toolbar { flex:0 0 auto; margin:0 !important; padding:6px 8px !important; top:0 !important; background:#111827 !important; border-bottom:1px solid #6b5426; z-index:20; }
+.classic-inventory-viewport { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; box-sizing:border-box; padding:3.4% 14.5% 8.2% 5.8%; background:#111 url('../assets/ui/inventory-1.8.png') center/100% 100% no-repeat; scrollbar-width:thin; scrollbar-color:#d6a638 #17191d; }
+.classic-inventory-viewport::-webkit-scrollbar { width:12px; }
+.classic-inventory-viewport::-webkit-scrollbar-track { background:rgba(13,15,18,.75); border-left:1px solid #76591d; }
+.classic-inventory-viewport::-webkit-scrollbar-thumb { background:linear-gradient(90deg,#69480e,#f1cd59 45%,#8d6519); border:1px solid #f7df86; border-radius:8px; box-shadow:0 0 4px #000; }
+.classic-inventory-viewport > .list-item { box-sizing:border-box; display:flex !important; align-items:center; width:100%; height:12.5%; min-height:58px; margin:0 !important; padding:3px 5px !important; border:0 !important; border-radius:5px !important; background:transparent !important; box-shadow:none !important; overflow:hidden; }
+.classic-inventory-viewport > .list-item:hover { background:rgba(180,139,58,.15) !important; filter:brightness(1.14); }
+.classic-item-main { display:grid; grid-template-columns:18% minmax(0,1fr); align-items:center; width:100%; height:100%; gap:4%; }
+.classic-icon-box { display:flex; align-items:center; justify-content:center; width:100%; height:100%; min-width:0; }
+.classic-icon-box img,.classic-item-main .classic-icon-box img { width:78% !important; height:78% !important; max-width:48px; max-height:48px; margin:0 !important; object-fit:contain; }
+.classic-name-box { display:flex; align-items:center; gap:5px; min-width:0; overflow:hidden; color:#e5e7eb; text-shadow:0 1px 2px #000; white-space:nowrap; }
+.classic-name-box > span:not(.classic-slot-name):first-of-type { overflow:hidden; text-overflow:ellipsis; }
+.classic-slot-name { color:#9ca3af; font-size:11px; flex:0 0 auto; }
+.classic-item-flags { display:inline-flex; gap:2px; flex:0 0 auto; font-size:10px; }
+.classic-inventory-viewport > .list-item > .classic-icon-box { flex:0 0 18%; margin-right:4%; }
+.classic-inventory-viewport > .list-item > .classic-name-box { flex:1 1 auto; }
+.classic-inventory-viewport input[type="checkbox"] { flex:0 0 auto; margin-right:3px; }
+.classic-inventory-viewport > .list-item > div { width:100%; min-width:0; }
+
+/* ===== 🎨 v3.0.55 1.8 原版風格技能魔法視窗（移植參考版）＋底部 S.power(魔法傷害)/M.resist(MR) 數值 ===== */
+#tab-skill { padding:0 !important; overflow:auto !important; align-items:center; justify-content:flex-start; background:#08090d; }
+.classic-skill-window {
+    position:relative; flex:0 0 auto; width:min(100%,510px); aspect-ratio:1023/1537;
+    margin:0 auto; overflow:hidden; user-select:none;
+    background:url('../assets/ui/skill-window-1.8.png') center/100% 100% no-repeat;
+}
+.classic-skill-heading { position:absolute; z-index:4; left:23.4%; top:2.2%; width:61.8%; height:2.6%; display:flex; align-items:center; justify-content:center; color:#f3df9d; font-weight:700; font-size:clamp(9px,1vw,14px); text-shadow:0 1px 3px #000,0 0 4px #000; }
+.classic-skill-grid-scroll { position:absolute; z-index:3; left:23.5%; top:5.35%; width:62.2%; height:81.65%; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; overscroll-behavior:contain; }
+.classic-skill-grid-scroll::-webkit-scrollbar { width:0; height:0; }
+.classic-skill-grid { position:relative; width:100%; min-height:100%; display:grid; grid-template-columns:repeat(4,1fr); grid-auto-flow:row; align-content:start; }
+.classic-skill-cell { position:relative; display:flex; align-items:center; justify-content:center; padding:1.5%; aspect-ratio:1.015/1; border:0; border-radius:0; background:transparent; color:#fff; min-width:0; min-height:0; }
+button.classic-skill-cell { cursor:pointer; }
+.classic-skill-cell img { display:block; width:97%; height:97%; object-fit:contain; pointer-events:none; filter:drop-shadow(0 1px 2px #000); }
+.classic-skill-cell:hover:not(.classic-skill-empty) { background:rgba(231,190,89,.13); box-shadow:inset 0 0 8px rgba(255,214,102,.55); }
+.classic-skill-unlearned img { opacity:.30; filter:grayscale(1) brightness(.75); }
+.classic-skill-unavailable img { opacity:.42; filter:grayscale(.8) brightness(.7); }
+.classic-skill-lock { position:absolute; right:8%; bottom:5%; color:#796f61; font-size:clamp(6px,.7vw,10px); text-shadow:0 1px 2px #000; }
+.classic-skill-tier-strip { position:absolute; z-index:7; left:17.55%; top:5.2%; width:4.2%; height:82.1%; background-position:center; background-size:100% 100%; background-repeat:no-repeat; }
+.classic-skill-tier-hit { position:absolute; left:-110%; width:320%; height:10%; border:0; padding:0; background:transparent; }
+.classic-skill-tier-hit:not(.disabled) { cursor:pointer; }
+.classic-skill-tier-hit.disabled { cursor:not-allowed; opacity:.35; }
+.classic-skill-tier-hit.tier-1{top:0}.classic-skill-tier-hit.tier-2{top:10%}.classic-skill-tier-hit.tier-3{top:20%}.classic-skill-tier-hit.tier-4{top:30%}.classic-skill-tier-hit.tier-5{top:40%}
+.classic-skill-tier-hit.tier-6{top:50%}.classic-skill-tier-hit.tier-7{top:60%}.classic-skill-tier-hit.tier-8{top:70%}.classic-skill-tier-hit.tier-9{top:80%}.classic-skill-tier-hit.tier-10{top:90%}
+.classic-skill-mode { position:absolute; z-index:6; left:2.1%; top:28%; width:13.8%; display:flex; flex-direction:column; gap:6px; }
+.classic-skill-mode button { border:1px solid #6c5529; border-radius:3px; padding:3px 1px; background:rgba(10,10,13,.82); color:#a99d83; font-size:clamp(7px,.78vw,11px); font-weight:700; text-shadow:0 1px 2px #000; }
+.classic-skill-mode button:hover,.classic-skill-mode button.active { color:#ffe29a; border-color:#d8a94b; background:rgba(90,57,16,.82); box-shadow:0 0 6px rgba(238,183,73,.55); }
+.classic-skill-stat { position:absolute; z-index:5; display:flex; align-items:center; justify-content:center; color:#e4ecff; font-weight:700; font-size:clamp(8px,1vw,15px); text-shadow:0 1px 2px #000,0 0 4px #000; pointer-events:none; letter-spacing:.02em; }
+.classic-skill-stat-sp { left:33.7%; top:91.4%; width:12.9%; height:3.9%; }
+.classic-skill-stat-mr { left:70.7%; top:90.4%; width:13.5%; height:4.6%; }
+
+/* ===== 🎨 v3.0.40 登入首頁：310 固定底圖＋273～300 左下逐幀動畫（移植自參考版） ===== */
+#creation-screen { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; overflow:auto; padding:0; background:#050505; }
+#creation-screen.hidden { display:none !important; }
+#login-art-stage { position:relative; width:min(100vw,calc(100vh * 4 / 3)); aspect-ratio:4 / 3; flex:0 0 auto; overflow:hidden; background:#050505; box-shadow:0 0 45px #000; }
+#login-bg-image { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; user-select:none; }
+#login-anim-image { position:absolute; left:0; top:63.75%; width:78.28125%; height:36.25%; object-fit:fill; pointer-events:none; user-select:none; }
+#login-title-layer { position:absolute; z-index:3; left:3.1%; top:14%; width:30.8%; color:#f7df91; text-shadow:0 2px 4px #000,0 0 6px #000; }
+#login-title-layer h1 { margin:0 0 2.5%; font-size:clamp(14px,2.05vw,31px); line-height:1.15; color:#f5d46c; }
+#login-title-layer p { margin:0; font-size:clamp(9px,1.05vw,16px); color:#e7d7b5; }
+#main-menu { position:absolute; z-index:4; left:50.4%; top:48.5%; width:25%; margin:0 !important; display:flex; flex-direction:column; align-items:stretch; gap:clamp(4px,.8vw,11px) !important; }
+#main-menu.hidden { display:none !important; }
+#main-menu > button { width:100% !important; padding:clamp(5px,.72vw,11px) 4px !important; font-size:clamp(9px,1.03vw,16px) !important; line-height:1.1; border-color:#b68a39; background:linear-gradient(180deg,rgba(35,55,83,.94),rgba(10,22,42,.96)); color:#f8e7bb; text-shadow:0 1px 2px #000; box-shadow:inset 0 0 9px rgba(116,165,219,.35),0 2px 5px #000; }
+#main-menu > button:hover { filter:brightness(1.18); }
+#main-menu > p { width:150% !important; margin:1% 0 0 -25% !important; font-size:clamp(9px,.78vw,14px) !important; line-height:1.42; color:#eee2c7; text-shadow:0 1px 3px #000,0 0 3px #000; }
+#login-meta-layer { position:absolute; z-index:3; left:5.8%; top:41.5%; width:25.4%; color:#d8c8a2; text-shadow:0 1px 3px #000; }   /* 🔧 v3.0.41 用戶：版權文字縮小+寬度縮短不超框（width 28.7%→25.4%·left 內縮置中於左框） */
+#login-version { margin-bottom:3%; font-size:clamp(12px,1.05vw,18px) !important; font-weight:700; color:#f2d77f; }
+#login-disclaimer { max-width:none !important; padding:0 !important; margin:0 !important; font-size:clamp(8px,.6vw,11px) !important; line-height:1.45; color:#eee2c7; }
+#slot-select-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(760px,92vw); max-height:92vh; overflow:auto; margin:0 !important; padding:22px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }
+#creation-panel:not(.hidden) { position:absolute; z-index:20; left:50%; top:50%; transform:translate(-50%,-50%); width:min(1000px,96vw); max-height:96vh; overflow:auto; padding:20px; border:2px solid #b89243; border-radius:14px; background:rgba(15,23,42,.96); box-shadow:0 20px 70px #000; }

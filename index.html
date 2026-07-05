@@ -28,8 +28,8 @@
     <title>放置天堂 - 以血為盟</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">   <!-- 🖼️ 瀏覽器分頁圖示(favicon)：把你的圖放到 assets/favicon.png 即生效；可改 href 路徑或副檔名(.ico/.svg) -->
 
-    <link rel="stylesheet" href="css/style.css?v=940ff609d6">
-    <link rel="stylesheet" href="css/floating-ui.css?v=082c2af70e">
+    <link rel="stylesheet" href="css/style.css?v=23d436e51a">
+    <link rel="stylesheet" href="css/floating-ui.css?v=cef1e683d5">
     <link rel="stylesheet" href="css/tailwind-built.css?v=c0926cfba4"><!-- 🔧 預編譯 Tailwind（取代執行期 JIT tailwind.js）：只含實際用到的 class，省 407KB runtime + 移除持續掃描 DOM 的成本。置於 style.css 之後以保留原 cascade（utility 平手時勝過自訂 class，與舊 JIT 注入順序一致） -->
 </head>
 <body class="h-screen w-screen overflow-hidden">
@@ -37,14 +37,16 @@
     <!-- 🖥️ v2.5.8 流動式版面：#app-stage 由 CSS position:fixed;inset:0 填滿整個視窗，內層三欄 flex 隨視窗大小自然撐開（無固定 1920×1080、無 transform 縮放、無 letterbox）。VFX/提示/游標光點掛在 body（舞台外）→ getBoundingClientRect 取真實視窗座標、天生相容。 -->
     <div id="app-stage">
 
-    <!-- 創角畫面 -->
-    <!-- 👇 修改 1：將寬度放大為 max-w-5xl 以容納三欄排版 -->
-    <div id="creation-screen" class="w-[1000px] panel p-8 flex flex-col gap-6 z-50 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 shadow-2xl" style="background: rgba(42, 44, 46, 0.78); backdrop-filter: blur(6px);">
-        <div class="text-center border-b border-slate-700 pb-4">
+    <!-- 創角畫面（🎨 v3.0.40 起始UI：310.png 固定底圖＋273~300 左下逐幀動畫·標題/選單/版號絕對定位於 4:3 藝術舞台上） -->
+    <div id="creation-screen">
+      <div id="login-art-stage">
+        <img id="login-bg-image" src="public/assets/login/310.png" alt="登入畫面背景">
+        <img id="login-anim-image" src="public/assets/login/273.png" alt="登入畫面動畫">
+        <div id="login-title-layer" class="text-center">
             <h1 class="text-4xl font-bold text-yellow-400 mb-2">放置天堂 - 以血為盟</h1>
             <p class="text-base text-slate-400">創造您的角色並開始冒險</p>
         </div>
-        
+
         <div id="main-menu" class="flex flex-col gap-5 items-center my-12">
             <button onclick="openSlotSelect('new')" class="btn text-xl w-72 py-4 bg-blue-700 hover:bg-blue-600 border-blue-500">新遊戲 (創建角色)</button>
             <button onclick="openSlotSelect('load')" id="btn-load" class="btn text-xl w-72 py-4 bg-emerald-700 hover:bg-emerald-600 border-emerald-500">載入遊戲進度</button>
@@ -52,6 +54,13 @@
             <button onclick="toggleVfxNumPref()" id="btn-vfxnum-toggle" class="btn text-base w-72 py-2.5 bg-slate-700 hover:bg-slate-600 border-slate-500">🔢 傷害數字：開啟</button>
             <p class="text-xs text-slate-500 -mt-2 w-72 text-center">效果較弱/卡頓的裝置可關閉戰鬥特效；「傷害數字」可獨立關閉、其餘特效保留（開始前設定，遊戲中不再提供）</p>
         </div>
+
+        <div id="login-meta-layer">
+            <!-- 🏷️ 版本號（由 js/14 window.onload 依 GAME_VERSION 填入；此處 v2.4.0 僅為 JS 失效時的後備文字） -->
+            <div id="login-version" class="text-center text-sm text-slate-300 font-medium tracking-wide select-none">v2.4.0</div>
+            <div id="login-disclaimer" class="text-center text-xs text-slate-400 leading-relaxed mx-auto">本遊戲為非官方免費同人作品，絕無營利意圖；遊戲內圖片與音樂版權歸原權利方 NCSOFT 所有，其餘程式為獨立開發，嚴禁商業販售。</div>
+        </div>
+      </div>
 
         <div id="slot-select-panel" class="hidden flex flex-col gap-4 items-center my-8 w-full">
             <h2 id="slot-select-title" class="text-2xl font-bold text-yellow-400">選擇存檔位</h2>
@@ -122,14 +131,39 @@
                     <button onclick="startGame()" id="btn-start" class="btn w-3/4 py-2.5 font-bold text-lg text-white shadow-lg" disabled>開始冒險</button>
                 </div>
             </div>
-            
+
         </div>
 
-        <!-- 🏷️ 版本號（由 js/14 window.onload 依 GAME_VERSION 填入；此處 v2.4.0 僅為 JS 失效時的後備文字） -->
-        <div id="login-version" class="text-center text-sm text-slate-300 font-medium tracking-wide select-none mt-1">v2.4.0</div>
-        <!-- ⚖️ 免責聲明（版號下方·非官方同人作品·無營利意圖） -->
-        <div id="login-disclaimer" class="text-center text-xs text-slate-500 leading-relaxed mx-auto px-4 mt-2" style="max-width:28rem;">本遊戲為非官方免費同人作品，絕無營利意圖；遊戲內圖片與音樂版權歸原權利方 NCSOFT 所有，其餘程式為獨立開發，嚴禁商業販售。</div>
     </div>
+
+    <script>
+      // 登入頁逐幀動畫：273.png～300.png，使用相對路徑，GitHub Pages 可直接部署。
+      (function(){
+        var first=273,last=300,frame=first,lastAt=0,stepMs=90,ready=false;
+        var base='public/assets/login/';
+        // 首頁 BGM 優先；頁面載入完成後再逐張載入動畫，避免 28 張圖片同時與音樂搶讀取／解碼資源。
+        function preloadFrame(n){
+          if(n>last){ready=true;return;}
+          var p=new Image();
+          p.onload=p.onerror=function(){preloadFrame(n+1);};
+          p.src=base+n+'.png';
+        }
+        function beginPreload(){setTimeout(function(){preloadFrame(first+1);},500);}
+        if(document.readyState==='complete') beginPreload();
+        else window.addEventListener('load',beginPreload,{once:true});
+        function animateLogin(now){
+          var screen=document.getElementById('creation-screen');
+          var img=document.getElementById('login-anim-image');
+          if(ready&&img&&screen&&!screen.classList.contains('hidden')&&now-lastAt>=stepMs){
+            frame=frame>=last?first:frame+1;
+            img.src=base+frame+'.png';
+            lastAt=now;
+          }
+          requestAnimationFrame(animateLogin);
+        }
+        requestAnimationFrame(animateLogin);
+      })();
+    </script>
 
     <!-- 遊戲主畫面 -->
     <div id="game-screen" class="hidden flex gap-4">
@@ -146,7 +180,7 @@
         <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
-                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 10% 最大經驗（不降等）">⚔經典</span><span id="traditional-badge" class="hidden font-bold ml-1" style="color:#c4b5fd;text-shadow:0 0 5px rgba(196,181,253,0.7);font-size:0.85rem;line-height:1;" title="傳統模式（經典之上）：所有裝備無強化、改由掉落自帶強化值、怪物/黑市無施法卷軸、倉庫與角色獨立">🏛️傳統</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
+                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：物品掉落 ×1/10、經驗減半、金幣剩一般模式的 1/2、死亡損失該等級 5% 最大經驗（不降等）">⚔經典</span><span id="traditional-badge" class="hidden font-bold ml-1" style="color:#c4b5fd;text-shadow:0 0 5px rgba(196,181,253,0.7);font-size:0.85rem;line-height:1;" title="傳統模式（經典之上）：所有裝備無強化、改由掉落自帶強化值、怪物/黑市無施法卷軸、倉庫與角色獨立">🏛️傳統</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
                 <div class="p-4 space-y-3 text-base">
                     <div class="flex justify-between text-slate-400 border-b border-slate-700 pb-2"><span>等級</span> <span class="text-white font-bold text-xl" id="st-lv">1</span></div>
                     <div class="flex justify-between text-slate-400"><span>防禦 (AC)</span> <span class="text-white font-bold" id="st-ac">10</span></div>
@@ -468,26 +502,26 @@
     })();
     </script>
 
-<script src="js/00-data.js?v=104e43e8b3"></script>
-<script src="js/01-drops-config.js?v=526a9e7daf"></script>
-<script src="js/02-stats-recompute.js?v=17cc3b831b"></script>
-<script src="js/03-combat-core.js?v=280306c947"></script>
-<script src="js/04-combat-attack.js?v=d689cb8d9d"></script>
+<script src="js/00-data.js?v=5be26f000d"></script>
+<script src="js/01-drops-config.js?v=b039bf6a48"></script>
+<script src="js/02-stats-recompute.js?v=e7def8d59c"></script>
+<script src="js/03-combat-core.js?v=db1b6cbf1f"></script>
+<script src="js/04-combat-attack.js?v=4b47e90560"></script>
 <script src="js/05-kill-progression.js?v=048fc9c72f"></script>
-<script src="js/06-status-allies.js?v=dd047a3e67"></script>
-<script src="js/07-skills-cast.js?v=5ca3007093"></script>
+<script src="js/06-status-allies.js?v=4e1e5b2204"></script>
+<script src="js/07-skills-cast.js?v=1ecb65b17a"></script>
 <script src="js/08-items-equip.js?v=c5cd4e342d"></script>
-<script src="js/09-vfx-render.js?v=31834791ca"></script>
-<script src="js/10-ui-tabs.js?v=2840b2e632"></script>
+<script src="js/09-vfx-render.js?v=965d696f84"></script>
+<script src="js/10-ui-tabs.js?v=3b231ddaa5"></script>
 <script src="js/11-world-map.js?v=3def6e6186"></script>
-<script src="js/12-npc-quests.js?v=8ff0158417"></script>
-<script src="js/13-shop-save.js?v=af2da79447"></script>
+<script src="js/12-npc-quests.js?v=dbab9991e3"></script>
+<script src="js/13-shop-save.js?v=57473f29cd"></script>
 <script src="js/14-craft-pandora.js?v=bc2304671b"></script>
 <script src="js/15-cards.js?v=0f2366cab9"></script>
-<script src="js/16-equip-book.js?v=efb39e48df"></script>
-<script src="js/18-misc-book.js?v=e0138e0e87"></script>
-<script src="js/17-audio.js?v=8c1841e1e4"></script>
-<script src="js/19-equipment-window.js?v=24c2a8eaf4"></script>
+<script src="js/16-equip-book.js?v=82681c63f6"></script>
+<script src="js/18-misc-book.js?v=08b573e9ba"></script>
+<script src="js/17-audio.js?v=a7acefb237"></script>
+<script src="js/19-equipment-window.js?v=287541ac90"></script>
 <script src="js/20-warehouse-window.js?v=6b884f76fa"></script>
 <!-- 離線掛機外掛(包 saveGame/loadGame;建議讓 afk-fixes 的存檔防呆排在此之後最乾淨;可獨立維護,原作者更新後重新加回此行即可) -->
 <script src="afk-offline.js?v=20260705a"></script>

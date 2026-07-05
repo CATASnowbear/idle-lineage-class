@@ -129,6 +129,14 @@ function _initMobListGuard() {   // 在 #mob-list(穩定父節點·只換其 inn
     document.addEventListener('pointerup', release);
     document.addEventListener('pointercancel', release);
 }
+// ⚔️ 天堂職業硬直：玩家被「直接命中」（物理/魔法·非 DoT）時，延遲下次一般攻擊 d.hitstun 個 tick。每個攻擊週期最多硬直一次（不無限疊加·避免被群毆時完全鎖死）。
+function applyPlayerHitstun() {
+    if (!state || state._pStunCycle || player.dead) return;
+    let hs = (player.d && player.d.hitstun) || 0;
+    if (hs <= 0) return;
+    state.pDmgTick = (state.pDmgTick || 0) - hs;   // 攻擊累加器倒退 → 下次攻擊延後 hs tick
+    state._pStunCycle = true;
+}
 function tick() {
     if(!state.running || player.dead) return;
     state.ticks++;
@@ -208,6 +216,7 @@ function tick() {
     if(player.cds.atkSk > 0) player.cds.atkSk--;
     if(player.cds.healSk > 0) player.cds.healSk--;
     if((player.cds.purifySk || 0) > 0) player.cds.purifySk--;   // 🔧 淨化技獨立冷卻
+    if((player.cds.castLock || 0) > 0) player.cds.castLock--;   // 🔮 天堂職業施法冷卻下限（法師快·王族/黑妖慢）·autoCastSpells 依此節流攻擊魔法
     if(canAct) autoCastSpells();   // 每 tick 嘗試自動施法，實際間隔由上方冷卻控制
 
     if(state.ticks % 10 === 0) {
@@ -257,8 +266,17 @@ function tick() {
                 } else if(KING_ROOMS[mapState.current]) {
                     delay = 50;                                                 // 🔧 軍王之室：固定 5 秒復活，不受日光術/席琳的世界加速影響
                 } else {
-                    delay = (player.buffs.sk_sunlight > 0) ? 10 : 50;          // 50 tick = 5 秒（日光術約 1 秒）
-                    if (sherineWorldActive() && !isSiegeArea(mapState.current)) delay = Math.max(1, delay - 10);   // 🔮 席琳的世界：搜索時間 −1 秒（與日光術疊加）
+                    // 🐾 v3.0.27 重生延遲＝基準 50 tick(5秒) × 變身移動速度(pf.wlk·16=基準·越小越快) × 移動加速倍率(加速/勇敢/精靈餅乾)
+                    let _pfW = (player._setPoly && player._setPoly.wlk) ? player._setPoly.wlk          // 套裝變身優先（與 js/02 變身套用同優先序）
+                             : ((player.buffs.poly > 0 && player.poly && player.poly.wlk) ? player.poly.wlk : 16);   // 卷軸變身移動速度；未變身＝16
+                    let _mv = 1;   // 加速/勇敢/餅乾也加快「移動速度」→加快重生（與攻速同倍率·相乘疊加）
+                    if (player.buffs.haste > 0 || player._equipHaste) _mv *= 0.67;   // 加速術/裝備常駐加速 +33%
+                    if (player.buffs.brave > 0) _mv *= 0.67;                          // 勇敢藥水 +33%
+                    if (player.buffs.elfcookie > 0) _mv *= 0.85;                      // 精靈餅乾 +15%
+                    delay = Math.round(50 * (_pfW / 16) * _mv);
+                    if (player.buffs.sk_sunlight > 0) delay -= 10;                    // ☀️ v3.0.27 日光術：固定加快 1 秒（10 tick·由「設為1秒」改為「−1秒」）
+                    if (sherineWorldActive() && !isSiegeArea(mapState.current)) delay -= 10;   // 🔮 席琳的世界：固定加快 1 秒（與日光術疊加）
+                    delay = Math.max(1, delay);
                 }
                 if(mapState.spawnAt[i] == null) mapState.spawnAt[i] = nowT + delay; // 空格剛出現：排程 delay 後（一般／純BOSS房／軍王之室皆 5 秒）
                 if(nowT >= mapState.spawnAt[i]) { spawnMob(i); mapState.spawnAt[i] = null; }
@@ -274,6 +292,7 @@ function tick() {
         if(state.pDmgTick >= aspdTicks) {
             playerAttack();
             state.pDmgTick = 0;
+            state._pStunCycle = false;   // ⚔️ 硬直：每次攻擊後重置「本週期已硬直」旗標（下週期被擊可再延遲一次）
         }
     }
     

@@ -187,6 +187,8 @@ function ensureEquipBook() {
     if (player.inv.some(i => i.id === 'item_equip_book')) player.inv = player.inv.filter(i => i.id !== 'item_equip_book');
     player.inv.forEach(i => { if (EQUIP_ITEM_CAT[i.id]) player.equipDex[i.id] = true; });
     if (player.eq) for (let s in player.eq) { let e = player.eq[s]; if (e && e.id && EQUIP_ITEM_CAT[e.id]) player.equipDex[e.id] = true; }
+    // 🏛️ v3.0.61 倉庫庫存也補登錄（唯讀當前模式倉庫桶）：收集冊上線前入倉的裝備從未經 gainItem 登錄→圖鑑全暗（傳統模式裝備自帶強化、常整批入倉最易踩到）；讀檔時一併點亮
+    try { if (typeof loadWarehouse === 'function') { let _w = loadWarehouse(); if (_w && Array.isArray(_w.items)) _w.items.forEach(i => { if (i && i.id && EQUIP_ITEM_CAT[i.id]) player.equipDex[i.id] = true; }); } } catch (e) {}
     if (typeof saveEquipDex === 'function') saveEquipDex();   // 🗡️ 補登錄後回寫共用桶（把該角色現有裝備併入共用收集）
 }
 

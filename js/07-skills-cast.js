@@ -410,7 +410,7 @@ function castSkillInner(skId) {
             player.mp -= cost; player.cds.atkSk = getAutoCastInterval();
             if (sk.hpCost) player.hp = Math.max(1, player.hp - effHpCost(sk));
             let base = 50 + Math.max(0, (player.lv || 1) - 30);
-            targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); m.curHp -= dmg; m.justHit = 'magic'; mobWake(m); });
+            targets.forEach(m => { if (!m || m.curHp <= 0 || m._dead) return; let dmg = Math.max(1, Math.floor(base * fragileMult(m))); m.curHp -= dmg; m.justHit = 'magic'; m._spellHurt = true; mobWake(m); });   // 🎬 v3.0.14 _spellHurt：法術傷害→hurt 動畫(含頭目)
             logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，咆哮震懾全場，對所有敵人造成約 ${base} 點固定傷害。`, 'skill');
             targets.forEach(m => { if (m && m.curHp <= 0 && !m._dead) { let i = mapState.mobs.findIndex(x => x && x.uid === m.uid); if (i !== -1) killMob(i); } });
             renderMobs();
@@ -472,7 +472,7 @@ function castSkillInner(skId) {
                 dmg = Math.max(1, Math.floor(dmg * (1 + (player.d.magicDmg || 0) / 16) * mrMult(Math.max(0, effMr))));
             }
             dmg = Math.max(1, Math.floor(dmg * fragileMult(t) * illuLvMult(player) * wpnEnFinalMult(player.eq.wpn) * elementCounterMult(sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'none', t.e)));   // 🔮 幻術士等級加成 ×(1+等級/50)；🔧 武器強化 +11~+20 最終倍率；⚔️ 屬性剋制(僅武器傷害技吃武器屬性)
-            t.curHp -= dmg; t.justHit = sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'magic'; mobWake(t);
+            t.curHp -= dmg; t.justHit = sk.weaponDmg ? getWpnEle(player.eq.wpn, player.eq.wpn ? DB.items[player.eq.wpn.id] : null) : 'magic'; if (!sk.weaponDmg) t._spellHurt = true; mobWake(t);   // 🎬 v3.0.14 純魔法技→hurt(含頭目)
             if (sk.mpDmgPct && t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;   // 🔧 心靈破壞（魔法）：受一次魔法傷害後解除魔抗減半（與其他魔法路徑一致）
             logCombat(`施放 <span style="font-weight:700;color:#7dd3fc">${sk.n}</span>，對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 ${dmg} 點傷害。`, 'skill');
             if (t.curHp > 0 && sk.status) applyMobStatus(t, sk.status, sk.n);
@@ -619,6 +619,7 @@ function castSkillInner(skId) {
                     t.curHp -= totalDmg;
                     _burstDmg += totalDmg;   // 🔧 魔爆累計
                     t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic';
+                    t._spellHurt = true;   // 🎬 v3.0.14 法術傷害→hurt 動畫(含頭目·renderMobs 頭目閘放行)
                     let multiText = hitsLog.length > 1 ? `[${hitsLog.join(", ")}] (總和: ${totalDmg})` : `${totalDmg}`;
                     if (isCrit) multiText += " (爆擊!)";
                     totalDmgText.push(`對 <span class="${getMobColor(t.lv)}">${t.n}</span> 造成 <span class="${isCrit?'text-yellow-500 font-bold':'text-cyan-300'}">${multiText} 點傷害</span>`);
@@ -859,7 +860,7 @@ function autoCastSpells() {
     let atkSk = document.getElementById('sel-atk-skill').value;
     let atkThr = parseInt(document.getElementById('set-mp-atk').value) || 0;
     let atkTarget = getTarget();
-    if(atkSk && mpPct >= atkThr && atkTarget) {
+    if(atkSk && mpPct >= atkThr && atkTarget && (player.cds.castLock || 0) <= 0) {   // 🔮 天堂職業施法冷卻下限：castLock 未歸零前不自動施放攻擊魔法（法師快·王族/黑妖慢）
         // 標籤型即死技能（起死回生術→不死、釋放元素→元素）：
         //   僅在「目標具備對應標籤且非 BOSS」時才自動施放，避免對多羅等無效目標空放、浪費 MP 與冷卻。
         let skDef = DB.skills[atkSk];
@@ -867,7 +868,7 @@ function autoCastSpells() {
         let needTag = (skDef && skDef.tagReq) || null;   // 🔮 一般 tag 需求（骷髏毀壞=不死；BOSS 亦可，僅暈眩對 BOSS 無效）
         let _noRecast = skDef && skDef.noRecastStatus && atkTarget.st && atkTarget.st[skDef.noRecastStatus] > 0;   // 🔮 混亂/恐慌：目標已有該狀態則不重複施放
         let _tagOk = (!ikTag || (!atkTarget.boss && mobHasTag(atkTarget, ikTag))) && (!needTag || mobHasTag(atkTarget, needTag));
-        if(!_noRecast && _tagOk) castSkill(atkSk);
+        if(!_noRecast && _tagOk) { let _mpB = player.mp; castSkill(atkSk); if(player.mp < _mpB) player.cds.castLock = (player.d && player.d.castLock) || 12; }   // 🔮 實際施放(耗MP)才設施法鎖·職業定
     }
 
     let healSk = document.getElementById('sel-heal-skill').value;

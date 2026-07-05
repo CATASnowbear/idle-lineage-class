@@ -505,6 +505,7 @@ function allyCastMagic(ally, sk) {
         t.curHp -= totalDmg;
         _burstDmg += totalDmg;   // 🔧 魔爆累計
         t.justHit = (sk.ele && sk.ele !== 'none') ? sk.ele : 'magic';
+        t._spellHurt = true;   // 🎬 v3.0.14 傭兵法術傷害→hurt(含頭目)
         if (t.st && t.st.mrhalf > 0) t.st.mrhalf = 0;
         mobWake(t);
         if (sk.lifesteal && totalDmg > 0) { let h = Math.min(totalDmg, (ally.mhp || 0) - (ally.curHp || 0)); if (h > 0) { ally.curHp = Math.min(ally.mhp || 1, (ally.curHp || 0) + h); logCombat(`<span class="text-emerald-300 font-bold">【協力·${ally._allyName}】</span>吸取了 ${h} 點生命。`, 'heal', 'mercenary'); } }   // 🩸 v2.6.18 #中：吸血魔法（寒冷戰慄/吸血鬼之吻 lifesteal）回復戰鬥HP(curHp)，比照玩家 castSkill 624；上限本次傷害或缺血較小者
@@ -1815,6 +1816,7 @@ function alliesTick() {
         }
         if (ally._cleaveTicks > 0) ally._cleaveTicks--;   // 🔧 切割（雙手劍重擊觸發）：攻速+20% 持續倒數
         if (!_ccBlock && (ally._atkCd = (ally._atkCd || 0) - 1) <= 0) {
+            ally._stunCycle = false;   // ⚔️ 硬直：攻擊週期結束→重置旗標（下週期被擊可再延遲一次）
             if (_castBlock) {   // 🤝 Phase4：沉默/魔法封印→只能基本攻擊（不施放 _atkSkill 與治癒）
                 ally._atkCd = (_ast.slowAtk > 0 ? 40 : 20); allyAttackOnce(ally);
             } else if (ally._healSkill && allyTryHeal(ally)) {   // 🤝 Phase 3：隊伍有人低於門檻→改施放治癒（消耗本回合行動）
