@@ -59,6 +59,8 @@
     /* 手機:afk-mobile 把原版按鈕釘在 16px/14px 12px(vw 字級在縮放 viewport 下失準),主入口鈕跟進 */
     'body.m-mobile #main-menu .m-dex-entry-main,body.m-mobile #main-menu .m-wiki-entry-main{',
       'font-size:16px;padding:14px 12px;}',
+    /* ↗ 鈕去掉自身上下內距(原 py-4 會把整列撐得比原版按鈕高);列高由主鈕決定,↗ 靠 stretch 等高 */
+    '#main-menu .m-dex-entry-newtab,#main-menu .m-wiki-entry-newtab{padding-top:0;padding-bottom:0;}',
 
     /* 📢 公告跑馬燈:放在 #main-menu 第一個子層(首頁按鈕上方);紅底捲動,游標移上去暫停。
        (v3.0.40 作者登入頁改成藝術舞台後,標題不再是 #creation-screen 直接子層,改錨定 #main-menu。) */
