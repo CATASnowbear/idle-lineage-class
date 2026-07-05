@@ -2869,6 +2869,28 @@
     sk_helm_str2: ['沒有實際戰鬥數值效果(沿用原版「看穿隱身」，本作沒有隱身怪)']
   };
 
+  // 🤝 傭兵行為備註:此角色「當傭兵(協力)」時,某些技能與本尊親自玩不同(逐條追 js/06-status-allies 查證)。
+  //   只標『當傭兵時有差異(無效/禁用/隊長專屬/不使用)』的技能;正常可用的不標(免洗版)。
+  var MERC_NOTE = {
+    // 隊長專屬團隊增益:讀隊長 buff(teamAcBonus/teamDmgReduceMult/teamIlluAura/waterVitalHeal),當傭兵不提供
+    sk_elf_earthbless: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊防禦(AC)加成',
+    sk_elf_steelguard: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊減傷',
+    sk_elf_watervital: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊治癒加倍',
+    sk_illu_avatar: '無效——隊長專屬團隊增益,只有本尊當隊長時才給全隊減傷與額外傷害',
+    // 幻覺召喚:幻象照常召喚(需幻術精通),但團隊 stat 光環只由隊長提供
+    sk_illu_ogre: '仍會召喚歐吉幻象戰鬥,但全隊額外傷害/命中加成只由隊長本尊提供',
+    sk_illu_lich: '仍會召喚巫妖幻象戰鬥,但全隊魔法傷害加成只由隊長本尊提供',
+    sk_illu_golem: '仍會召喚鑽石高崙幻象戰鬥,但全隊防禦(AC)加成只由隊長本尊提供',
+    // 完全免疫類:傭兵禁用(自動維持會近乎無敵)
+    sk_abs_barrier: '禁用——完全免疫類技能不開放給傭兵(避免無敵)',
+    sk_elf_earthshield: '禁用——完全免疫類技能不開放給傭兵(避免無敵)',
+    sk_magic_shield: '禁用——完全免疫類技能不開放給傭兵(避免無敵)',
+    // 手動/自身專屬:傭兵不會施放
+    sk_teleport: '不會使用(手動施放類)',
+    sk_energy_sense: '不會使用(手動施放類)',
+    sk_resurrection: '無效——傭兵陣亡改由復活卷軸自動復活'
+  };
+
   // 🎮 遊戲內技能說明:忠實重現遊戲 buildSkillTipHTML(js/14 IIFE 私有·無法直呼)的內容——
   //   類型·階級 / 消耗·持續·冷卻 / 機制摘要 / 原文 msg(或 passive 的 desc)。刻意不含「需求 Lv」(另用 lvLabel 逐職業標)與技能名(卡片已有)。
   //   骰值換白話範圍(a~a×b)、防禦(AC)走 statDeltaTxt 正確處理正負;作者若改 tooltip 格式,回來對齊這段。
@@ -2919,6 +2941,7 @@
           '<b style="color:#fbbf24;">📐 實際數據</b>' +
           MAGIC_FACT[id].map(function (f) { return '<div style="margin-top:3px;">・' + esc(f) + '</div>'; }).join('') +
         '</div>' : '') +
+        (MERC_NOTE[id] ? '<div class="m-wiki-spell-merc"><b style="color:#a78bfa;">🤝 當傭兵時</b> ' + esc(MERC_NOTE[id]) + '</div>' : '') +
       '</div>' +
     '</div>';
   }
@@ -3085,6 +3108,7 @@
       '.m-wiki-spell-eff{font-size:13px;color:#cbd5e1;line-height:1.55;margin-top:3px;}',
       '.m-wiki-spell-lv{font-size:12px;color:#7dd3fc;margin-top:3px;}',
       '.m-wiki-spell-fact{font-size:12.5px;margin-top:6px;padding:7px 9px;border:1px solid #475569;border-left:3px solid #fbbf24;border-radius:8px;line-height:1.5;}',   /* 📐 實際數據金框(比照職業專精) */
+      '.m-wiki-spell-merc{font-size:12.5px;margin-top:6px;padding:7px 9px;border:1px solid #6d28d9;border-left:3px solid #a78bfa;border-radius:8px;line-height:1.5;background:#1c1633;}',   /* 🤝 傭兵行為備註(紫·對應遊戲協力色) */
       '.m-wiki-mfilter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px;}',
       '.m-wiki-mfbtn{flex:1 1 auto;min-width:52px;padding:6px 4px;border:1px solid #334155;background:#111c30;color:#cbd5e1;border-radius:7px;font-size:13px;font-weight:bold;cursor:pointer;font-family:inherit;}',
       '.m-wiki-mfbtn.on{background:#0e7490;border-color:#22d3ee;color:#fff;}'
