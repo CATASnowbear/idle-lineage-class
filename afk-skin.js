@@ -5,6 +5,8 @@
  *   1. 右上角放一個會上下微微飄動的「加掛版」副標,底下墊半透明裝飾底。
  *   2. 把我們外掛加在首頁的那群入口(掉落查詢/小百科/原作者資訊/設定)用一個
  *      標「🔌 外掛」的半透明外框包起來,像遊戲內的外掛面板。
+ *   3. 外掛入口按鈕套用原版首頁按鈕的皮(深藍漸層+金邊,抄 css/style.css 的
+ *      #main-menu > button),讓外掛鈕與作者的按鈕風格一致。
  *
  * 作法:外掛元素是別支外掛(afk-dex/afk-wiki/afk-syncinfo/afk-storage)append 到 #main-menu 的,
  *   本檔載入順序排最後、並用 MutationObserver + 重試,等它們到齊再把它們搬進外框(idempotent)。
@@ -43,6 +45,20 @@
       'padding:2px 14px;font-size:12.5px;font-weight:700;letter-spacing:2px;color:#cbd5e1;',
       'background:linear-gradient(180deg,rgba(40,52,72,.96),rgba(28,38,56,.96));',
       'border:1px solid rgba(148,163,184,.4);border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;}',
+
+    /* 外掛入口按鈕套原版皮:作者新登入頁的按鈕樣式只吃 #main-menu 的「直接子」button
+       (css/style.css 的 #main-menu > button),我們的按鈕包在 row/外框裡吃不到 → 在這裡抄同一組
+       宣告套上(深藍漸層+金邊)。⚠ 作者若改 css/style.css 該段風格,這裡要跟著換。 */
+    '#main-menu .m-dex-entry-row > button,#main-menu .m-wiki-entry-row > button,#main-menu #afk-stg-gear{',
+      'border-color:#b68a39;background:linear-gradient(180deg,rgba(35,55,83,.94),rgba(10,22,42,.96));',
+      'color:#f8e7bb;text-shadow:0 1px 2px #000;box-shadow:inset 0 0 9px rgba(116,165,219,.35),0 2px 5px #000;}',
+    '#main-menu .m-dex-entry-row > button:hover,#main-menu .m-wiki-entry-row > button:hover,#main-menu #afk-stg-gear:hover{filter:brightness(1.18);}',
+    /* 主入口鈕的字級/內距也對齊原版(↗ 鈕與 ⚙ 鈕維持各自尺寸,只換皮) */
+    '#main-menu .m-dex-entry-main,#main-menu .m-wiki-entry-main{',
+      'padding:clamp(5px,.72vw,11px) 4px;font-size:clamp(9px,1.03vw,16px);line-height:1.1;}',
+    /* 手機:afk-mobile 把原版按鈕釘在 16px/14px 12px(vw 字級在縮放 viewport 下失準),主入口鈕跟進 */
+    'body.m-mobile #main-menu .m-dex-entry-main,body.m-mobile #main-menu .m-wiki-entry-main{',
+      'font-size:16px;padding:14px 12px;}',
 
     /* 📢 公告跑馬燈:坐在「加掛版」副標下方、標題與首頁按鈕之間;紅底捲動,游標移上去暫停。margin-top 騰開上方浮動的副標。 */
     /* flex:0 0 auto + min-height:這條是 #creation-screen(手機是高度受限的 flex column)的子層,且自身 overflow:hidden
