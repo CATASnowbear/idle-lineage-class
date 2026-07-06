@@ -299,6 +299,7 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 ## Git / GitHub
 
 - commit / push 時**不要**帶上 Claude 作者資訊或 `Co-Authored-By` 標記(沿用全域規則)。
+- **手動出 Release 時,tag 時間=台灣時間,但 Windows git-bash 的 `TZ='Asia/Taipei' date` 不生效(沒 tzdata,會默默給 UTC;踩過 2026-07-06 出成 `v20260706-1248`)**→ 一律用 `date -u -d '+8 hours' +%Y%m%d-%H%M` 換算。tag/標題格式照舊:`vYYYYMMDD-HHMM`、`《放置天堂 - 以血為盟 vX.Y.Z》加掛版 <tag>`。
 
 ### 🔴 push 被擋→`git pull --rebase` 出現衝突時:不可盲目 `git add -A && rebase --continue`(會把衝突標記 commit 進去)
 
