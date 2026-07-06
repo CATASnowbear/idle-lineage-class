@@ -20,6 +20,8 @@
 
 ## 「合併原版」= 從原作者站台抓最新 `index.html` 更新本專案
 
+> **🛑 2026-07-06 起停止與原版自動合併(使用者決定,且不留可誤觸的入口)**:`.github/workflows/sync-upstream.yml` 與 `cf-sync-trigger/`(Cloudflare Worker,已 `wrangler delete`)**整個從 repo 刪除**,只留在 git 歷史。**背景不再有自動同步在跑**——本文件其他地方提到「每小時自動同步會搶 push / 背景把作者新版推上來」的警語已不適用(rebase 撞產生檔、`git pull` 先行等習慣保留無妨)。`scripts/sync-upstream.mjs`、`scripts/smoke-hooks.mjs` 仍在(手動合併/驗證還用得到)。若要恢復自動同步:從 git 歷史把那兩個目錄撈回來(`git log --oneline -- .github/workflows cf-sync-trigger` 找到刪除前的 commit → `git checkout <commit>^ -- .github/workflows cf-sync-trigger`),CF Worker 需重放 GH_PAT secret 再 `wrangler deploy`。以下自動化描述保留作恢復時參考。
+>
 > **已自動化**:`.github/workflows/sync-upstream.yml`(每小時 + 可手動)自動跑這套流程
 > ——腳本 `scripts/sync-upstream.mjs` 抓原版、補回外掛 `<script>`(保留各自 `?v=`)、補新圖、**重抓被作者換掉內容的既有圖**(比對 git blob SHA),
 > 再用 `scripts/smoke-hooks.mjs`(Playwright)驗五支外掛 `hooks OK`,**通過才自動 commit/push**;
