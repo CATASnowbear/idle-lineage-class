@@ -1,6 +1,15 @@
 let _tabPointerDown = false, _tabWheelActive = false, _tabWheelTimer = null, _tabRebuildPending = false, _tabThrottleTimer = null;
+let _tabScrollActive = false, _tabScrollTimer = null, _tabScrollSuppressUntil = 0, _tabRebuildForce = false;   // 🚀 捲動守衛（含觸控慣性/拖曳捲軸）
 const TAB_REBUILD_THROTTLE_MS = 250;
 const TAB_WHEEL_IDLE_MS = 180;   // 🚀 滾輪停止多久後才補做延後的重建
+const TAB_SCROLL_IDLE_MS = 250;  // 🚀 捲動(scroll 事件)停止多久後才補做延後的重建
+// 延後重建的統一補跑：期間若有 force 呼叫被延後,補跑也要 force(否則會漏掉簽章蓋不到的變化,如快速強化模式切換)
+function _tabFlushPending() {
+    if (!_tabRebuildPending) return;
+    _tabRebuildPending = false;
+    let f = _tabRebuildForce; _tabRebuildForce = false;
+    renderTabs(f);
+}
 function _initTabGuard() {
     let panel = document.getElementById('tab-content-panel');
     if (!panel || panel._tabGuardInit) return;
@@ -14,10 +23,25 @@ function _initTabGuard() {
         _tabWheelTimer = setTimeout(function(){
             _tabWheelTimer = null;
             _tabWheelActive = false;
-            if (_tabRebuildPending) { _tabRebuildPending = false; renderTabs(); }
+            _tabFlushPending();
         }, TAB_WHEEL_IDLE_MS);
     }, { passive:true, capture:true });
-    let _release = function(){ if (!_tabPointerDown) return; _tabPointerDown = false; if (_tabRebuildPending) { _tabRebuildPending = false; setTimeout(function(){ renderTabs(); }, 0); } };   // 放開後(讓 click 先觸發)再補一次重建
+    // 🚀 捲動守衛：pointer/wheel 蓋不到的兩個情境——①手機放開手指後的「慣性捲動」（pointerup 已過、清單還在滑,
+    //    此時重建會換掉 viewport、慣性被截斷 → 滑動一頓一頓）②桌機拖曳捲軸（捲軌不觸發面板 pointerdown）。
+    //    共同訊號是 scroll 事件（慣性期間持續觸發；scroll 不冒泡但走得到 capture）→ 捲動中把重建延後（連 force 都延後,
+    //    掉卡/擊殺路徑的 force 重建才不會在捲動中硬插進來）,停止 250ms 後統一補跑。
+    //    自家重建結束還原 scrollTop 也會觸發 scroll → 用 _tabScrollSuppressUntil 濾掉,避免每次重建都白進延後窗。
+    panel.addEventListener('scroll', function(){
+        if (performance.now() < _tabScrollSuppressUntil) return;
+        _tabScrollActive = true;
+        if (_tabScrollTimer) clearTimeout(_tabScrollTimer);
+        _tabScrollTimer = setTimeout(function(){
+            _tabScrollTimer = null;
+            _tabScrollActive = false;
+            _tabFlushPending();
+        }, TAB_SCROLL_IDLE_MS);
+    }, { passive:true, capture:true });
+    let _release = function(){ if (!_tabPointerDown) return; _tabPointerDown = false; if (_tabRebuildPending) { setTimeout(_tabFlushPending, 0); } };   // 放開後(讓 click 先觸發)再補一次重建
     document.addEventListener('pointerup', _release);
     document.addEventListener('pointercancel', _release);
 }
@@ -139,27 +163,64 @@ function renderClassicSkillBook(sDiv) {
         + '<div class="classic-skill-stat classic-skill-stat-mr">' + _mrv + '</div>'
         + '</div>';
 }
+// ===== 🚀 分區重建（2026-07-06 效能重構）=====
+// 舊版任何變動（掉一件雜物、扣一支箭）都把五個分頁全部 innerHTML 重刻（裝備欄＋武器/防具/道具三清單×全背包＋技能書）,
+// 背包大時一次重刻十幾 ms、戰鬥中最密每 250ms 一次。改為五區各自簽章,只重建內容真的變了的分頁：
+//   掉雜物 → 只重刻「道具」頁；撿武器 → 只重刻「武器」頁；裝備欄/技能書沒變就完全不動。
+// force=true 語意不變 = 全部重建（快速強化/廢品模式切換、傳統模式等「簽章蓋不到的顯示狀態」靠它保底）。
+let _tabSecSig = { ctx:'', wpn:'', arm:'', item:'', eq:'' };
 function renderTabs(force) {
     if(state.ff) return; // 補跑期間不刷新畫面
     // 🚀 使用者正按住分頁面板(點擊中)：延後非強制重建到放開後，避免按鈕被重繪掉而點擊失效
     if(!force && (_tabPointerDown || _tabWheelActive)) { _tabRebuildPending = true; return; }
+    // 🚀 捲動中(含放開手指後的慣性、拖曳捲軸)：連 force 都延後（掉卡/擊殺路徑的 force 重建才不會在捲動途中
+    //    硬換掉 viewport、截斷慣性造成頓挫），捲動停止 250ms 後由 _tabFlushPending 補跑（force 旗標保留）。
+    if(_tabScrollActive) { _tabRebuildPending = true; if(force) _tabRebuildForce = true; return; }
     // 🚀 戰鬥 tick 內的高頻變動(扣箭/耗肉)：合併成一次重建(節流 250ms)，降低狩獵卡頓；使用者操作(非 tick)維持即時回饋
     if(!force && state.inTick) { if(!_tabThrottleTimer) _tabThrottleTimer = setTimeout(function(){ _tabThrottleTimer = null; renderTabs(); }, TAB_REBUILD_THROTTLE_MS); return; }
     if(_tabThrottleTimer) { clearTimeout(_tabThrottleTimer); _tabThrottleTimer = null; }
-    // ===== 內容簽章：背包/裝備/技能等實際內容沒變時直接跳過重建 =====
-    // 避免戰鬥中(掉寶、射箭扣箭、夥伴耗肉等)頻繁重繪，導致游標所在欄位閃動、捲動跳回頂端、以及 mousedown/mouseup 落在不同元素造成點擊失效。
-    let _sig = (function(){
-        let inv = player.inv.map(i => itemSig(i) + '.' + (i.cnt||1) + '.' + (i.lock?1:0) + '.' + (i.junk?1:0)).join(';');   // 🔧 架構#3：改用統一簽章（修正先前祝福/詛咒同被壓成 1 的重繪遺漏）
-        let eq = Object.keys(player.eq).map(k => { let e = player.eq[k]; return e ? `${k}:${itemSig(e)}.${e.cnt||0}` : k+':'; }).join(',');   // 🔧 補上先前缺漏的 attr / anc
-        let dd = player.d;
-        return `${inv}#${eq}#${(player.skills||[]).join(',')}#${(player.grantedSkills||[]).join(',')}#${player.cls}#${player.lv}#${player.elfEle||''}#${dd.str+dd.dex+dd.con+dd.int+dd.wis}`;
-    })();
-    if(!force && _sig === renderTabs._sig) return;
-    renderTabs._sig = _sig;
-    // 真的要重建時，先記住各分頁的捲動位置，重建後還原（避免跳回頂端）
+    // ===== 分區內容簽章：只重建簽章有變的分頁（沒變的完全不動,游標/捲動/點擊都不受影響） =====
+    let dd = player.d;
+    // ctx = 影響「所有分頁」列顯示的共用狀態：職業/等級/技能(無法裝備·可學習判定、裝備欄等級鎖)、
+    //       基礎屬性和(裝備判定)、魔傷/魔防(技能書底部 S.power / M.resist)。ctx 一變 → 五頁全 dirty。
+    let _ctx = `${player.cls}#${player.lv}#${(player.skills||[]).join(',')}#${(player.grantedSkills||[]).join(',')}#${player.elfEle||''}#${dd.str+dd.dex+dd.con+dd.int+dd.wis}#${dd.magicDmg||0}#${dd.mr||0}`;
+    let _sw=[], _sa=[], _si=[];
+    player.inv.forEach(i => {
+        let d = DB.items[i.id]; if(!d) return;
+        let s = itemSig(i) + '.' + (i.cnt||1) + '.' + (i.lock?1:0) + '.' + (i.junk?1:0);   // 🔧 架構#3：統一簽章（祝福/詛咒不會被壓扁）
+        if(d.type === 'wpn') _sw.push(s); else if(d.type === 'arm' || d.type === 'acc') _sa.push(s); else _si.push(s);   // 與 _renderInvTabs 的分流一致
+    });
+    let _wSig=_sw.join(';'), _aSig=_sa.join(';'), _iSig=_si.join(';');
+    let _eSig = Object.keys(player.eq).map(k => { let e = player.eq[k]; return e ? `${k}:${itemSig(e)}.${e.cnt||0}` : k+':'; }).join(',')
+              + `#${dd.weightPct||0}.${dd.loadTier||0}#${JSON.stringify(player._sherineSetCnt||{})}`;   // 負重標頭與席琳套裝底色都畫在裝備分頁上
+    let _ctxChanged = !!force || _ctx !== _tabSecSig.ctx;
+    let _dirty = {
+        eq:    _ctxChanged || _eSig !== _tabSecSig.eq,
+        wpn:   _ctxChanged || _wSig !== _tabSecSig.wpn,
+        arm:   _ctxChanged || _aSig !== _tabSecSig.arm,
+        item:  _ctxChanged || _iSig !== _tabSecSig.item,
+        skill: _ctxChanged
+    };
+    _tabSecSig = { ctx:_ctx, wpn:_wSig, arm:_aSig, item:_iSig, eq:_eSig };
+    if(!_dirty.eq && !_dirty.wpn && !_dirty.arm && !_dirty.item && !_dirty.skill) return;
+    // 只記住「要重建的」分頁捲動位置，重建後還原（避免跳回頂端）
+    const _tabIds = { eq:'tab-equip', wpn:'tab-weapons', arm:'tab-armors', item:'tab-items', skill:'tab-skill' };
     let _scroll = {};
-    ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); _scroll[id] = sc ? sc.scrollTop : el.scrollTop; } });   // 🎨 v3.0.40 1.8皮膚：捲動位置存在內層 viewport（技能頁為 .classic-skill-grid-scroll）
+    Object.keys(_tabIds).forEach(k => { if(!_dirty[k]) return; let el = document.getElementById(_tabIds[k]); if(el) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); _scroll[k] = sc ? sc.scrollTop : el.scrollTop; } });   // 🎨 v3.0.40 1.8皮膚：捲動位置存在內層 viewport（技能頁為 .classic-skill-grid-scroll）
 
+    if(_dirty.eq) _renderEquipTab();
+    if(_dirty.wpn || _dirty.arm || _dirty.item) _renderInvTabs(_dirty);
+    if(_dirty.skill) renderClassicSkillBook(document.getElementById('tab-skill'));   // 🎨 v3.0.55 1.8 原版風格技能魔法視窗
+
+    // 還原捲動位置；程式還原 scrollTop 也會觸發 scroll 事件 → 先標記抑制窗,別讓捲動守衛把自家還原當成使用者捲動
+    _tabScrollSuppressUntil = performance.now() + 120;
+    Object.keys(_tabIds).forEach(k => { if(_scroll[k] == null) return; let el = document.getElementById(_tabIds[k]); if(el) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); if(sc)sc.scrollTop=_scroll[k]; else el.scrollTop=_scroll[k]; } });
+    updateSummonLock();
+    if (typeof refreshEquipmentWindow === 'function') refreshEquipmentWindow();
+}
+
+// 裝備分頁：負重標頭＋各部位欄（套裝/席琳套裝底色）。由 renderTabs 依 _dirty.eq 呼叫。
+function _renderEquipTab() {
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
     { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'classic-list-toolbar text-center py-0.5 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
     const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
@@ -218,20 +279,24 @@ function renderTabs(force) {
         }
         eDiv.appendChild(el);
     });
-    
-    // 👇 清空新的三個面板
-    let wDiv = document.getElementById('tab-weapons'); wDiv.innerHTML = '';
-    let aDiv = document.getElementById('tab-armors'); aDiv.innerHTML = '';
-    let iDiv = document.getElementById('tab-items'); iDiv.innerHTML = '';
+    decorateClassicInventoryTab(eDiv);   // 🎨 v3.0.40 1.8皮膚：內容搬入八格框可捲動區
+}
 
+// 武器/防具/道具三清單：一趟走完背包,但只重建 _dirty 標記的分頁（掉雜物就只刻「道具」頁,武器/防具不動）。
+function _renderInvTabs(_dirty) {
+    let wDiv = null, aDiv = null, iDiv = null;
     // ⚡🗑️ 快速操作頭部：武器/防具分頁＝[快速強化][快速廢品]；道具分頁＝[快速廢品]
-    wDiv.appendChild(buildQuickHeader('wpn'));
-    aDiv.appendChild(buildQuickHeader('arm'));
-    iDiv.appendChild(buildQuickHeader('item'));
+    if(_dirty.wpn)  { wDiv = document.getElementById('tab-weapons'); wDiv.innerHTML = ''; wDiv.appendChild(buildQuickHeader('wpn')); }
+    if(_dirty.arm)  { aDiv = document.getElementById('tab-armors');  aDiv.innerHTML = ''; aDiv.appendChild(buildQuickHeader('arm')); }
+    if(_dirty.item) { iDiv = document.getElementById('tab-items');   iDiv.innerHTML = ''; iDiv.appendChild(buildQuickHeader('item')); }
 
 player.inv.forEach(i => {
     if(!DB.items[i.id]) return;
     let d = DB.items[i.id];
+
+    // 🎯 物品分流：先決定去哪個分頁,該分頁這次沒變(_dirty=false)就直接跳過,不白刻
+    let _dest = (d.type === 'wpn') ? wDiv : (d.type === 'arm' || d.type === 'acc') ? aDiv : iDiv;
+    if(!_dest) return;
 
     // ===== 視覺狀態判定 =====
     let statusTag = '';
@@ -307,27 +372,10 @@ player.inv.forEach(i => {
         }
     }
     
-    // 🎯 物品分流邏輯
-    if (d.type === 'wpn') {
-        wDiv.appendChild(el); 
-    } else if (d.type === 'arm' || d.type === 'acc') {
-        aDiv.appendChild(el); 
-    } else {
-        iDiv.appendChild(el); 
-    }
+    _dest.appendChild(el);   // 🎯 物品分流（_dest 已在迴圈開頭依 type 決定）
 });
-    
     // 🎨 v3.0.40 1.8 物品介面：保留原清單事件與功能，只把內容搬入八格皮膚的可捲動區。
-    [eDiv,wDiv,aDiv,iDiv].forEach(decorateClassicInventoryTab);
-
-    // 🎨 v3.0.55 技能欄改用 1.8 原版風格技能魔法視窗（skill-window-1.8.png 皮膚·tier strip 導覽·底部 S.power=魔法傷害/M.resist=MR）。
-    //    取代原「依學習來源分組 ICON」排版；仍走 data-tip-skill tooltip、manualCast、updateSummonLock。
-    let sDiv = document.getElementById('tab-skill');
-    renderClassicSkillBook(sDiv);
-    // 還原各分頁捲動位置
-    ['tab-items','tab-weapons','tab-armors','tab-equip','tab-skill'].forEach(id => { let el = document.getElementById(id); if(el && _scroll[id] != null) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); if(sc)sc.scrollTop=_scroll[id]; else el.scrollTop=_scroll[id]; } });   // 🎨 v3.0.40 1.8皮膚：捲動位置還原到內層 viewport（技能頁為 .classic-skill-grid-scroll）
-    updateSummonLock();
-    if (typeof refreshEquipmentWindow === 'function') refreshEquipmentWindow();
+    [wDiv,aDiv,iDiv].forEach(x => { if(x) decorateClassicInventoryTab(x); });
 }
 
 // 🎨 v3.0.40 1.8 風格道具欄皮膚（移植自參考版）：把分頁內容搬進「八格框底圖」的可捲動 viewport，

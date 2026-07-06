@@ -149,7 +149,7 @@ function acquireCard(name, tier, count) {
     let rf = _cardRefundMsg(r.overflow);
     logSys(`<span class="${ct.col} font-bold">🎴 自動登錄「${name}」</span>` + (r.useN > 1 ? `<span class="text-slate-400">（${r.useN} 張）</span>` : '') + (rf ? `<span class="text-amber-300">（開通退費 ${rf}）</span>` : ''));
     if (cardDexTier(name) > oldTier && typeof calcStats === 'function') calcStats();   // 階級提升→重算地區完成加成
-    if ((r.overflow > 0 || count > r.useN) && typeof renderTabs === 'function') renderTabs(true);   // 有實體退費/多餘卡進背包→刷新道具欄
+    if ((r.overflow > 0 || count > r.useN) && typeof renderTabs === 'function') renderTabs();   // 有實體退費/多餘卡進背包→刷新道具欄（🚀 非 force：背包變動由分區簽章接住,戰鬥中走 250ms 節流,不再每殺一隻整組重刻五分頁）
     if (typeof _cardBookOpen !== 'undefined' && _cardBookOpen && typeof renderCardBook === 'function') renderCardBook();
 }
 function _cardDropRoll(name, tier, rate) {

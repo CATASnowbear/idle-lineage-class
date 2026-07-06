@@ -97,6 +97,8 @@ gh api repos/shines871/idle-lineage-class/git/trees/main?recursive=1 \
 
 ## ⭐ 核心原則:所有功能都用「外掛 JS」處理
 
+> **🔓 2026-07-06 起解禁:可以直接修改原作者程式碼(`js/*.js`/`css/*.css`/`index.html`)——因為已停止與原版同步,不再有「被覆蓋」問題(使用者明訂)。** 適用時機:修原作者的效能/行為問題「從源頭治」比外掛包裝乾淨時,直接改(首例:`js/10-ui-tabs.js` renderTabs 分區重建+捲動守衛)。注意:①改了 `js/*.js` 要同步更新 index.html 該檔的 `?v=`(慣例=內容 sha1 前 10 碼,`sha1sum js/<檔> | cut -c1-10`)並跑 `node scripts/stamp-sw-version.mjs`;②既有外掛照舊維護,新「功能」仍偏好外掛(檔案獨立好維護),直改保留給「修原作者的坑/效能」;③改前先 grep 外掛有沒有包住同一個函式(如 afk-fixes/afk-mobile 都包過 renderTabs),避免兩層邏輯打架。以下「嚴禁改原作者碼」的舊原則作廢,但「優雅降級」「存檔防呆」等仍有效。
+
 - 任何新功能(離線掛機、手機版面、存檔匯入匯出…)**一律寫成獨立的 `*.js` 檔**,放在專案根目錄,用 **monkey-patch / 從外面包住全域函式 / 注入 DOM·CSS** 的方式掛上去。
 - **嚴禁直接改 `index.html` 裡原作者的程式碼。** 對 `index.html` 唯一允許的改動,是在 `</body>` 前加上引用外掛的 `<script>` 標籤。
 - 外掛要能「優雅降級」:自我檢查需要的全域函式/元素是否存在,缺了就 `console.warn` 後安靜停用,**不可把遊戲弄壞**。
