@@ -385,6 +385,14 @@
         (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_flame_shadow', req: req, yield: 1, note: '消耗 +11 以上的指定惡魔武器，會繼承它的強化值／詞綴／席琳套裝效果' });
       });
     }
+    // ⚔️ 神聖執行團裝備:琉米埃爾客製製作(消耗 +7 以上戰士團頭盔/斗篷 + 素材,不在 CRAFT_RECIPES 裡,要另外補)
+    if (typeof LUMIEL_RECIPES !== 'undefined' && LUMIEL_RECIPES) {
+      LUMIEL_RECIPES.forEach(function (r) {
+        if (!r || !r.result) return;
+        var req = [{ id: r.src, cnt: 1, plus7: true }].concat(r.mats || []);
+        (_craftIndex[r.result] = _craftIndex[r.result] || []).push({ npcId: 'npc_lumiel', req: req, yield: 1, note: '消耗 +7 以上的「' + (r.srcName || r.src) + '」，會繼承它的強化值／詞綴／席琳套裝效果' });
+      });
+    }
   }
   function buildNpcInfo() {
     _npcInfo = {};
@@ -407,7 +415,7 @@
       var mats = rec.req.map(function (m) {
         if (m.id === 'gold') return '金幣 ×' + m.cnt;   // 金幣是貨幣(存 player.gold、不在 DB.items)→ 給中文、不做 dexlink(否則 fallback 會露出英文 "gold")
         var mn = (DB.items[m.id] && DB.items[m.id].n) || m.id;
-        return '<span class="m-dexlink" data-dexq="' + esc(mn) + '">' + esc(mn) + '</span>' + (m.plus11 ? '（須 +11 以上）' : '') + ' ×' + m.cnt;   // 🔗 材料名可點→查它哪來
+        return '<span class="m-dexlink" data-dexq="' + esc(mn) + '">' + esc(mn) + '</span>' + (m.plus11 ? '（須 +11 以上）' : m.plus7 ? '（須 +7 以上）' : '') + ' ×' + m.cnt;   // 🔗 材料名可點→查它哪來
       }).join('、');
       var y = (rec.yield && rec.yield > 1) ? '（一次產出 ' + rec.yield + ' 個）' : '';
       return '<div class="m-dex-craft-where">在 <b>' + where + '</b> 製作' + y + '</div>' +

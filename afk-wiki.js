@@ -1977,6 +1977,16 @@
         return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + dkWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源武器的強化值／詞綴／席琳套裝）</div>';
       }).join('');
     }
+    // ⚔️ 神聖執行團裝備:琉米埃爾客製製作(消耗 +7 以上戰士團裝備 + 素材,不在 CRAFT_RECIPES 裡)
+    if (typeof LUMIEL_RECIPES !== 'undefined' && LUMIEL_RECIPES) {
+      var lmInfo = npcInfo['npc_lumiel'] || { name: '琉米埃爾', town: '' };
+      var lmWhere = esc(lmInfo.name) + (lmInfo.town ? '（' + esc(lmInfo.town) + '）' : '');
+      html += '<div class="m-wiki-sub">⚔️ ' + lmWhere + '（神聖執行團裝備・客製）</div>';
+      html += LUMIEL_RECIPES.map(function (r) {
+        var mats = itemName(r.src) + '（須 +7 以上）×1' + ((r.mats && r.mats.length) ? '、' + r.mats.map(function (m) { return itemName(m.id) + '×' + m.cnt; }).join('、') : '');
+        return '<div class="m-wiki-kv"><b>' + esc(itemName(r.result)) + '</b>在 ' + lmWhere + ' 製作　材料：' + esc(mats) + '（會繼承來源戰士團裝備的強化值／詞綴／席琳套裝）</div>';
+      }).join('');
+    }
     return html;
   }
 
