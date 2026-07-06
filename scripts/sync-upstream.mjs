@@ -219,7 +219,12 @@ if (existsSync('assets')) {
   //   把 3 萬筆塞進去會讓它膨脹到 ~2-3MB、每次載入都多抓一次(踩 GitHub Pages 100GB/月流量)。
   //   動畫幀改走「一怪一雜湊」的 anim-manifest.json 對帳(見 4c-2)——作者換幀後玩家端會逐「怪」清舊快取、
   //   下次 on-demand 抓新版,不會像純 on-demand 那樣卡舊動畫。故這裡只把 anim/ 排除在「逐張」清單外。
-  const manifest = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/')).sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
+  // ⚠ 也要收 public/assets/(作者把登入圖放這:public/assets/login/*.png)——它們的 URL 路徑含 '/assets/',
+  //   SW fetch handler 會當圖桶 cache-first 快取,若不進 manifest 就「快取卻永不對帳」→ 作者換登入圖玩家卡舊(與 anim 同類坑)。
+  //   量小(~29 張)故直接併進逐張對帳,不必另立機制。(舊註解曾誤稱 public/『靠網路載入』不快取,實際會被快取。)
+  const assetFiles = walkAssets('assets').filter((p) => !p.startsWith('assets/anim/'));
+  const publicFiles = existsSync('public/assets') ? walkAssets('public/assets') : [];
+  const manifest = [...assetFiles, ...publicFiles].sort().map((p) => [p, gitBlobSha(readFileSync(p))]);
   writeFileSync('assets-manifest.json', JSON.stringify(manifest) + '\n');
 }
 
