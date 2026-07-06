@@ -97,6 +97,10 @@
     /* flex:0 0 auto + min-height:#main-menu 是 flex column 且自身 overflow:hidden
        →min-height:auto 退化成 0→會被 flex-shrink 壓扁、把文字上下裁掉(使用者回報「高度被裁」)。鎖死不縮、給足高度。 */
     '#afk-marquee{position:relative;flex:0 0 auto;width:100%;max-width:34rem;min-height:30px;margin:0 auto;overflow:hidden;border-radius:8px;border:1px solid rgba(230,110,110,.5);background:linear-gradient(180deg,rgba(96,16,16,.82),rgba(58,8,8,.82));padding:6px 0;box-shadow:inset 0 0 14px rgba(0,0,0,.35);}',
+    /* 框窄(對齊按鈕欄寬)、文字長 → 捲動文字在兩端被硬切在字中間,看起來像「被切掉」。
+       對整個框(靜止的可視窗)加水平淡出遮罩:文字/紅底/邊框在兩端柔化淡出,不再是突兀的硬切直角。
+       (遮罩要放在靜止的 #afk-marquee;放在會位移的 track 上淡出會跟著文字跑,固定不住框兩端。) */
+    '#afk-marquee{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 26px,#000 calc(100% - 26px),transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 26px,#000 calc(100% - 26px),transparent 100%);}',
     /* 無縫捲動:track 放兩份相同文字,translateX 只移 -50%(=一份寬)→ 看起來連續、且第一份一開始就在可視區
        (動畫沒跑/還沒開始也看得到字,不會像「padding-left:100%」那樣有一段空白期 → 修「字沒出現」)。 */
     '#afk-marquee .afk-mq-track{display:flex;width:max-content;animation:afkMq 26s linear infinite;}',
