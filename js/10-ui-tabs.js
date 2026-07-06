@@ -206,7 +206,7 @@ function renderTabs(force) {
     // 只記住「要重建的」分頁捲動位置，重建後還原（避免跳回頂端）
     const _tabIds = { eq:'tab-equip', wpn:'tab-weapons', arm:'tab-armors', item:'tab-items', skill:'tab-skill' };
     let _scroll = {};
-    Object.keys(_tabIds).forEach(k => { if(!_dirty[k]) return; let el = document.getElementById(_tabIds[k]); if(el) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); _scroll[k] = sc ? sc.scrollTop : el.scrollTop; } });   // 🎨 v3.0.40 1.8皮膚：捲動位置存在內層 viewport（技能頁為 .classic-skill-grid-scroll）
+    Object.keys(_tabIds).forEach(k => { if(!_dirty[k]) return; let el = document.getElementById(_tabIds[k]); if(el) { let sc=el.querySelector('.classic-skill-grid-scroll'); _scroll[k] = sc ? sc.scrollTop : el.scrollTop; } });   // 捲動位置：技能頁存在內層 .classic-skill-grid-scroll（1.8技能視窗皮膚）；裝備/武器/防具/道具四分頁皮膚已移除,捲動在分頁容器本身
 
     if(_dirty.eq) _renderEquipTab();
     if(_dirty.wpn || _dirty.arm || _dirty.item) _renderInvTabs(_dirty);
@@ -214,7 +214,7 @@ function renderTabs(force) {
 
     // 還原捲動位置；程式還原 scrollTop 也會觸發 scroll 事件 → 先標記抑制窗,別讓捲動守衛把自家還原當成使用者捲動
     _tabScrollSuppressUntil = performance.now() + 120;
-    Object.keys(_tabIds).forEach(k => { if(_scroll[k] == null) return; let el = document.getElementById(_tabIds[k]); if(el) { let sc=el.querySelector('.classic-inventory-viewport,.classic-skill-grid-scroll'); if(sc)sc.scrollTop=_scroll[k]; else el.scrollTop=_scroll[k]; } });
+    Object.keys(_tabIds).forEach(k => { if(_scroll[k] == null) return; let el = document.getElementById(_tabIds[k]); if(el) { let sc=el.querySelector('.classic-skill-grid-scroll'); if(sc)sc.scrollTop=_scroll[k]; else el.scrollTop=_scroll[k]; } });
     updateSummonLock();
     if (typeof refreshEquipmentWindow === 'function') refreshEquipmentWindow();
 }
@@ -222,7 +222,7 @@ function renderTabs(force) {
 // 裝備分頁：負重標頭＋各部位欄（套裝/席琳套裝底色）。由 renderTabs 依 _dirty.eq 呼叫。
 function _renderEquipTab() {
     let eDiv = document.getElementById('tab-equip'); eDiv.innerHTML = '';
-    { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'classic-list-toolbar text-center py-0.5 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
+    { let _wd = player.d || {}; let _t = _wd.loadTier || 0; let _hdr = document.createElement('div'); _hdr.className = 'text-center py-0.5 mb-1 rounded bg-slate-900/60 border border-slate-700 text-sm font-bold leading-tight' + (_t >= 1 ? ' cursor-help' : ''); if (_t >= 1) { _hdr.title = _t === 1 ? '負重50%↑：HP/MP不自然恢復' : (_t === 2 ? '負重82%↑：HP/MP不自然恢復、停自動施法、攻速變慢' : '負重100%↑：HP/MP不自然恢復、停自動施法、攻速大幅變慢'); } _hdr.innerHTML = `<span class="text-slate-400">負重 </span><span class="${getLoadColor(_t)}">${_wd.weightPct||0}%</span>`; eDiv.appendChild(_hdr); }
     const slots = [{k:'wpn',n:'武器'}, ...((player.cls === 'warrior' && (player.skills.includes('sk_warrior_dualaxe') || player.eq.offwpn)) ? [{k:'offwpn',n:'副手武器'}] : []), {k:'shield',n:'副手'},{k:'helm',n:'頭盔'},{k:'armor',n:'盔甲'},{k:'tshirt',n:'T恤'},{k:'cloak',n:'斗篷'},{k:'gloves',n:'手套'},{k:'boots',n:'長靴'},{k:'amulet',n:'項鍊'},{k:'ear1',n:'耳環'},{k:'ear2',n:'耳環'},{k:'ring1',n:'戒指'},{k:'ring2',n:'戒指'},{k:'ring3',n:'戒指'},{k:'ring4',n:'戒指'},{k:'belt',n:'腰帶'},{k:'pet',n:'寵物裝備'},{k:'doll',n:'魔法娃娃'},{k:'arrow',n:'箭矢'}];   // ⚔️ offwpn：戰士學會迅猛雙斧後顯示副手武器欄
     
     let setCheck = {}, _setSeen = {};
@@ -269,17 +269,16 @@ function _renderEquipTab() {
             let imgUrl = getIconUrl(d);
             // 👇 判斷如果裝備本身是祝福的，或者物品基底(卷軸)是祝福的，就套用螢光特效
             let glowClass = getGlowClass(eq, d);
-            let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="object-contain pointer-events-none ${glowClass}">`;
-            el.innerHTML = `<div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${getItemColor(eq)} font-bold">${getItemFullName(eq)}</span></div>`;
+            let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 ml-2 object-contain pointer-events-none ${glowClass}">`;
+            el.innerHTML = `<span class="text-slate-400 w-12">${s.n}</span><div class="flex items-center justify-end flex-1"><span class="${getItemColor(eq)} text-right font-bold">${getItemFullName(eq)}</span>${imgHtml}</div>`;
             el.onclick = () => openModal(eq, true, s.k);
         } else {
             let _rlv = (s.k === 'ring3') ? 55 : (s.k === 'ring4') ? 65 : (s.k === 'ear2') ? 50 : 0;   // 🔧 第3/4戒指欄、第2耳環欄等級需求
             let _locked = _rlv && player.lv < _rlv;
-            el.innerHTML = `<div class="classic-icon-box"></div><div class="classic-name-box"><span class="classic-slot-name">${s.n}</span><span class="${_locked ? 'text-red-400' : 'text-slate-500'}">${_locked ? '需 Lv' + _rlv : '- 空 -'}</span></div>`;
+            el.innerHTML = `<span class="text-slate-400 w-12">${s.n}</span><span class="${_locked ? 'text-red-400' : 'text-slate-600'}">${_locked ? '需 Lv' + _rlv : '- 空 -'}</span>`;
         }
         eDiv.appendChild(el);
     });
-    decorateClassicInventoryTab(eDiv);   // 🎨 v3.0.40 1.8皮膚：內容搬入八格框可捲動區
 }
 
 // 武器/防具/道具三清單：一趟走完背包,但只重建 _dirty 標記的分頁（掉雜物就只刻「道具」頁,武器/防具不動）。
@@ -337,7 +336,7 @@ player.inv.forEach(i => {
     let imgHtml = `<img src="${imgUrl}" onerror="this.style.opacity='0';" class="w-6 h-6 object-contain pointer-events-none ${glowClass}">`;
     
     // 內容組合 (加入了 statusTag)
-    let _rowInner = `<div class="classic-item-main"><div class="classic-icon-box">${imgHtml}</div><div class="classic-name-box"><span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span><span class="classic-item-flags">${statusTag} ${i.lock ? '<span class="text-red-400">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-amber-400 font-bold">[廢]</span>' : ''}</span></div></div>`;   // 🎨 v3.0.40 1.8皮膚列結構
+    let _rowInner = `<div class="flex items-center gap-2">${imgHtml}<span class="${getItemColor(i)} font-bold">${getItemFullName(i)}</span> ${statusTag} ${i.lock ? '<span class="text-xs text-red-500">[🔒]</span>' : ''} ${(i.junk && !i.lock) ? '<span class="text-xs text-amber-400 font-bold">[廢]</span>' : ''}</div>`;
 
     // ⚡ 快速強化模式：對應分頁啟用且為可強化裝備（未鎖定）時，右側顯示勾選欄，點整列切換勾選
     let _qeType = (d.type === 'wpn' && !d.isArrow) ? 'wpn' : ((d.type === 'arm' || d.type === 'acc') ? 'arm' : null);
@@ -374,22 +373,10 @@ player.inv.forEach(i => {
     
     _dest.appendChild(el);   // 🎯 物品分流（_dest 已在迴圈開頭依 type 決定）
 });
-    // 🎨 v3.0.40 1.8 物品介面：保留原清單事件與功能，只把內容搬入八格皮膚的可捲動區。
-    [wDiv,aDiv,iDiv].forEach(x => { if(x) decorateClassicInventoryTab(x); });
 }
-
-// 🎨 v3.0.40 1.8 風格道具欄皮膚（移植自參考版）：把分頁內容搬進「八格框底圖」的可捲動 viewport，
-//    工具列（負重/快速強化/快速廢品 sticky 列）保留在 viewport 外恆顯。列事件（點擊/雙擊）掛在 .list-item 上不受影響。
-function decorateClassicInventoryTab(div){
-    if(!div)return;
-    div.classList.add('classic-inventory-tab');
-    let viewport=document.createElement('div');
-    viewport.className='classic-inventory-viewport';
-    Array.from(div.children).filter(x=>!x.classList.contains('classic-list-toolbar')&&!x.classList.contains('sticky')).forEach(x=>viewport.appendChild(x));
-    let quick=Array.from(div.children).find(x=>x.classList.contains('sticky'));
-    if(quick)quick.classList.add('classic-list-toolbar');
-    div.appendChild(viewport);
-}
+// 🎨 1.8 八格框道具欄皮膚（decorateClassicInventoryTab）已依使用者要求移除（2026-07-06）：
+//    裝備/武器/防具/道具四分頁還原為無背景的原始清單；技能書分頁的 1.8 技能視窗皮膚保留。
+//    css/style.css 的 .classic-inventory-* 規則因無元素套用而自然失效，留檔無害。
 
 // ===== 召喚類技能互斥：迷魅 / 召喚 / 造屍 / 召喚屬性精靈 / 召喚強力屬性精靈 同時只能開啟一個 =====
 const SUMMON_BUFF_IDS = ['sk_zombie', 'sk_summon', 'sk_elf_summon', 'sk_elf_summon2'];
@@ -1200,7 +1187,7 @@ function _quickEnhanceUnit(d, startEn, goal, scrollStacks, useBless) {
 function buildQuickEnhanceHeader(type) {
     let st = quickEnh[type];
     let hdr = document.createElement('div');
-    hdr.className = 'classic-list-toolbar sticky top-0 z-10 bg-slate-800 pb-2';   // 🔧 遮擋條改用與框底色(.panel=#1e293b=slate-800)相同色→融入面板不突兀；仍為不透明：滾動時物品不會從按鈕上/下方透出；🎨 v3.0.40 1.8皮膚：標記工具列（保留在 viewport 外）
+    hdr.className = 'sticky top-0 z-10 bg-slate-800 pb-2';   // 🔧 遮擋條改用與框底色(.panel=#1e293b=slate-800)相同色→融入面板不突兀；仍為不透明：滾動時物品不會從按鈕上/下方透出
     // 🔧 表頭上緣亦覆蓋容器的 12px 上內距(p-3)：往上拉時 sticky 黏在裁切邊(top/margin-top:-12)、paddingTop:12 維持按鈕原位 → 物品也不會從按鈕「上方」透出（滾動後＝滾動前）。用 inline style（Tailwind CDN JIT 不保證新 class 即時生成）
     hdr.style.top = '-12px'; hdr.style.marginTop = '-12px'; hdr.style.paddingTop = '12px';
     if (!st.active) {
