@@ -1102,6 +1102,7 @@ function getWeightedGachaResult(doubleNonRare) {
 
     // 建立抽獎池並計算總權重
     for (let id in DB.items) {
+        if (TRAD_NO_SCROLLS[id] && tradNoScrolls()) continue;   // 🏛️ 僅經典+傳統：潘朵拉黑市／抽獎不上架施法卷軸（武器/盔甲/飾品＋變體）；一般+傳統照常
         let weight = DB.items[id].gachaWeight !== undefined ? DB.items[id].gachaWeight : 100;
         if (weight > 0) {
             if (doubleNonRare && weight !== 1) weight *= 2;   // 🔧 血盟野外特殊掉落：潘朵拉權重 1 以外的物品以 2 倍權重計算（權重100→200）
@@ -1169,7 +1170,7 @@ function refreshPandoraMarket(force) {
     let nowT = (typeof state !== 'undefined' && state) ? (state.ticks || 0) : 0;
     let m = player.pandoraMarket2;
     let changed = false, latest = null;
-    let bad = !m || !Array.isArray(m.slots) || m.slots.length !== PANDORA_SLOT_COUNT || m.slots.some(s => !s || !DB.items[s.id]);
+    let bad = !m || !Array.isArray(m.slots) || m.slots.length !== PANDORA_SLOT_COUNT || m.slots.some(s => !s || !DB.items[s.id] || (TRAD_NO_SCROLLS[s.id] && tradNoScrolls()));   // 🏛️ 經典+傳統:存檔貨架殘留施法卷軸(限制空窗期上架的)視同資料損壞→全面換貨,免玩家買到 gainItem 被擋、金幣白扣
     if (force || bad || (nowT - (m ? (m.lastTick || 0) : 0)) >= PANDORA_SLOT_TICKS * PANDORA_SLOT_COUNT) {
         // 初次進場／資料損壞／離線超過一圈：全面換貨（日誌只公告最新一件，不洗版）
         let slots = []; for (let i = 0; i < PANDORA_SLOT_COUNT; i++) slots.push(_pandoraStock(nowT));
@@ -1308,6 +1309,7 @@ function buyPandoraItem(i) {
     let msgEl = () => document.getElementById('pandora-msg');
     if (!s || !DB.items[s.id]) { let e = msgEl(); if (e) e.innerHTML = '<span class="text-red-400">商品已不存在。</span>'; return; }
     if (s.sold) { let e = msgEl(); if (e) e.innerHTML = '<span class="text-red-400">此商品已售出，請等待該格輪換。</span>'; return; }
+    if (TRAD_NO_SCROLLS[s.id] && tradNoScrolls()) { let e = msgEl(); if (e) e.innerHTML = '<span class="text-red-400">經典＋傳統模式無法取得施法卷軸。</span>'; return; }   // 🏛️ 縱深防護:gainItem 會擋掉卷軸,先在扣金幣前擋下,免金幣白扣
     if ((player.gold || 0) < s.price) { let e = msgEl(); if (e) e.innerHTML = `<span class="text-red-400">金幣不足！需 ${s.price.toLocaleString()} 金幣。</span>`; return; }
     player.gold -= s.price;
     _tradLootCtx = true;                              // 🏛️ 傳統模式：潘朵拉黑市裝備隨機自帶強化值

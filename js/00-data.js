@@ -1823,7 +1823,7 @@ const DB = {
                 { id: "npc_nikki", n: "尼奇", title: "雜貨商人", type: "shop", d: "硝煙散去後，尼奇在新得的城裡擺起攤子——攻城獲勝後開放的肯特城雜貨商。" },
                 { id: "npc_wh_kent", n: "巴歐", title: "倉庫", type: "warehouse", d: "巴歐替占領者看管著肯特城的庫房，存放物品與金幣，四個存檔角色共用。" },
                 { id: "npc_ally_b", n: "傭兵公會", title: "協力", type: "ally", d: "傭兵公會替你牽起命運的絲線，召喚其他存檔位的角色一起作戰。" },
-                { id: "npc_ismael", n: "伊賽馬利", title: "交換物品", type: "exchange", d: "伊賽馬利精於以物易物，以卷軸或金幣交換稀有的祝福卷軸與飾品卷軸。" },
+                { id: "npc_ismael", n: "伊賽馬利", title: "交換物品", type: "exchange", traditionalHide: true, d: "伊賽馬利精於以物易物，以卷軸或金幣交換稀有的祝福卷軸與飾品卷軸。" },
                 { id: "npc_pandora", n: "潘朵拉", title: "黑市", type: "exchange", d: "潘朵拉的黑市藏匿著來路不明的寶物，一次陳列 20 件商品，每 5 分鐘輪換一件，可直接購買。" },
                 { id: "npc_kent_guard", n: "肯特守衛隊長", title: "城堡護衛", type: "castleguard", d: "肯特守衛隊長以盾為誓，雇用守衛替你承擔 10% 一般攻擊傷害（HP 低於設定門檻時發動）。" },
                 { id: "npc_esti", n: "依詩蒂", title: "血盟", type: "pledge", d: "依詩蒂低聲訴說著血盟的古老誓言，為你尋找以血為盟的夥伴。" },
