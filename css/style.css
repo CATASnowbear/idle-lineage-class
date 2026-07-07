@@ -415,6 +415,10 @@
    VFX/提示/游標光點掛在 body（舞台外）→ getBoundingClientRect 取真實視窗座標，定位天生相容、不需改 VFX。fitStage() 已改為清空殘留 transform 的 no-op。 */
 #app-stage { position: fixed; inset: 0; }
 #game-screen { position: absolute; inset: 0; padding: 16px; }   /* 吃滿整個舞台（取代舊 max-w-[1600px] 置中→改用滿版 1920） */
+/* 🔧 三欄寬度鎖定：中央欄 min-width:0 → 內容(動畫怪原生尺寸圖 max-width:none,寬幅怪可超出格寬)不得把中央欄「最小內容寬」撐大;
+   側欄 flex-shrink:0 → 任何情況不被中央內容擠壓。否則寬怪一出場側欄被擠窄→中央變寬→戰鬥區(等比定高)跟著脹縮,怪換場整塊畫面反覆縮放(2026-07-07 玩家回報「好晃」)。 */
+#col-center { min-width: 0; }
+#col-left, #col-right { flex-shrink: 0; }
 /* 中央欄：地圖/戰鬥面板吃滿剩餘高度（最大化戰鬥與村莊畫面）；兩個日誌改「並排一列」(戰鬥日誌左、系統日誌右)、各佔一半寬 */
 #map-view-panel { flex: 1 1 0; min-height: 0; }
 #log-row { flex: 0 0 340px; min-height: 0; }   /* 日誌列固定高度(並排)；其餘高度全給地圖/戰鬥面板 */
