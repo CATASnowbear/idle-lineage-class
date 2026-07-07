@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  var q = { wpn: '', arm: '', item: '', wh: '' };   // 各清單的查詢字串(單一事實來源)
+  var q = { wpn: '', arm: '', item: '', whInv: '', whStore: '' };   // 各清單的查詢字串(單一事實來源)
   var TAB_KEYS = [
     { key: 'wpn', tabId: 'tab-weapons' },
     { key: 'arm', tabId: 'tab-armors' },
@@ -90,19 +90,20 @@
     window.renderTabs = wrapped;
   }
 
-  // ---- 倉庫(各分類頁共用;背包側/倉庫側兩清單一起過濾) ------------------------
+  // ---- 倉庫(各分類頁共用;背包側/倉庫側各自一個搜尋框、獨立過濾) ----------------
   function ensureWhSearch() {
-    var invList = document.getElementById('wh-inv-list');
-    var whList = document.getElementById('wh-store-list');
-    if (!invList || !whList) return;
-    var apply = function () { filterChildren(invList, q.wh, null); filterChildren(whList, q.wh, null); };
-    if (!document.getElementById('afk-isearch-wh')) {
-      var grid = invList.closest('.grid');
-      if (!grid || !grid.parentNode) return;
-      var box = makeBox('afk-isearch-wh', 'wh', apply);
-      grid.parentNode.insertBefore(box, grid);
-    }
-    apply();
+    [
+      { listId: 'wh-inv-list', key: 'whInv', inputId: 'afk-isearch-whinv' },
+      { listId: 'wh-store-list', key: 'whStore', inputId: 'afk-isearch-whstore' }
+    ].forEach(function (c) {
+      var list = document.getElementById(c.listId);
+      if (!list) return;
+      var apply = function () { filterChildren(list, q[c.key], null); };
+      if (!document.getElementById(c.inputId) && list.parentNode) {
+        list.parentNode.insertBefore(makeBox(c.inputId, c.key, apply), list);   // 插在欄標題與清單之間(清單自己捲,搜尋框恆在)
+      }
+      apply();
+    });
   }
 
   if (typeof window.renderWarehouseNPC === 'function' && !window.renderWarehouseNPC.__afkISearch) {
