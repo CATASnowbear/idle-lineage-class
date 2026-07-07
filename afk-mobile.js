@@ -658,6 +658,10 @@
       'body.m-mobile.mview-config #squad-tab-team,body.m-mobile.mview-config #squad-tab-skill{max-height:none !important;overflow:visible !important;}',
 
       'body.m-mobile{padding:0 !important;}',
+      /* iOS Safari 在 input 實際 font-size<16px 時 focus 會自動放大頁面(且新版 iOS 無視 maximum-scale),
+         遊戲的數字輸入(商店數量/自動喝水%/倉庫/製作…)幾乎都是 13~14px → 一點就放大。
+         統一提到 16px 門檻就不觸發;touch-action 順便取消雙擊縮放判定的 300ms 等待。 */
+      'body.m-mobile input[type="number"],body.m-mobile input[type="text"],body.m-mobile input:not([type]),body.m-mobile select,body.m-mobile textarea{font-size:16px !important;touch-action:manipulation;}',
       /* 🖥️→📱 中和作者 2026-06 新增的「1920×1080 固定設計舞台」#app-stage:它用 fitStage() 對舞台
          下 transform:scale(min(vw/1920,vh/1080)) 等比縮小整個桌機版面——手機上會把我們自建的版面
          一起縮成中央一小塊(0.2~0.8×),且 transform/will-change 會讓我們 fixed 的 #game-screen 改以
