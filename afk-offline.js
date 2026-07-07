@@ -480,7 +480,7 @@
     //   打輸=外層撞死即停;打不動=照實耗完時間。純 BOSS 圖因此自然接近全真模擬。
     var fastBossUid = null, fastBossName = '', fastBossStart = 0, fastBossMinHp = 1;
     var bossStats = {};   // {怪名: {ticks:實測耗時, safe:對打全程血量未低於安全線}}
-    var ticksPerKill = 0, consumePerTick = null, consumeAcc = null;
+    var ticksPerKill = 0, consumePerTick = null, consumeAcc = null, buffSecAcc = 0;
     var sampleFrom = 0, sampleKills0 = 0, sampleCnt0 = null, sampleGain0 = null, sampleMinHp = 1;
     var sampleEnd = fastEligible ? FAST_SAMPLE_TICKS : Infinity, sampleGrew = false;
     var lastLv = player.lv;
@@ -564,6 +564,23 @@
     function fastAdvance(adv) {   // 推進虛擬時間 adv 拍:done / state.ticks / 消耗品(每拍速率) / 自動賣廢品;回 false = 消耗品斷貨補不上
       done += adv; if (done > totalTicks) done = totalTicks;
       state.ticks += Math.round(adv);   // 絕對拍計數跟上(召喚/buff 的 endTick、賣廢品排程都依此)
+      // ⏳ 玩家 buff 是「秒數」計時、只在 tick() 每秒遞減 → 快速段不跑 tick() 會凍結。
+      //   凍結的後果:召喚物依絕對 endTick 在快速段照樣到期消失,但召喚 buff 的秒數還是正的
+      //   → 回線上後自動施放判定「buff 還在」不重新召喚,精靈就這樣不見(2026-07-07 玩家回報,妖精強力屬性精靈)。
+      //   同步扣秒讓 buff 跟時間走:歸零後回線上第一輪 autoActions 即自動重施(含重新召喚),與在線掛機行為一致。
+      buffSecAcc += adv / 10;
+      var _secs = Math.floor(buffSecAcc);
+      if (_secs > 0 && player && player.buffs) {
+        buffSecAcc -= _secs;
+        var _ended = false;
+        for (var bk in player.buffs) {
+          if (player.buffs[bk] > 0) {
+            player.buffs[bk] -= _secs;
+            if (player.buffs[bk] <= 0) { player.buffs[bk] = 0; _ended = true; }
+          }
+        }
+        if (_ended) { try { calcStats(); } catch (e) {} }   // 到期重算(比照 tick() 的 _buffEnded → calcStats)
+      }
       for (var id in consumePerTick) {   // 消耗品照取樣「每拍」速率扣;斷貨且補不上 → 戰局質變,退回全模擬
         consumeAcc[id] = (consumeAcc[id] || 0) + consumePerTick[id] * adv;
         while (consumeAcc[id] >= 1) { consumeAcc[id] -= 1; if (!fastConsumeOne(id)) return false; }
