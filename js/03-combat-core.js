@@ -208,8 +208,14 @@ function tick() {
     if(player.statuses.bleed > 0) alerts.push("出血");
     if(player.statuses.sleep > 0) alerts.push("沉睡中");
     if(!state.ff) {
-        document.getElementById('status-alerts').innerText = alerts.length > 0 ? "[" + alerts.join(", ") + "]" : "";
-        document.getElementById('status-alerts').className = alerts.length > 0 ? "text-red-400 text-sm font-bold anim-flash" : "text-sm font-normal";
+        // 🚀 每 tick 執行：內容沒變(常態)不寫 DOM，免每秒 10 次觸發重排（手機發熱）
+        let _alTxt = alerts.length > 0 ? "[" + alerts.join(", ") + "]" : "";
+        let _alEl = document.getElementById('status-alerts');
+        if (_alEl && _alEl._lastAlertTxt !== _alTxt) {
+            _alEl._lastAlertTxt = _alTxt;
+            _alEl.innerText = _alTxt;
+            _alEl.className = alerts.length > 0 ? "text-red-400 text-sm font-bold anim-flash" : "text-sm font-normal";
+        }
         renderStatusEffects(); // 每個 tick 即時刷新「狀態」欄的增益/減益顯示
     }
     

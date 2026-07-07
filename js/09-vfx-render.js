@@ -261,6 +261,12 @@ function _freezePosition(el, r) {
 function _updateFreezeFx() {
     try {
         if (window.__vfxOff) { for (let u in _freezeFx) { _freezeFx[u].el.remove(); delete _freezeFx[u]; } return; }
+        // 🚀 快速通道：無殘留特效且場上沒有任何冰凍怪(常態)→直接返回，免每幀 querySelectorAll+getBoundingClientRect(強制排版)
+        if (!Object.keys(_freezeFx).length) {
+            let _any = false;
+            if (typeof mapState !== 'undefined' && mapState.mobs) for (let m of mapState.mobs) { if (m && m.curHp > 0 && m.st && m.st.freeze > 0) { _any = true; break; } }
+            if (!_any) return;
+        }
         let ml = document.getElementById('mob-list'); if (!ml) return;
         let byUid = {};
         if (typeof mapState !== 'undefined' && mapState.mobs) for (let m of mapState.mobs) if (m) byUid[m.uid] = m;
@@ -420,6 +426,8 @@ function _vfxNumber(x, y, dmg, ele, big) {
     setTimeout(() => { if (el.parentNode) el.remove(); }, 1400);
 }
 // 命中衝擊：擴散圓環 + 數顆屬性火花（大傷害更大更紅、更多火花）
+// 📱 觸控裝置(手機/平板)輕量化：火花減半且不帶 box-shadow(模糊陰影是行動 GPU 合成的大宗耗電)——手機發燙主源之一
+const _VFX_LITE = (() => { try { return window.matchMedia && matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } })();
 function _vfxImpact(cx, cy, ele, big) {
     let layer = _vfxLayer();
     let col = big === 'crit' ? '#ff3b30' : (big === 'heavy' ? '#ffd54f' : (_VFX_ELE_COLOR[ele] || '#f1f5f9'));   // 爆擊紅／重擊金／其餘依屬性
@@ -433,13 +441,13 @@ function _vfxImpact(cx, cy, ele, big) {
     layer.appendChild(ring);
     ring.addEventListener('animationend', () => ring.remove(), { once: true });
     setTimeout(() => { if (ring.parentNode) ring.remove(); }, 800);
-    let n = big ? 7 : 4;
+    let n = _VFX_LITE ? (big ? 3 : 2) : (big ? 7 : 4);
     for (let i = 0; i < n; i++) {
         let sp = document.createElement('div'); sp.className = 'vfx-particle';
         let sz = 3 + Math.random() * 3;
         sp.style.width = sz + 'px'; sp.style.height = sz + 'px';
         sp.style.left = cx + 'px'; sp.style.top = cy + 'px';
-        sp.style.background = col; sp.style.boxShadow = '0 0 5px ' + col;
+        sp.style.background = col; if (!_VFX_LITE) sp.style.boxShadow = '0 0 5px ' + col;
         layer.appendChild(sp);
         let ang = Math.PI * 2 * Math.random();
         let dist = (big ? 34 : 22) + Math.random() * 26;

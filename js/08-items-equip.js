@@ -1112,7 +1112,8 @@ function renderStatusEffects() {
 
     let html = `狀態: ${buffs.length ? buffs.join(" / ") : "正常"}`;
     if(debuffs.length) html += `<div class="mt-2 font-bold border-t border-slate-700 pt-1">異常: ${debuffs.join(" / ")}</div>`;
-    el.innerHTML = html;
+    // 🚀 本函式每 tick(0.1秒) 被呼叫：內容沒變(常態)就不重設 innerHTML，免每秒 10 次重新解析+重排(手機發熱)
+    if(el._lastStatusHtml !== html) { el._lastStatusHtml = html; el.innerHTML = html; }
 }
 
 function _updateUIImpl() {

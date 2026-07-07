@@ -1004,7 +1004,24 @@
       'body.m-mobile #slot-list > div > button:first-child > img{width:40px !important;height:40px !important;}',   /* 👤 大頭貼放大(用原作者 img,不再自建 .m-slot-av) */
       'body.m-mobile #slot-list .afk-slot-extra{font-size:.78rem !important;}',   /* 📍 掛機地點 / ⏱ 已掛機多久:afk-slotinfo.js 附加,手機微調字級 */
       'body.m-mobile #slot-list > div > div{width:auto !important;flex:1 1 0 !important;min-width:0 !important;flex-direction:column !important;}',   /* 動作區:右 1/3,蓋掉固定 w-56,匯入/復原改上下堆疊 */
-      'body.m-mobile #slot-list > div > div > button{flex:1 1 0 !important;padding:.5rem .25rem !important;font-size:.8rem !important;}'   /* 匯入/復原:各佔右側一半高 */
+      'body.m-mobile #slot-list > div > div > button{flex:1 1 0 !important;padding:.5rem .25rem !important;font-size:.8rem !important;}',   /* 匯入/復原:各佔右側一半高 */
+
+      /* 🌡️ 手機降溫:把「無限循環的 drop-shadow/filter 呼吸動畫」改成靜態光暈(取原 keyframe 中間亮度)。
+         這些 filter 動畫每一幀都要 GPU 重算濾鏡,幾十個元素同時跑(背包發光裝備/怪物恩賜/席琳字樣)是手機
+         持續發熱的大宗;改靜態後「有光暈的樣子」保留、只是不再呼吸,GPU 只在元素真的變化時重算一次。
+         桌機(無 body.m-mobile)完全不受影響。原 keyframe 改版時這裡只是蓋不到新 class、自動失效無害。 */
+      'body.m-mobile .legend-glow{animation:none !important;filter:drop-shadow(0 0 6px rgba(217,138,4,.85));}',
+      'body.m-mobile .mana-glow{animation:none !important;filter:drop-shadow(0 0 6px rgba(56,189,248,.85));}',
+      'body.m-mobile .grace-glow{animation:none !important;filter:drop-shadow(0 0 6px rgba(239,68,68,.8));}',
+      'body.m-mobile .sherine-glow-icon{animation:none !important;filter:drop-shadow(0 0 6px rgba(74,222,128,.75));}',
+      'body.m-mobile .c-sherine{animation:none !important;text-shadow:0 0 5px rgba(74,222,128,.7),0 0 12px rgba(74,222,128,.45);}',
+      'body.m-mobile .bless-glow{animation:none !important;filter:drop-shadow(0 0 7px rgba(250,204,21,.8));}',
+      'body.m-mobile .curse-glow{animation:none !important;filter:drop-shadow(0 0 7px rgba(255,32,32,.8));}',
+      'body.m-mobile .ancient-glow{animation:none !important;filter:drop-shadow(0 0 7px rgba(168,85,247,.8));}',
+      'body.m-mobile .anc-bless-glow{animation:none !important;filter:drop-shadow(0 0 9px rgba(243,188,72,1)) drop-shadow(0 0 20px rgba(192,132,252,.7)) brightness(1.4) saturate(1.8);}',
+      'body.m-mobile .ancient-glow-strong{animation:none !important;filter:drop-shadow(0 0 10px rgba(184,104,250,1)) drop-shadow(0 0 22px rgba(150,60,235,.7)) brightness(1.4) saturate(1.8);}',
+      'body.m-mobile .bless-glow-strong{animation:none !important;filter:drop-shadow(0 0 10px rgba(253,224,71,1)) drop-shadow(0 0 22px rgba(234,180,20,.7)) brightness(1.4) saturate(1.8);}',
+      'body.m-mobile .tri-glow{animation:none !important;filter:drop-shadow(0 0 10px rgba(245,158,11,1)) drop-shadow(0 0 24px rgba(239,68,68,.6)) brightness(1.5) saturate(1.9);}'
     ].join('\n');
     var s = document.createElement('style');
     s.id = 'm-style';
