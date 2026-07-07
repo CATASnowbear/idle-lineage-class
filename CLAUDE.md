@@ -237,6 +237,7 @@
 
 - commit / push 時**不要**帶上 Claude 作者資訊或 `Co-Authored-By` 標記(沿用全域規則)。
 - GitHub Pages 站台:`https://pp771007.github.io/idle-lineage-class/`(本 fork,非原作者 shines871)。
+- **🔀 commit / push 節奏(使用者明訂・2026-07-07)**:一個功能做完(含自測)就 commit 一個,**不要主動 push、也不要在 commit 階段 bump `?v=` 或跑 stamp-sw-version**——版本號 bump 與 stamp 屬於「push / 發版」流程,等使用者說要 push 或發版時才跑 `/prepush` 一次處理(那時把這段期間所有改過的檔一次 bump)。「每次 push 前的檢查清單」照舊,只是觸發點是 push、不是 commit。
 
 ### 🔴 `git pull --rebase` 出現衝突時:不可盲目 `git add -A && rebase --continue`(會把衝突標記 commit 進去)
 
