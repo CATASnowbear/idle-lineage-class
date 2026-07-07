@@ -910,17 +910,10 @@
          沒有巢狀就沒有哪層的爭議,iOS/安卓都正常。桌機維持原本各自捲(滑鼠滾輪無此問題)。 */
       'body.m-mobile #wh-inv-list,body.m-mobile #wh-store-list{max-height:none !important;overflow:visible !important;}',
 
-      /* 潘朵拉黑市卡片:原作用「左圖固定 112px + 右購買鈕固定 84px」的橫向列(行內 height:120px),
-         手機窄寬下中間名稱/說明/價格欄被擠到只剩約 20px → 文字一字一行整個糊掉。改成直向堆疊:
-         圖示置中、資訊欄取消固定高度與 truncate 正常換行、購買鈕整條寬。scope 在卡片唯一的 .max-w-xl,
-         作者若重排此卡規則自動失效(不會壞);桌機(無 m-mobile)完全不受影響。 */
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch{flex-direction:column !important;height:auto !important;align-items:center !important;gap:10px !important;}',
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch > div{width:100% !important;height:auto !important;}',
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:first-child{width:96px !important;height:96px !important;align-self:center !important;}',   /* 圖示框維持方形、置中 */
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:nth-child(2){height:auto !important;text-align:center !important;}',
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:nth-child(2) .truncate{white-space:normal !important;overflow:visible !important;}',   /* 名稱/價格不再被 truncate 切掉 */
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:nth-child(2) .overflow-y-auto{overflow:visible !important;max-height:none !important;}',   /* 說明欄不限高、整段顯示 */
-      'body.m-mobile #interaction-content .max-w-xl .items-stretch > div:last-child button{width:100% !important;height:auto !important;flex-direction:row !important;gap:8px !important;padding:11px !important;}',   /* 購買鈕整條寬、圖示+字並排 */
+      /* 潘朵拉黑市(20 格輪播櫥窗):桌機 4 欄在手機窄寬下每格只剩 ~85px,名稱/價格/購買鈕塞不下 → 改 2 欄。
+         能力 tooltip 走滑鼠 hover,手機點卡片(非購買鈕)會觸發 mouseenter 顯示、點別處收起,堪用。
+         scope 在 js/14 面板加的 .pandora-grid(inline 4 欄要 !important 才蓋得過);版面再改自動失效。 */
+      'body.m-mobile #interaction-content .pandora-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}',
 
       /* 村莊頁頂部:村名(text-3xl)+「安全區域」提示在手機佔掉一截高度 → 縮字級與上下間距 */
       'body.m-mobile #town-view{padding:10px 12px !important;gap:5px !important;}',
