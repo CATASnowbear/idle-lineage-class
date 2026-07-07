@@ -1032,7 +1032,6 @@ function renderBianBless(el) {
         </div>`;
 }
 function ismaelBuyAcc() {
-    if (tradNoScrolls()) { alert('🏛️ 經典＋傳統模式無法購買施法卷軸。'); return; }   // 🏛️ 縱深防護：僅經典+傳統封鎖（伊賽馬利在該模式已隱藏，不可達）；一般+傳統可購買，與可見性閘 tradNoScrolls 及 gainItem 一致
     if (!ismaelAccAvailable()) { alert('本次購買額度已用完，攻城獲勝後可再購買 1 張。'); return; }
     if (player.gold < 1000000) { alert(`金幣不足（需 1,000,000，目前 ${player.gold.toLocaleString()}）。`); return; }
     player.gold -= 1000000;
@@ -1377,7 +1376,6 @@ function renderTownNPCs(townId) {
         }
         if (npc.darkOnly && player.cls !== 'dark') return;   // 🔧 黑暗妖精限定試煉：其他職業看不到
         if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：隱藏克里斯特/碧恩/漢（無法賦予祝福與精通）
-        if (npc.traditionalHide && tradNoScrolls()) return;   // 🏛️ 僅經典+傳統：隱藏肯特城兌換 NPC（伊賽馬利）；一般+傳統照常可兌換（卷軸有用·供賦予祝福/飾品卷軸）
         let el = document.createElement('div');
         el.className = 'bg-slate-800 border border-slate-600 rounded-lg p-3 hover:bg-slate-700 transition-colors cursor-pointer flex flex-col justify-between';
         
@@ -1454,7 +1452,6 @@ function interactNPC(npcId, townId) {
     let npc = DB.towns[townId].npcs.find(n => n.id === npcId);
     if(!npc) return;
     if (npc.classicHide && player.classicMode) return;   // 🔥 經典模式：克里斯特/碧恩/漢 不可互動（縱深防護，正常情況卡片已不渲染）
-    if (npc.traditionalHide && tradNoScrolls()) return;   // 🏛️ 僅經典+傳統：肯特城兌換 NPC（伊賽馬利）不可互動（縱深防護）；一般+傳統照常
     _activePanel = null;   // 開啟新面板：先清除自動刷新標記，由對應 render 視需要重新設定
 
     // 🔧 v2.6.77 倉庫 NPC：浮動倉庫直接覆蓋在村莊 NPC 清單上，不切入舊式 NPC 互動畫面
