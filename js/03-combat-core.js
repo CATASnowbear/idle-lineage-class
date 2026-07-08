@@ -667,7 +667,7 @@ function spawnMob(idx) {
     if (_elderRoom) {
         let _ab = mapState.mobs.filter(m => m && m.boss && m.curHp > 0 && !m._dead);
         if (_ab.length >= 2) _elderBossOk = false;
-        else if (_ab.length === 1) _elderBossOk = (Date.now() - (_ab[0]._bornMs || Date.now())) >= 180000;
+        else if (_ab.length === 1) _elderBossOk = (state.ticks - (_ab[0]._bornTick != null ? _ab[0]._bornTick : state.ticks)) >= 1800;   // 3 分鐘＝1800 拍：用遊戲時鐘 state.ticks（離線補跑會正確流逝；原本用牆鐘 Date.now 在壓縮時間裡永遠湊不到→離線第 2 隻不出）
     }
     let wantBoss = (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (!_elderRoom || _elderBossOk) && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (_elderRoom ? Math.random() < 0.05 : Math.random() < 0.01)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
@@ -735,7 +735,7 @@ function spawnMob(idx) {
     }
     let base = DB.mobs[mobId];
     if(!base) return;
-    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: Date.now() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用）；_born：出生序（鎖定最早出生用）
+    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus(), _bornTick: state.ticks };   // 🏛️ _bornTick：生成時的遊戲拍數（長老之室 BOSS 3 分鐘節流用·改用 state.ticks 讓離線補跑也正確）；_born：出生序（鎖定最早出生用）
     // 弓：場上原本沒有任何敵人時，第一個出現的敵人不論主動/被動，都強制視為被動（搭配弓攻擊3秒延遲，可先手放風箏）
     if(!base.boss && player.eq.wpn && DB.items[player.eq.wpn.id] && DB.items[player.eq.wpn.id].isBow && !mapState.mobs.some((m, j) => m && j !== idx)) {
         mapState.mobs[idx].beh = '被動';   // 頭目除外，維持主動
