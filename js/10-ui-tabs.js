@@ -1784,6 +1784,7 @@ function _allySkillOptions(ally, kind, cur) {
 }
 
 function renderSquadPanel() {
+    if (state.ff) return;   // 🚀 快轉(離線/背景補跑)：傭兵倒地/復活/升級會直接呼叫本函式(繞過 tick 尾端的 !state.ff 渲染守衛)→整塊 innerHTML 重建會在畫面上觸發倒地動畫並白費效能。統一擋在源頭；補跑結束後由正常 updateUI 再畫一次最終狀態。
     let panel = document.getElementById('squad-panel');
     if (!panel) return;
     if (!_autoCollapseInit) { _autoCollapseInit = true; }   // 🔧 v2.6.76 收合偏好停用：自動化設定已改分頁內嵌(v2.6.74)、傭兵隊伍面板取消收合恆展開（舊 fb5_*_collapsed 偏好不再套用·防「收合過就永遠展不開」）
