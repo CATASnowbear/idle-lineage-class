@@ -1515,12 +1515,16 @@ function _partySpriteXs() {
     let five = true; try { five = (typeof backSlotsActive !== 'function') || backSlotsActive(); } catch (e) {}
     return five ? { P: '45.5%', A: ['23%', '66%', '83.5%'] } : { P: '39%', A: ['28%', '62%', '72%'] };
 }
-// 🗡️ 依「上場傭兵數 n」把第 i 隻沿戰場橫向平均分布在 [A[0], A[末]]% 之間，避免 4 隻以上全擠在最右格(原 A[min(i,2)] 只有 3 個 x 站位)。
-//   王族最多 7 傭兵才會用到 3 格以外的位置；n=1 維持在最左格(等同原本單傭兵站位)。前後深度仍由 _partyRankBottom 依仇恨值錯開。
+// 🗡️ 依「上場傭兵數 n」把傭兵沿戰場橫向平均分布，並「中央留一格給主角站」(原 A[min(i,2)] 只有 3 個 x 站位·4 隻以上全擠最右)。
+//   做法:把 [A[0], A[末]] 切成 n+1 個等距站位(n 傭兵＋主角)，主角占「最接近 P」的那格，傭兵依序填其餘格、跳過主角那格→主角中央永遠有淨空、傭兵左右分列。
+//   n=3 時算出 ≈ 原本的 [23,66,83.5]（主角 45.5 居中），與舊版一致；王族最多 7 隻才用到更多格。前後深度仍由 _partyRankBottom 依仇恨值錯開。
 function _allyXPct(i, n, xs) {
-    let lo = parseFloat(xs.A[0]), hi = parseFloat(xs.A[xs.A.length - 1]);
-    if (!(n > 1)) return lo;
-    return lo + (hi - lo) * (Math.min(i, n - 1) / (n - 1));
+    let lo = parseFloat(xs.A[0]), hi = parseFloat(xs.A[xs.A.length - 1]), pc = parseFloat(xs.P);
+    let m = n + 1;                                                              // n 傭兵 + 主角 = m 個等距站位
+    let step = (hi - lo) / (m - 1);
+    let pIdx = Math.max(0, Math.min(m - 1, Math.round((pc - lo) / step)));      // 主角占「最接近 P」的那格
+    let slot = (i < pIdx) ? i : i + 1;                                         // 傭兵跳過主角那格
+    return lo + step * slot;
 }
 let _allySpriteStates = {};   // slot → { act, t, prevHp, el, imgs, key, skGen }
 let _partyBottoms = null;     // 每輪 _allySpritesApply 先算：{ P: bottom, <slot>: bottom }（權重高=前=bottom 小·主玩家 sprite 於 _playerMorphApply 消費）
