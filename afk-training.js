@@ -83,6 +83,9 @@
       m = mobs[i];
       if (m && m._train) { m.curHp = TRAIN_HP; m._dead = false; before[m.uid] = TRAIN_HP; }
     }
+    // 🤝 傭兵也打不死（木人場只量輸出、不該讓隊員倒地）：開拍前把 HP 墊到天文數字→這拍怎麼被怪打都不歸零→不觸發「倒下」；仍會被打到，反擊/居合照常。收拍後再補回實際上限供顯示。
+    var allies = (player && player.allies) || [];
+    for (i = 0; i < allies.length; i++) { if (allies[i]) allies[i].curHp = TRAIN_HP; }
     _origTick.apply(this, arguments);
     // 收拍後：量每隻掉血＝這拍受到的傷害，累計後補回
     var tickTotal = 0;
@@ -105,6 +108,8 @@
     // 玩家打不死：收拍補滿（被打才會觸發反擊/居合，故不在開拍前補）
     if (player.hp < player.mhp) player.hp = player.mhp;
     player.dead = false;
+    // 🤝 傭兵收拍補滿（同玩家）：curHp/MP 回實際上限供顯示；清掉萬一殘留的倒地旗標與復活冷卻
+    for (i = 0; i < allies.length; i++) { var _a = allies[i]; if (!_a) continue; _a.curHp = _a.mhp; if (_a.mp < _a.mmp) _a.mp = _a.mmp; if (_a._downed) { _a._downed = false; _a._reviveCd = 0; } }
     if ((++hudTickAcc % 3) === 0) refreshHud();   // 節流：每 3 拍刷一次 HUD
   };
 
