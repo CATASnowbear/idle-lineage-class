@@ -280,21 +280,22 @@
       if (typeof window.renderTabs !== 'function' || window.renderTabs.__mBagDefer) return;
       var origRT = window.renderTabs;
       var THROTTLE_MS = 250, SELSEL = '#tab-weapons,#tab-armors,#tab-items,#tab-equip,#tab-skill,#item-modal';
-      var dirty = false, lastRun = -1e9, trail = null;
+      var dirty = false, dirtyForce = false, lastRun = -1e9, trail = null;   // dirtyForce:延後期間有沒有 force 呼叫——補跑只在真的有 force 被延後時才 force,免得掉寶的非強制重繪被升級成 force、繞過核心 renderTabs 的「快速廢品/強化選擇模式凍結」守衛
       function now() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
       function bagOpen() { return document.body.classList.contains('mview-bag'); }
       function selOpen() { var ae = document.activeElement; try { return !!(ae && ae.tagName === 'SELECT' && ae.closest && ae.closest(SELSEL)); } catch (e) { return false; } }
-      function schedTrail(delay) { if (!trail) trail = setTimeout(function () { trail = null; if (dirty) run([true]); }, delay); }
+      function markDirty(force) { dirty = true; dirtyForce = dirtyForce || !!force; }
+      function schedTrail(delay) { if (!trail) trail = setTimeout(function () { trail = null; if (dirty) { var f = dirtyForce; run([f]); } }, delay); }
       function run(args) {
-        if (selOpen()) { dirty = true; schedTrail(200); return; }   // 下拉開著時不重建(會把它關掉)→ 比照 afk-fixes select-guard,延後
-        dirty = false; lastRun = now(); return origRT.apply(window, args || [true]);
+        if (selOpen()) { markDirty(args && args[0]); schedTrail(200); return; }   // 下拉開著時不重建(會把它關掉)→ 比照 afk-fixes select-guard,延後
+        dirty = false; dirtyForce = false; lastRun = now(); return origRT.apply(window, args || [true]);
       }
       var wrapped = function () {
         if (!detectMobile()) return origRT.apply(this, arguments);
-        if (!bagOpen()) { dirty = true; return; }                  // 戰鬥/設定畫面看不到背包 → 跳過,記 dirty
+        if (!bagOpen()) { markDirty(arguments[0]); return; }       // 戰鬥/設定畫面看不到背包 → 跳過,記 dirty
         var t = now();
         if (t - lastRun >= THROTTLE_MS) return run(arguments);     // 節流窗外 → 立即(自己的操作即時)
-        dirty = true; schedTrail(THROTTLE_MS - (t - lastRun));     // 窗內(連續掉寶)→ 併入 trailing
+        markDirty(arguments[0]); schedTrail(THROTTLE_MS - (t - lastRun));   // 窗內(連續掉寶)→ 併入 trailing
       };
       wrapped.__mBagDefer = true;
       window.renderTabs = wrapped;

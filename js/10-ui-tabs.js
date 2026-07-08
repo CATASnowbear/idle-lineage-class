@@ -10,6 +10,10 @@ function _tabFlushPending() {
     let f = _tabRebuildForce; _tabRebuildForce = false;
     renderTabs(f);
 }
+// 🗑️⚡ 任一分頁的快速廢品/快速強化「選擇模式」進行中（renderTabs 的凍結守衛與 autoSortInventory 共用）
+function _anyQuickSelectActive() {
+    return quickJunk.wpn.active || quickJunk.arm.active || quickJunk.item.active || quickEnh.wpn.active || quickEnh.arm.active;
+}
 function _initTabGuard() {
     let panel = document.getElementById('tab-content-panel');
     if (!panel || panel._tabGuardInit) return;
@@ -176,6 +180,10 @@ function renderTabs(force) {
     // 🚀 捲動中(含放開手指後的慣性、拖曳捲軸)：連 force 都延後（掉卡/擊殺路徑的 force 重建才不會在捲動途中
     //    硬換掉 viewport、截斷慣性造成頓挫），捲動停止 250ms 後由 _tabFlushPending 補跑（force 旗標保留）。
     if(_tabScrollActive) { _tabRebuildPending = true; if(force) _tabRebuildForce = true; return; }
+    // 🗑️⚡ 快速廢品/快速強化「選擇模式」進行中：掉落等非強制重繪一律延後——重建會把整塊 DOM 換掉，
+    //    手指還沒放開元素就被換走、點擊失效（玩家表現=物品一直跳動點不到）。使用者自身操作（勾選/全選/確認/取消）
+    //    走 force 即時回饋；離開模式的 force 重繪把延後期間的掉落一次補上（_qjSync 已負責把新掉落納入面板狀態）。
+    if(!force && _anyQuickSelectActive()) { _tabRebuildPending = true; return; }
     // 🚀 戰鬥 tick 內的高頻變動(扣箭/耗肉)：合併成一次重建(節流 250ms)，降低狩獵卡頓；使用者操作(非 tick)維持即時回饋
     if(!force && state.inTick) { if(!_tabThrottleTimer) _tabThrottleTimer = setTimeout(function(){ _tabThrottleTimer = null; renderTabs(); }, TAB_REBUILD_THROTTLE_MS); return; }
     if(_tabThrottleTimer) { clearTimeout(_tabThrottleTimer); _tabThrottleTimer = null; }
@@ -1464,6 +1472,7 @@ let _autoSortAt = -99999;
 function autoSortInventory() {
     if (!player || !Array.isArray(player.inv) || typeof state === 'undefined' || !state.running) return;   // 遊戲未開始（創角配發起始道具等）不排
     if (player.autoSellOn === false) return;   // 🔗 與自動販賣同開關（undefined 視為開）
+    if (_anyQuickSelectActive()) return;   // 🗑️⚡ 選擇模式進行中不排序（sort+force 重繪會繞過凍結守衛，害清單位移點不到）
     if (state.ticks - _autoSortAt < 100) return;   // ⏲️ 10 秒節流（100 ticks）
     _autoSortAt = state.ticks;
     player.inv.sort(invSortCmp);
