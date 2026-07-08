@@ -857,7 +857,7 @@
     ]},
     { t: '🏹 敏捷（DEX）', lines: [
       '遠距離（弓）<b>傷害、命中、爆擊率</b>的主要來源。',
-      '同時提升你自己的<b>防禦(AC)與迴避(ER)</b>——越高越不容易被怪打中：迴避 ＝ 敏捷 ÷ 2（無條件捨去、最多 +30）；防禦逐級見下表（最多 -26）。'
+      '同時提升你自己的<b>防禦(AC)與迴避(ER)</b>——越高越不容易被怪打中：迴避 ＝ 敏捷 ÷ 2（無條件捨去、最多 +30）；防禦見下方「換算公式」（敏捷 8~59 每 +3 −1，最多 −26）。'
     ]},
     { t: '❤️ 體質（CON）', lines: [
       '<b>體質讓「每升一級的 HP 成長」更多</b>：體質貢獻的每級 HP ＝（體質−8）× 成長率，無上限、越高越多。成長率：騎士／龍騎士／戰士 <b>1.5</b>、法師／妖精 <b>0.8</b>、王族 <b>0.75</b>、黑暗妖精／幻術士 <b>0.5</b>。<b>實際每級 HP 還要再加各職業固定的每級成長</b>（與體質無關），所以總量比這份更高。',
@@ -2279,33 +2279,33 @@
     // fx＝每個效果的「換算公式／規則」(照 js/01 的計算函式寫)。線性的直接給公式；分段查表的(rate 隨數值浮動)如實標「分段」+封頂，不硬湊假公式。
     var COLS = {
       str: (typeof getStrMeleeDmg === 'function') ? [
-        { h: '近戰傷害', fx: '分段成長（低段約每 +2 力量 +1，高段變慢）；力量 79↑ 封頂 +45', f: function (v) { return sgn(getStrMeleeDmg(v)); } },
-        { h: '近戰命中', fx: '分段成長（約每 +1~2 力量 +1）；力量 80↑ 封頂 +60', f: function (v) { return sgn(getStrMeleeHit(v)); } },
-        { h: '爆擊率', fx: '分段：力量 40 起 +1%，逐段升到 80↑ 的 9%', f: function (v) { return getStrMeleeCrit(v) + '%'; } }
+        { h: '近戰傷害', fx: '原作逐格對照表（每點增量不固定，低段約每 +2 力量 +1）；力量 79↑ 封頂 +45，每級精確值見下表', f: function (v) { return sgn(getStrMeleeDmg(v)); } },
+        { h: '近戰命中', fx: '原作逐格對照表（每點增量不固定，多為每 +1~2 力量 +1）；力量 80↑ 封頂 +60，見下表', f: function (v) { return sgn(getStrMeleeHit(v)); } },
+        { h: '爆擊率', fx: '力量 40~44＝1%、45~49＝2%、50~59＝3%、60~64＝4%、65~69＝5%、70~74＝7%、75~79＝8%、80↑＝9%', f: function (v) { return getStrMeleeCrit(v) + '%'; } }
       ] : [],
       dex: (typeof getDexRangedDmg === 'function') ? [
-        { h: '遠程傷害', fx: '分段成長；敏捷 80↑ 封頂 +36', f: function (v) { return sgn(getDexRangedDmg(v)); } },
-        { h: '遠程命中', fx: '分段成長（敏捷 7＝−3 起）；敏捷 80↑ 封頂 +74', f: function (v) { return sgn(getDexRangedHit(v)); } },
-        { h: '爆擊率', fx: '分段：敏捷 40 起 +1%，升到 80↑ 的 8%', f: function (v) { return getDexRangedCrit(v) + '%'; } },
-        { h: '防禦(AC)', fx: '敏捷 8~59：每 +3 敏捷 防禦 −1；60↑ 變慢，最多 −26（不是單純 敏捷÷N）', f: function (v) { return getDexAC(v); } },
+        { h: '遠程傷害', fx: '原作逐格對照表（每點增量不固定，低段約每 +3 敏捷 +1）；敏捷 80↑ 封頂 +36，見下表', f: function (v) { return sgn(getDexRangedDmg(v)); } },
+        { h: '遠程命中', fx: '原作逐格對照表（多為每 +1 敏捷 +1、少數 +2/+4 跳點；敏捷 7＝−3 起）；80↑ 封頂 +74，見下表', f: function (v) { return sgn(getDexRangedHit(v)); } },
+        { h: '爆擊率', fx: '敏捷 40~44＝1%、45~49＝2%、50~59＝3%、60~64＝4%、65~69＝5%、70~74＝6%、75~79＝7%、80↑＝8%', f: function (v) { return getDexRangedCrit(v) + '%'; } },
+        { h: '防禦(AC)', fx: '敏捷 8~59：每 +3 敏捷 −1（−2→−19）；再來 60＝−20、63＝−21、66＝−22、70＝−23、73＝−24、77＝−25、78↑＝−26（逐段對照，不是敏捷÷N）', f: function (v) { return getDexAC(v); } },
         { h: '迴避', fx: '敏捷 ÷ 2（無條件捨去；敏捷以 60 計，上限 +30）', f: function (v) { return sgn(getDexER(v)); } }
       ] : [],
       con: (typeof getConHpRegenMax === 'function') ? [
-        { h: 'HP恢復/次', fx: '分段成長（體質 11 起）；體質 80↑ 封頂 1~45', f: function (v) { var m = getConHpRegenMax(v); return m > 0 ? ('1~' + m) : '—'; } },
-        { h: '藥水額外', fx: '分段：體質 20 起 +1%，升到 80↑ 的 +13%', f: function (v) { return '+' + getConPotionPct(v) + '%'; } }
+        { h: 'HP恢復/次', fx: '原作逐格對照表（體質 11 起，每點增量不固定）；體質 80↑ 封頂 1~45，見下表', f: function (v) { var m = getConHpRegenMax(v); return m > 0 ? ('1~' + m) : '—'; } },
+        { h: '藥水額外', fx: '體質 20~24＝+1%，之後大致每 +5 體質 +1%（56~60＝+8%…）；80↑ 封頂 +13%', f: function (v) { return '+' + getConPotionPct(v) + '%'; } }
       ] : [],
       int: (typeof getIntMagicDmg === 'function') ? [
-        { h: '魔法傷害', fx: '分段成長；智力 80↑ 封頂 +25', f: function (v) { return sgn(getIntMagicDmg(v)); } },
-        { h: '魔法命中', fx: '分段成長（智力 8＝−4 起）；智力 80↑ 封頂 +25', f: function (v) { return sgn(getIntMagicHit(v)); } },
-        { h: '爆擊率', fx: '分段：智力 35 起 +1%，升到 80↑ 的 11%', f: function (v) { return getIntMagicCrit(v) + '%'; } },
-        { h: '額外MP', fx: '約每 +4 智力 +1（智力 11~59）；智力 80↑ 封頂 +25', f: function (v) { return sgn(getIntExtraMp(v)); } },
-        { h: 'MP消耗減', fx: '分段成長；智力 45↑ 封頂 30%', f: function (v) { return getIntMpReduce(v) + '%'; } }
+        { h: '魔法傷害', fx: '原作逐格對照表（每點增量不固定，多處 +2/+4 跳點）；智力 80↑ 封頂 +25，見下表', f: function (v) { return sgn(getIntMagicDmg(v)); } },
+        { h: '魔法命中', fx: '原作逐格對照表（智力 8＝−4 起，每點增量不固定）；智力 80↑ 封頂 +25，見下表', f: function (v) { return sgn(getIntMagicHit(v)); } },
+        { h: '爆擊率', fx: '智力 35~39＝1%、40~44＝2%、45~49＝4%、50~54＝5%、55~59＝6%、60~64＝7%、65~69＝8%、70~74＝9%、75~79＝10%、80↑＝11%', f: function (v) { return getIntMagicCrit(v) + '%'; } },
+        { h: '額外MP', fx: '智力 11~59：每 +4 智力 +1（+2→+14）；60↑ 轉逐格對照（夾 +2 跳點），80↑ 封頂 +25', f: function (v) { return sgn(getIntExtraMp(v)); } },
+        { h: 'MP消耗減', fx: '原作逐格對照表（智力 8 起，多為每 +1~2 智力 +1%）；智力 45↑ 封頂 30%，見下表', f: function (v) { return getIntMpReduce(v) + '%'; } }
       ] : [],
       wis: (typeof getWisMpRegen === 'function') ? [
-        { h: 'MP恢復/次', fx: '分段成長；精神 80↑ 封頂 +27', f: function (v) { return getWisMpRegen(v); } },
-        { h: '擊殺回MP', fx: '分段：精神 11 起 +1，升到 79↑ 的 16', f: function (v) { return getWisMpOnKill(v); } },
+        { h: 'MP恢復/次', fx: '原作逐格對照表（精神 9 起，每點增量不固定）；精神 80↑ 封頂 +27，見下表', f: function (v) { return getWisMpRegen(v); } },
+        { h: '擊殺回MP', fx: '分段（段寬不一）：精神 11~14＝1、15~19＝2、20~24＝3、25~29＝5、30~37＝6、38~44＝7、45~52＝8、53~59＝9、60~63＝10、64~66＝11、67~69＝12、70~72＝13、73~75＝14、76~78＝15、79↑＝16', f: function (v) { return getWisMpOnKill(v); } },
         { h: '魔防', fx: '(精神 − 10) × 4（精神 11 起；精神以 60 計，上限 +200）', f: function (v) { return sgn(getWisMR(v)); } },
-        { h: '藍藥加成', fx: '分段成長（精神 11 起）；見逐級表', f: function (v) { return sgn(getWisBlueBonus(v)); } }
+        { h: '藍藥加成', fx: '原作逐格對照表（精神 11 起，每點增量不固定）；每級精確值見下表', f: function (v) { return sgn(getWisBlueBonus(v)); } }
       ] : [],
       cha: [
         { h: '召喚段數', fx: '魅力 ÷ 6（無條件捨去，最少 1；魅力以 60 計）', f: function (v) { return Math.max(1, Math.floor(Math.min(60, v) / 6)); } },
