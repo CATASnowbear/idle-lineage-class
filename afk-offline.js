@@ -594,12 +594,36 @@
       } catch (e) {}
       return true;
     }
+    function fastTeleportAwayBoss(m) {   // 🌀 快速段模擬「遇 BOSS 自動瞬移逃離」:1:1 重放線上 autoActions 的瞬移分支;成功甩掉回 true
+      try {
+        var tChk = document.getElementById('set-teleport');
+        if (!(tChk && tChk.checked)) return false;                                   // 未勾選自動瞬移 → 照打
+        if (!m || !m.boss || m.noAutoTeleport) return false;                         // 非 BOSS、或 noAutoTeleport(卡瑞/樓梯/傳送門)→ 不瞬移
+        // 頂層條件照 autoActions(js/07):攻城區/純BOSS房 BOSS 即目標不逃;攀登/遺忘之島/時空裂痕本就不走快速段,照抄不吃虧
+        if (isSiegeArea(mapState.current) || PURE_BOSS_MAPS.includes(mapState.current)) return false;
+        if (state.prideClimb || state.oblivion || state.riftRun) return false;
+        // 找卷軸,沒有就依 set-auto-buy-teleport 自動買 1 張(與 autoActions 完全一致)
+        var item = player.inv.find(function (i) { return i && i.id === 'scroll_teleport'; });
+        if (!item) {
+          var buyChk = document.getElementById('set-auto-buy-teleport');
+          var cost = shopPrice(DB.items.scroll_teleport.p);
+          if (buyChk && buyChk.checked && player.gold >= cost) { player.gold -= cost; gainItem('scroll_teleport', 1, true, true); item = player.inv.find(function (i) { return i && i.id === 'scroll_teleport'; }); }
+        }
+        if (!item) return false;                                                     // 沒卷軸又補不到 → 退回硬打,同線上
+        var bossUid = m.uid;
+        // ⭐ 直接走原作 useItem(silent):它自己套用「行動限制/軍王之室/prideTeleportBlocked(排名·11F+無支配符)/遺忘之島」全部守衛,
+        //    被擋下就不 consume、不 doTeleport(卷軸不會白扣)。不自己刻地圖清單 → 永遠與原作瞬移規則同步,不分歧。
+        useItem(item.uid, true);
+        return !mapState.mobs.some(function (x) { return x && x.uid === bossUid; });  // BOSS 已被 doTeleport 清掉 → 瞬移成功;仍在(被守衛擋下)→ 回 false 照打
+      } catch (e) { return false; }
+    }
     function fastKillOnce() {   // 快速段的一步:出一隻 → 即殺 → 清算;回 false = 退回全模擬
       try {
         spawnMob(0);
         var _m0 = mapState.mobs[0];
         if (!_m0) return false;
         if (_m0.boss) {   // 🐲 BOSS:第一次(或未驗證安全)→ 真模擬對打;已驗證安全 → 即殺但時間按「該 BOSS 實測耗時」推進
+          if (fastTeleportAwayBoss(_m0)) return fastAdvance(1);   // 🌀 勾了自動瞬移且該圖可瞬移 → 甩掉不打(約當一拍;下輪 spawnMob 重抽)
           var _bs = bossStats[_m0.n];
           if (_bs && _bs.safe) {
             killMob(0);
