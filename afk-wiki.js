@@ -2276,45 +2276,47 @@
       return '<div class="m-wiki-stbl-wrap"><table class="m-wiki-stbl"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>';
     }
     // 各屬性的「效果欄位」定義(呼叫 index.html 全域函式;缺函式→空陣列優雅降級)。逐級表與封頂表共用同一份。
+    // fx＝每個效果的「換算公式／規則」(照 js/01 的計算函式寫)。線性的直接給公式；分段查表的(rate 隨數值浮動)如實標「分段」+封頂，不硬湊假公式。
     var COLS = {
       str: (typeof getStrMeleeDmg === 'function') ? [
-        { h: '近戰傷害', f: function (v) { return sgn(getStrMeleeDmg(v)); } },
-        { h: '近戰命中', f: function (v) { return sgn(getStrMeleeHit(v)); } },
-        { h: '爆擊率', f: function (v) { return getStrMeleeCrit(v) + '%'; } }
+        { h: '近戰傷害', fx: '分段成長（低段約每 +2 力量 +1，高段變慢）；力量 79↑ 封頂 +45', f: function (v) { return sgn(getStrMeleeDmg(v)); } },
+        { h: '近戰命中', fx: '分段成長（約每 +1~2 力量 +1）；力量 80↑ 封頂 +60', f: function (v) { return sgn(getStrMeleeHit(v)); } },
+        { h: '爆擊率', fx: '分段：力量 40 起 +1%，逐段升到 80↑ 的 9%', f: function (v) { return getStrMeleeCrit(v) + '%'; } }
       ] : [],
       dex: (typeof getDexRangedDmg === 'function') ? [
-        { h: '遠程傷害', f: function (v) { return sgn(getDexRangedDmg(v)); } },
-        { h: '遠程命中', f: function (v) { return sgn(getDexRangedHit(v)); } },
-        { h: '爆擊率', f: function (v) { return getDexRangedCrit(v) + '%'; } },
-        { h: '防禦(AC)', f: function (v) { return getDexAC(v); } },
-        { h: '迴避', f: function (v) { return sgn(getDexER(v)); } }
+        { h: '遠程傷害', fx: '分段成長；敏捷 80↑ 封頂 +36', f: function (v) { return sgn(getDexRangedDmg(v)); } },
+        { h: '遠程命中', fx: '分段成長（敏捷 7＝−3 起）；敏捷 80↑ 封頂 +74', f: function (v) { return sgn(getDexRangedHit(v)); } },
+        { h: '爆擊率', fx: '分段：敏捷 40 起 +1%，升到 80↑ 的 8%', f: function (v) { return getDexRangedCrit(v) + '%'; } },
+        { h: '防禦(AC)', fx: '敏捷 8~59：每 +3 敏捷 防禦 −1；60↑ 變慢，最多 −26（不是單純 敏捷÷N）', f: function (v) { return getDexAC(v); } },
+        { h: '迴避', fx: '敏捷 ÷ 2（無條件捨去；敏捷以 60 計，上限 +30）', f: function (v) { return sgn(getDexER(v)); } }
       ] : [],
       con: (typeof getConHpRegenMax === 'function') ? [
-        { h: 'HP恢復/次', f: function (v) { var m = getConHpRegenMax(v); return m > 0 ? ('1~' + m) : '—'; } },
-        { h: '藥水額外', f: function (v) { return '+' + getConPotionPct(v) + '%'; } }
+        { h: 'HP恢復/次', fx: '分段成長（體質 11 起）；體質 80↑ 封頂 1~45', f: function (v) { var m = getConHpRegenMax(v); return m > 0 ? ('1~' + m) : '—'; } },
+        { h: '藥水額外', fx: '分段：體質 20 起 +1%，升到 80↑ 的 +13%', f: function (v) { return '+' + getConPotionPct(v) + '%'; } }
       ] : [],
       int: (typeof getIntMagicDmg === 'function') ? [
-        { h: '魔法傷害', f: function (v) { return sgn(getIntMagicDmg(v)); } },
-        { h: '魔法命中', f: function (v) { return sgn(getIntMagicHit(v)); } },
-        { h: '爆擊率', f: function (v) { return getIntMagicCrit(v) + '%'; } },
-        { h: '額外MP', f: function (v) { return sgn(getIntExtraMp(v)); } },
-        { h: 'MP消耗減', f: function (v) { return getIntMpReduce(v) + '%'; } }
+        { h: '魔法傷害', fx: '分段成長；智力 80↑ 封頂 +25', f: function (v) { return sgn(getIntMagicDmg(v)); } },
+        { h: '魔法命中', fx: '分段成長（智力 8＝−4 起）；智力 80↑ 封頂 +25', f: function (v) { return sgn(getIntMagicHit(v)); } },
+        { h: '爆擊率', fx: '分段：智力 35 起 +1%，升到 80↑ 的 11%', f: function (v) { return getIntMagicCrit(v) + '%'; } },
+        { h: '額外MP', fx: '約每 +4 智力 +1（智力 11~59）；智力 80↑ 封頂 +25', f: function (v) { return sgn(getIntExtraMp(v)); } },
+        { h: 'MP消耗減', fx: '分段成長；智力 45↑ 封頂 30%', f: function (v) { return getIntMpReduce(v) + '%'; } }
       ] : [],
       wis: (typeof getWisMpRegen === 'function') ? [
-        { h: 'MP恢復/次', f: function (v) { return getWisMpRegen(v); } },
-        { h: '擊殺回MP', f: function (v) { return getWisMpOnKill(v); } },
-        { h: '魔防', f: function (v) { return sgn(getWisMR(v)); } },
-        { h: '藍藥加成', f: function (v) { return sgn(getWisBlueBonus(v)); } }
+        { h: 'MP恢復/次', fx: '分段成長；精神 80↑ 封頂 +27', f: function (v) { return getWisMpRegen(v); } },
+        { h: '擊殺回MP', fx: '分段：精神 11 起 +1，升到 79↑ 的 16', f: function (v) { return getWisMpOnKill(v); } },
+        { h: '魔防', fx: '(精神 − 10) × 4（精神 11 起；精神以 60 計，上限 +200）', f: function (v) { return sgn(getWisMR(v)); } },
+        { h: '藍藥加成', fx: '分段成長（精神 11 起）；見逐級表', f: function (v) { return sgn(getWisBlueBonus(v)); } }
       ] : [],
       cha: [
-        { h: '召喚段數', f: function (v) { return Math.max(1, Math.floor(Math.min(60, v) / 6)); } },
-        { h: '精靈隻數※', f: function (v) { return Math.min(7, 1 + Math.floor(Math.min(60, v) / 10)); } },
-        { h: '帶寵上限', f: function (v) { return Math.min(8, Math.floor(v / 7)); } }
+        { h: '召喚段數', fx: '魅力 ÷ 6（無條件捨去，最少 1；魅力以 60 計）', f: function (v) { return Math.max(1, Math.floor(Math.min(60, v) / 6)); } },
+        { h: '精靈隻數※', fx: '1 ＋ 魅力 ÷ 10（無條件捨去，最多 7；魅力以 60 計）', f: function (v) { return Math.min(7, 1 + Math.floor(Math.min(60, v) / 10)); } },
+        { h: '帶寵上限', fx: '魅力 ÷ 7（無條件捨去，最多 8）', f: function (v) { return Math.min(8, Math.floor(v / 7)); } }
       ]
     };
     var ORDER = ['str', 'dex', 'con', 'int', 'wis', 'cha'];
     var STAT_LABEL = { str: '💪 力量', dex: '🏹 敏捷', con: '❤️ 體質', int: '🔮 智力', wis: '🧠 精神', cha: '✨ 魅力' };
     var GROWTH_ROW = { con: '升級HP成長', wis: '升級MP成長' };   // 線性、無上限,獨立列出
+    var GROWTH_FX = { con: '(體質 − 8) × 職業成長率（騎士/龍騎士/戰士 1.5、法師/妖精 0.8、王族 0.75、黑暗妖精/幻術士 0.5），無上限', wis: '(精神 − 9) × 0.5，無上限' };   // 這兩個是線性公式（每級 HP/MP 額外成長），另有各職業固定每級成長不看屬性
     // 動態找封頂:輸出在哪個能力值起不再變化(掃到 130,與超高值相同的最小值即封頂點)
     function findCap(f) {
       try {
@@ -2338,9 +2340,18 @@
     var capSection = '<div class="m-wiki-sub">📊 各效果在多少能力值封頂</div>' +
       '<div class="m-wiki-note">練到「封頂於」的值後，再加就<b>不會再加這效果</b>（練過頭是浪費）；升級 HP／MP 成長例外、<b>無上限</b>。</div>' +
       '<div class="m-wiki-card">' + capTableHTML() + '</div>';
+    // 📐 換算公式：逐項列出每個效果「怎麼從能力值算出來」（線性給公式、分段查表的標分段+封頂），再附逐級表當精確值
+    function fxBlock(key) {
+      var cols = COLS[key] || [];
+      var items = cols.map(function (c) { return '<div class="m-wiki-desc" style="margin-top:3px;">・<b>' + esc(c.h) + '</b> ＝ ' + esc(c.fx || '見逐級表') + '</div>'; });
+      if (GROWTH_FX[key]) items.push('<div class="m-wiki-desc" style="margin-top:3px;">・<b>' + esc(GROWTH_ROW[key]) + '</b> ＝ ' + esc(GROWTH_FX[key]) + '</div>');
+      if (!items.length) return '';
+      return '<div class="m-wiki-sub" style="margin-top:6px;">📐 換算公式</div>' + items.join('');
+    }
     function statCard(s, i) {
+      var key = ORDER[i];
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
-      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + ((COLS[ORDER[i]] || []).length ? tbl(COLS[ORDER[i]]) : '') + '</div>';
+      return '<div class="m-wiki-card"><div class="m-wiki-name">' + esc(s.t) + '</div>' + lines + fxBlock(key) + ((COLS[key] || []).length ? tbl(COLS[key]) : '') + '</div>';
     }
     function capCard(s) {
       var lines = s.lines.map(function (l) { return '<div class="m-wiki-desc" style="margin-top:4px;">・' + l + '</div>'; }).join('');
