@@ -470,16 +470,20 @@
     var FAST_RESAMPLE_TICKS = 1200;   // 升級後重取樣:2 分鐘
     var FAST_MIN_KILLS = 8;           // 取樣至少殺 8 隻,平均殺速才勉強可信(低於此→延長,仍不足→全模擬)
     var FAST_GOOD_KILLS = 60;         // 樣本殺數低於此 → 平均殺速統計誤差偏大(~±13%),延長取樣一次收斂
-    var FAST_MIN_HP_PCT = 70;         // 取樣期間最低血量 % 低於此 → 有死亡風險,不快轉
+    var FAST_MIN_HP_PCT = 70;         // 血量安全門檻起點 %(取樣 + BOSS safe 共用):真模擬 done=0 時的門檻
+    var HP_FLOOR_ZERO_TICKS = 12000;  // 血量門檻「線性降到 0」的時點:真模擬連續存活滿 20 分鐘(12000 拍)沒死 → 門檻歸 0(之後一律切快速、BOSS 一律 safe)。撐過這段=打得過→完全信任;死了外層撞死即停,根本走不到門檻歸 0。
     var FAST_MIN_REMAIN = 6000;       // 取樣後剩不到 10 分鐘 → 全模擬本來就快,不值得切
     var fastEligible = !isClimb && !isObl && !isKing && totalTicks >= (FAST_SAMPLE_TICKS + FAST_MIN_REMAIN) && !_forceNoFast;
     _forceNoFast = false;   // 🧪 一次性:用過即歸零,不影響之後的真實離線結算
     var fastMode = false, fastOff = false;   // fastOff = 本次補跑永久退出快速段
+    // 血量安全門檻(取樣 + BOSS safe 共用):隨真模擬存活拍數 done 從 70% 線性降到 0(20 分鐘歸 0)。
+    //   即時用 done 算,故取樣評估、BOSS safe 判定各自用「當下」的門檻;越撐越信任,撐滿 20 分鐘完全放行。
+    function hpFloorNow() { return Math.max(0, (FAST_MIN_HP_PCT / 100) * (1 - done / HP_FLOOR_ZERO_TICKS)); }
     // 🐲 BOSS 策略(懶驗證):每「種」BOSS(按名字)第一次遇到 → 逐拍真模擬打到倒下,記錄實際耗時與安全度;
     //   之後同名 BOSS:安全的 → 即殺但時間按「該 BOSS 實測耗時」推進(不是小怪均速);對打時血量掉太深的 → 每次都真打。
     //   打輸=外層撞死即停;打不動=照實耗完時間。純 BOSS 圖因此自然接近全真模擬。
-    var fastBossUid = null, fastBossName = '', fastBossStart = 0, fastBossMinHp = 1;
-    var bossStats = {};   // {怪名: {ticks:實測耗時, safe:對打全程血量未低於安全線}}
+    var fastBossUid = null, fastBossName = '', fastBossStart = 0, fastBossMinHp = 1, fastBossKills0 = 0;
+    var bossStats = {};   // {怪名: {ticks:實測耗時, safe:對打全程血量未低於安全線, minor:對戰期間同場被清掉的小怪數}}
     var ticksPerKill = 0, consumePerTick = null, consumeAcc = null, buffSecAcc = 0;
     var sampleFrom = 0, sampleKills0 = 0, sampleCnt0 = null, sampleGain0 = null, sampleMinHp = 1;
     var sampleEnd = fastEligible ? FAST_SAMPLE_TICKS : Infinity, sampleGrew = false;
@@ -500,9 +504,12 @@
       sampleGain0 = {}; for (var k in gainTally) sampleGain0[k] = gainTally[k];
       sampleMinHp = 1;
     }
-    function evalSample() {   // 取樣窗結束:夠安全 → 進快速段;殺數不足 → 延長一次;仍不行/太危險 → 全模擬
+    function evalSample() {   // 取樣窗結束:夠安全 → 進快速段;殺數不足 → 延長一次;血量沒過(隨時間下降的)門檻 → 繼續真模擬觀察
       var kills = tallySum(killTally) - sampleKills0;
-      if (sampleMinHp < FAST_MIN_HP_PCT / 100) { fastOff = true; console.info('[AFK] 快速結算不啟用:取樣最低血量 ' + Math.round(sampleMinHp * 100) + '%(有死亡風險),全程真模擬。'); return; }
+      // 血量門檻隨真模擬存活拍數線性下降(hpFloorNow,70% → 20 分鐘歸 0):穩定低血但打不死的角色(吸血流卡低檔)
+      //   撐越久門檻越低,最晚 20 分鐘門檻歸 0 必過 → 不會整晚全模擬。done 在「尚未切快速」期間就等於真模擬存活拍數;
+      //   角色若真的會被磨死,取樣期間就死了、外層撞死即停,根本走不到這裡評估。
+      if (sampleMinHp < hpFloorNow()) { sampleGrew = false; beginSample(done); sampleEnd = done + FAST_SAMPLE_TICKS; return; }   // 沒過→再真模擬一段(那時門檻更低),直到過關或時間耗盡
       if (kills < FAST_GOOD_KILLS && !sampleGrew) { sampleGrew = true; sampleEnd = done + FAST_SAMPLE_TICKS * 2; return; }   // 殺數不足以收斂平均殺速 → 延長取樣(再 +10 分鐘)
       if (kills < FAST_MIN_KILLS) {
         fastOff = true; console.info('[AFK] 快速結算不啟用:取樣擊殺數太少(' + kills + '),樣本不可信,全程真模擬。'); return;
@@ -617,6 +624,20 @@
         return !mapState.mobs.some(function (x) { return x && x.uid === bossUid; });  // BOSS 已被 doTeleport 清掉 → 瞬移成功;仍在(被守衛擋下)→ 回 false 照打
       } catch (e) { return false; }
     }
+    function fastKillMinors(n) {   // 🐲 BOSS 秒殺時,補回「對戰那段時間同場被 AOE/傭兵/寵物清掉的小怪」收益。
+      //   只走 spawnMob→killMob→settleDeadMobs 拿真實掉落/經驗;不推進時間、不扣消耗品——那段時間與消耗已由呼叫端 fastAdvance(_bs.ticks) 一次涵蓋。
+      //   抽到 BOSS 就跳過(這輪只補小怪;主 BOSS 收益已由本體那隻計入,不重複打第二隻 BOSS)。
+      for (var e = 0; e < n; e++) {
+        try {
+          spawnMob(0);
+          var mm = mapState.mobs[0];
+          if (!mm) break;
+          if (mm.boss) { mapState.mobs[0] = null; continue; }
+          killMob(0);
+          settleDeadMobs();
+        } catch (e2) { break; }
+      }
+    }
     function fastKillOnce() {   // 快速段的一步:出一隻 → 即殺 → 清算;回 false = 退回全模擬
       try {
         spawnMob(0);
@@ -628,9 +649,10 @@
           if (_bs && _bs.safe) {
             killMob(0);
             settleDeadMobs();
+            fastKillMinors(_bs.minor || 0);   // 補回這隻 BOSS 對戰期間同場小怪的收益(時間/消耗由下方 fastAdvance 一次涵蓋)
             return fastAdvance(_bs.ticks);
           }
-          fastBossUid = _m0.uid; fastBossName = _m0.n || '?'; fastBossStart = done; fastBossMinHp = 1;
+          fastBossUid = _m0.uid; fastBossName = _m0.n || '?'; fastBossStart = done; fastBossMinHp = 1; fastBossKills0 = tallySum(killTally);   // 記真打起始殺數 → 倒下時算對戰期間清掉的小怪數
           console.info('[AFK] ⚔ 快速結算遇到 BOSS「' + fastBossName + '」(首次)→ 切回真模擬對打,倒下後同名 BOSS 才可快轉。');
           return true;   // 不推進時間、不扣消耗品——接下來的真模擬拍會照實計
         }
@@ -660,9 +682,10 @@
               if (!_bm || _bm._dead || _bm.uid !== fastBossUid) {   // BOSS 倒下(或場面被重置)→ 記錄實測耗時/安全度,回快速段
                 fastBossUid = null;
                 var _durB = Math.max(1, done - fastBossStart);
-                var _safeB = fastBossMinHp >= FAST_MIN_HP_PCT / 100;
-                bossStats[fastBossName] = { ticks: _durB, safe: _safeB };
-                console.info('[AFK] ⚔ BOSS「' + fastBossName + '」倒下:實測 ' + Math.round(_durB) + ' 拍' + (_safeB ? ',之後同名 BOSS 即殺、時間按此推進。' : ',對打時血量偏低(' + Math.round(fastBossMinHp * 100) + '%) → 之後每次都真打。'));
+                var _safeB = fastBossMinHp >= hpFloorNow();   // 安全線跟取樣共用同一條門檻(隨存活時間降到 0):撐滿 20 分鐘後 BOSS 首遇打得贏就 safe → 秒殺
+                var _minorB = Math.max(0, (tallySum(killTally) - fastBossKills0) - 1);   // 對戰期間總殺數 − BOSS 本身 1 = 同場被 AOE/傭兵/寵物清掉的小怪數
+                bossStats[fastBossName] = { ticks: _durB, safe: _safeB, minor: _minorB };
+                console.info('[AFK] ⚔ BOSS「' + fastBossName + '」倒下:實測 ' + Math.round(_durB) + ' 拍、同場小怪 ' + _minorB + ' 隻' + (_safeB ? ',之後同名 BOSS 即殺、時間按此推進並補回小怪。' : ',對打時血量偏低(' + Math.round(fastBossMinHp * 100) + '%) → 之後每次都真打。'));
               }
               if (fastBossUid == null && player.lv !== lastLv) {   // BOSS 經驗大,常直接升級 → 重新取樣殺速
                 lastLv = player.lv;
