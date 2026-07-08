@@ -56,7 +56,7 @@
 | `afk-toast.js` | 手機 toast 提示(只手機;包 `logSys`,把「點擊事件同步窗內」呼叫的訊息浮現成 toast;戰鬥/掛機 tick 的訊息不在點擊窗內故不洗頻;無必須 DOM 掛點) |
 | `afk-statpts.js` | 能力值面板每個屬性下補一行「點數來源分解」(始/升/藥/總,不含裝備;monkey-patch `updateUI` 後插入;讀 `player.base/alloc/panacea`) |
 | `afk-syncinfo.js` | 首頁顯示「原作者:秋玥(正版連結)· 加掛版 vX.Y.Z」+ 巴哈討論串/Line 連結(顯示在 `#main-menu`;版本號讀根目錄 `version.json` 的 `app` 欄位,讀不到只藏版本列;檔名是「同步時間」時代的歷史名稱,沿用不改) |
-| `afk-ui.js` | 統一自製彈窗:全域接管 `window.alert` 成非阻塞深色卡片(iOS Safari 會抑制連續原生 alert);並提供 `window.AFK_UI.openLayer/closeLayer` 共用「返回鍵/ESC 關最上層 modal」管理器(小百科/掉落查詢有自己一套等效實作,不共用) |
+| `afk-ui.js` | 統一自製彈窗:全域接管 `window.alert` 成非阻塞深色卡片(iOS Safari 會抑制連續原生 alert);並提供 `window.AFK_UI.openLayer/closeLayer` 共用「返回鍵/ESC 關最上層 modal」管理器(小百科/掉落查詢有自己一套等效實作,不共用);另提供 **`AFK_UI.confirm({title,message,okText,cancelText,danger,onOk,onCancel})`** 共用確認彈窗(非阻塞、callback 分派;確定→onOk,取消/背景/ESC/返回鍵→onCancel;取代原生 confirm。要做「確認才執行」的功能一律用它) |
 | `afk-autobuy.js` | 外掛自動購買(設定面板「自動買銀箭」下方注入:肉耗盡自動買、魔法屏障卷軸自動補貨;包 `tick()` 低於門檻照商店價補;設定依存檔位存 `afk_autobuy_*_<slot>`;離線結算共用同一套 tick 邏輯,並暴露 `window.__afkAutobuyCheck` 供離線快速結算呼叫) |
 | `afk-pwa.js` | PWA「安裝成免網路遊玩」+ 自動/手動更新 + 背景預抓離線資源(首頁 `#main-menu`:未安裝顯示文字連結、iOS 跳文字引導;**已安裝(standalone)** 顯示 checkbox「自動更新至最新版本」預設打勾,沒勾且有新版才顯示「更新至最新版」連結+確認視窗;安裝後背景把 `assets/` 全抓進圖桶顯示進度。`<head>` 的 manifest/圖示/theme-color 用 JS 注入。SW 註冊沿用 afk-sw.js,本檔只管觀察更新/UI/預抓) |
 | `afk-storage.js` | 首頁「⚙ 設定」鈕 → 展開選單(`MENU_ITEMS` 可擴充,afk-history 也註冊進來)→ 檢查存檔大小(唯讀列出 localStorage 各 key 用量與 ~5MB 上限比例) |

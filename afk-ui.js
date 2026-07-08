@@ -126,3 +126,95 @@
 
   console.log('[AFK-ui] hooks OK(window.alert 已接管為自製彈窗)');
 })();
+
+// ── 共用「確認彈窗」AFK_UI.confirm(opts) ─────────────────────────────
+//   opts:{ title, message, okText='確定', cancelText='取消', danger=false, onOk, onCancel }
+//   非阻塞(confirm 無法同步回傳,故用 callback):確定→onOk();取消/點背景/ESC/返回鍵→onCancel()。
+//   深色雙鈕卡片,沿用 alert 卡片樣式;透過 AFK_UI.openLayer 壓一層→手機返回鍵/ESC 視為取消。
+//   優雅降級:document.body 未就緒退回原生 confirm。
+(function () {
+  var U = (window.AFK_UI = window.AFK_UI || {});
+  var modal = null, titleEl, msgEl, okBtn, cancelBtn, layer = null, showing = false, cb = {}, pendingOk = false;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function injectCss() {
+    if (document.getElementById('afk-confirm-css')) return;
+    var s = document.createElement('style');
+    s.id = 'afk-confirm-css';
+    s.textContent = [
+      '#afk-confirm-modal{display:none;position:fixed;inset:0;z-index:10001;background:rgba(2,6,23,0.7);align-items:center;justify-content:center;padding:24px;}',
+      '#afk-confirm-modal.open{display:flex;}',
+      '#afk-confirm-card{width:min(380px,92vw);background:#0f172a;border:1px solid #334155;border-radius:12px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);}',
+      '#afk-confirm-title{color:#f8fafc;font-size:16px;font-weight:bold;text-align:center;margin-bottom:10px;}',
+      '#afk-confirm-msg{color:#cbd5e1;font-size:14px;line-height:1.7;text-align:center;margin-bottom:18px;word-break:break-word;}',
+      '#afk-confirm-btns{display:flex;gap:10px;}',
+      '.afk-confirm-btn{flex:1;padding:11px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;border:1px solid;}',
+      '#afk-confirm-cancel{border-color:#475569;background:#334155;color:#e2e8f0;}',
+      '#afk-confirm-cancel:active{background:#1e293b;}',
+      '#afk-confirm-ok{border-color:#d97706;background:#b45309;color:#fff;}',
+      '#afk-confirm-ok:active{background:#92400e;}',
+      '#afk-confirm-ok.danger{border-color:#dc2626;background:#b91c1c;}',
+      '#afk-confirm-ok.danger:active{background:#991b1b;}'
+    ].join('');
+    (document.head || document.documentElement).appendChild(s);
+  }
+  function build() {
+    injectCss();
+    modal = document.createElement('div');
+    modal.id = 'afk-confirm-modal';
+    modal.innerHTML =
+      '<div id="afk-confirm-card">' +
+        '<div id="afk-confirm-title"></div>' +
+        '<div id="afk-confirm-msg"></div>' +
+        '<div id="afk-confirm-btns">' +
+          '<button id="afk-confirm-cancel" class="afk-confirm-btn" type="button"></button>' +
+          '<button id="afk-confirm-ok" class="afk-confirm-btn" type="button"></button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    titleEl = modal.querySelector('#afk-confirm-title');
+    msgEl = modal.querySelector('#afk-confirm-msg');
+    okBtn = modal.querySelector('#afk-confirm-ok');
+    cancelBtn = modal.querySelector('#afk-confirm-cancel');
+    okBtn.addEventListener('click', function () { closeWith(true); });
+    cancelBtn.addEventListener('click', function () { closeWith(false); });
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeWith(false); });   // 點背景=取消
+  }
+  // 主動關(按鈕/背景):記下結果→走 AFK_UI 退一格歷史並觸發 doClose;doClose 依 pendingOk 分派 onOk/onCancel
+  function closeWith(ok) {
+    if (!showing) return;
+    pendingOk = ok;
+    if (layer && U.closeLayer) U.closeLayer(layer); else doClose();
+  }
+  // 實際收起(由 AFK_UI 於返回鍵/ESC/closeLayer 呼叫;返回鍵/ESC 未經 closeWith→pendingOk 維持 false=取消)
+  function doClose() {
+    if (!showing) return;
+    showing = false;
+    modal.classList.remove('open');
+    var ok = pendingOk, fn = ok ? cb.onOk : cb.onCancel;
+    layer = null; cb = {}; pendingOk = false;
+    if (typeof fn === 'function') { try { fn(); } catch (e) {} }
+  }
+  U.confirm = function (opts) {
+    opts = opts || {};
+    if (!document.body) {   // 極早期(body 未就緒)退回原生 confirm
+      if (window.confirm((opts.title ? opts.title + '\n' : '') + (opts.message || ''))) { if (opts.onOk) opts.onOk(); }
+      else { if (opts.onCancel) opts.onCancel(); }
+      return;
+    }
+    if (!modal) build();
+    if (showing) return;   // 一次只顯示一個
+    showing = true; pendingOk = false;
+    cb = { onOk: opts.onOk, onCancel: opts.onCancel };
+    titleEl.innerHTML = esc(opts.title || '確認');
+    titleEl.style.display = (opts.title === '') ? 'none' : '';
+    msgEl.innerHTML = esc(opts.message || '').replace(/\n/g, '<br>');
+    okBtn.textContent = opts.okText || '確定';
+    cancelBtn.textContent = opts.cancelText || '取消';
+    okBtn.classList.toggle('danger', !!opts.danger);
+    modal.classList.add('open');
+    layer = U.openLayer ? U.openLayer(doClose) : null;   // ESC/返回鍵/背景=取消
+    try { okBtn.focus(); } catch (e) {}
+  };
+})();

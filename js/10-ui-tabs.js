@@ -1811,6 +1811,7 @@ function renderSquadPanel() {
                 <div class="flex items-center gap-1"><span class="text-red-400 text-xs text-right" style="width:1.6rem;">HP</span><div class="bar-bg flex-1 !h-4"><div id="squad-hp-${s}" class="bar-fill bg-red-600" style="width:100%"></div><div id="squad-hp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0/0</div></div></div>
                 <div class="flex items-center gap-1"><span class="text-blue-400 text-xs text-right" style="width:1.6rem;">MP</span><div class="bar-bg flex-1 !h-4"><div id="squad-mp-${s}" class="bar-fill bg-blue-600" style="width:100%"></div><div id="squad-mp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0/0</div></div></div>
                 <div class="flex items-center gap-1"><span class="text-yellow-500 text-xs text-right" style="width:1.6rem;">EXP</span><div class="bar-bg flex-1 !h-4"><div id="squad-exp-${s}" class="bar-fill bg-yellow-500" style="width:0%"></div><div id="squad-exp-txt-${s}" class="bar-text text-white text-xs" style="line-height:16px;">0%</div></div></div>
+                <button onclick="switchToAllyChar('${s}')" class="mt-0.5 py-1 px-2 text-xs font-bold rounded border whitespace-nowrap" style="background:#065f46;border-color:#10b981;color:#a7f3d0;" title="儲存目前角色進度，並切換到此角色遊玩">💾 存檔並切換至此角色</button>
             </div>`;
         }).join('');
         document.getElementById('squad-tab-skill').innerHTML = allies.map(a => {
@@ -1893,6 +1894,25 @@ function switchSquadTab(t) {
 }
 
 function _findAlly(slot) { return (player.allies || []).find(a => a && String(a._slot) === String(slot)); }
+// 💾 存檔目前角色並切換到指定協力角色(存檔位)遊玩；確認走共用 AFK_UI.confirm（非原生 confirm，AFK_UI 不在才降級）
+function switchToAllyChar(slot) {
+    slot = String(slot);
+    let a = _findAlly(slot);
+    let sum = (typeof slotSummary === 'function') ? slotSummary(slot) : null;
+    if (!sum) { alert('存檔 ' + slot + ' 目前沒有可切換的角色。'); return; }
+    let who = a ? a._allyName : (sum.name || ('存檔 ' + slot));
+    let msg = '將先儲存目前角色的進度，再切換到「' + who + '」（' + (sum.cls || '') + ' Lv.' + (sum.lv || 1) + '）遊玩。\n確定要切換嗎？';
+    let doSwitch = function () {
+        saveGame();          // 先存目前角色（此時 currentSlot 仍為目前角色）
+        currentSlot = slot;  // 切到目標存檔位
+        loadGame();          // 載入該角色並切換畫面（同載入畫面「載入」路徑）
+    };
+    if (window.AFK_UI && typeof AFK_UI.confirm === 'function') {
+        AFK_UI.confirm({ title: '切換角色', message: msg, okText: '存檔並切換', cancelText: '取消', onOk: doSwitch });
+    } else if (confirm(msg)) {
+        doSwitch();
+    }
+}
 function setAllyAtkSkill(slot, val) { let a = _findAlly(slot); if (a) { a._atkSkill = val || ''; saveGame(); } }   // _atkSkill 即時生效（傭兵攻擊路徑直接讀 ally._atkSkill）
 function setAllyHealSkill(slot, val) { let a = _findAlly(slot); if (a) { a._healSkill = val || ''; saveGame(); } }   // _healSkill 儲存待 Phase 3 傭兵自動補血讀取
 function setAllyConvertSkill(slot, val) { let a = _findAlly(slot); if (a) { a._convertSkill = val || ''; saveGame(); } }   // 🔄 v2.6.4 轉換技能（type:'convert'／立方和諧）：即時生效（allyCubeTick/轉換施放路徑直接讀 ally._convertSkill）
