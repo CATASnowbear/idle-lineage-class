@@ -230,9 +230,10 @@ function summonElementDamage(dice, ele, t, flatBonus, mult) {
 // ===== 協力角色：讀取其他存檔位(非當前)的角色，以其真實戰力(等級/能力/裝備)一起作戰 =====
 function allySlotList() { let a = []; for (let n = 1; n <= SAVE_SLOT_MAX; n++) if (String(n) !== String(currentSlot)) a.push(String(n)); return a; }   // 🔧 可招募自身以外的所有存檔位（格數＝SAVE_SLOT_MAX·定義於 js/13；同時上場上限：一般 3、王族 3＋魅力/15 封頂 7，見 allyActiveCap）
 const ALLY_ACTIVE_MAX = 3;   // 🔧 協力傭兵同時上場上限（一般職業，不論存檔格數多少最多 3 名；王族另有上限見 allyActiveCap）
-function allyActiveCap() { return (player && player.cls === 'royal') ? Math.min(7, 3 + Math.floor((((player.d && player.d.cha) || 0)) / 15)) : ALLY_ACTIVE_MAX; }   // 👑 王族：同時上場 3＋魅力/15、封頂 7（依最終魅力 player.d.cha；魅力 60→7）；其餘職業＝ALLY_ACTIVE_MAX(3)。2026-07-08 依使用者要求復原此上限（v2.5.4 曾取消）；royalAllyMult 魅力加成保留（王族＝帶更多＋帶更強）
-// 👑 王族魅力加成：王族攜帶的傭兵與項圈夥伴 造成傷害/HP/MP ×(1+魅力/100)（非王族＝×1）。讀主玩家 player.d.cha（六維效果上限 80→最高 ×1.8）。
-function royalAllyMult() { return (player && player.cls === 'royal') ? (1 + (((player.d && player.d.cha) || 0)) / 100) : 1; }
+function allyActiveCap() { return (player && player.cls === 'royal') ? Math.min(7, 3 + Math.floor((((player.d && player.d.cha) || 0)) / 15)) : ALLY_ACTIVE_MAX; }   // 👑 王族：同時上場 3＋魅力/15、封頂 7（依最終魅力 player.d.cha；魅力 60→7）；其餘職業＝ALLY_ACTIVE_MAX(3)。2026-07-08 依使用者要求復原此上限（v2.5.4 曾取消），並改回「王族＝帶更多傭兵」的舊平衡：同時停用下方 royalAllyMult 魅力加成
+// 👑 王族魅力加成（傭兵/項圈夥伴 傷害·HP·MP ×(1+魅力/100)）— 2026-07-08 已停用：復原「王族可帶最多 7 傭兵」的舊平衡後拿掉此加成（使用者要求）。
+//   保留函式回傳 1（下方所有 `* royalAllyMult()` 呼叫點自動變 ×1 無作用、HP/MP 快照 `_rm !== 1` 判斷自動略過）；要恢復加成把 return 1 換回 (1 + player.d.cha/100) 即可。
+function royalAllyMult() { return 1; }
 function isAllyActive(slotN) { return !!(player.allies && player.allies.some(a => a && a._slot === String(slotN))); }
 // 由存檔位建立協力角色：載入該存檔 player → 暫時切換全域 player 跑 calcStats 取得真實衍生戰力 → 還原
 // 協力顯示名稱：有取名→角色名；否則用職業中文（騎士/法師/妖精）
