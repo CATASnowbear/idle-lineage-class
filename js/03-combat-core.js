@@ -2,11 +2,11 @@
 // 以「HP-delta 歸因」量測各來源每秒輸出：在 tick 各攻擊階段前後快照在場怪 curHp，差值歸給該階段來源。
 // 來源：player（玩家·含自動施法/持續增益/中毒出血 DoT）、summon（玩家召喚/迷魅/幻術立方）、pet（項圈夥伴）、
 //       per-ally（每個傭兵獨立·key=存檔槽 _slot）。累積傷害÷觀測秒數＝DPS。換地圖/重置歸零（auditReset→_dpsReset），非存檔。
-let _dps = { player: 0, summon: 0, pet: 0, allies: {} };
+let _dps = { player: 0, summon: 0, pet: 0, allies: {}, ms: 0 };   // ms＝有效觀測毫秒（只累計「非快轉的即時 tick」）：分子在快轉時跳過不累積，分母也只數同一段時間，否則分頁背景化(setInterval 節流→補跑)一陣子回來，牆鐘分母被灌大、DPS 顯示被稀釋到趨近 0
 let _dpsAllyTurn = false;   // alliesTick 逐傭兵量測期間為 true：令 _allyDamageMob 不重複計入（回合內輸出已被該傭兵 HP-delta 涵蓋），僅「反擊/居合」等回合外輸出才由 _allyDamageMob 直接歸因
-function _dpsReset() { _dps = { player: 0, summon: 0, pet: 0, allies: {} }; }
+function _dpsReset() { _dps = { player: 0, summon: 0, pet: 0, allies: {}, ms: 0 }; }
 function _dpsSnap() {   // 快照在場（未死）怪物 curHp（依索引；tick 內怪物陣列不位移→索引穩定）
-    if (state.ff) return null;   // 🚀 快轉(離線/背景補跑)：DPS 統計純顯示用,整段跳過（_dpsDealt 對 null 快照回 0）。分母是牆鐘時間,快轉不累積傷害反而避免離線傷害灌爆 DPS 顯示
+    if (state.ff) return null;   // 🚀 快轉(離線/背景補跑)：DPS 統計純顯示用,整段跳過（_dpsDealt 對 null 快照回 0）。分母 _dps.ms 同樣不在快轉累計,兩邊一致
     if (typeof mapState === 'undefined' || !mapState || !mapState.mobs) return null;
     return mapState.mobs.map(m => (m && !m._dead) ? (m.curHp || 0) : null);
 }
@@ -50,6 +50,7 @@ function gameLoop() {
     if(n === 1) {           // 正常情況：每 100ms 跑一個 tick
         // 🔧 前景即時遊玩不顯示金幣（金幣不逐殺輸出，也不在即時累積）；金幣僅於背景補跑回來時由 flushAwaySummary 彙整顯示。
         flushAwaySummary(); // 回到即時：若先前累積了補跑所得，於此統一輸出一次
+        _dps.ms += TICK_MS;   // 🎯 DPS 有效觀測時間：只數即時 tick（快轉補跑不數，與 _dpsSnap 的 ff 跳過同步）
         state.inTick = true;   // 🔧 架構#2：tick 期間的擊殺只標記，結束後統一清算
         try { tick(); } finally { state.inTick = false; settleDeadMobs(); }
         flushTickRender();   // 🚀 重繪合併：把本 tick 內累積的 updateUI/renderMobs 統一重繪一次

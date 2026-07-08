@@ -60,8 +60,10 @@ function renderAuditTab() {
         let c = _audit.watchCnt[t] || 0;
         return `<div class="flex justify-between items-center bg-slate-800/60 rounded px-2 py-1"><span>🎯 ${t}：<b class="${c>0?'text-green-400':'text-slate-300'}">${c}</b> 個</span><button onclick="auditRemoveIdx(${i})" class="btn px-2 py-0.5 text-xs bg-red-900 border-red-700 text-red-200">移除</button></div>`;
     }).join('') : '<div class="text-slate-500 text-sm">尚無追蹤目標，於下方輸入物品名稱（模糊比對）新增。</div>';
-    // 🎯 DPS 統計：玩家／每個傭兵／召喚／夥伴（本圖累積傷害÷觀測秒數），水平長條圖
-    let _dpsSecs = Math.max(0.001, (Date.now() - _audit.start) / 1000);
+    // 🎯 DPS 統計：玩家／每個傭兵／召喚／夥伴（本圖累積傷害÷有效觀測秒數），水平長條圖
+    // 分母用 _dps.ms（只累計非快轉的即時 tick）而非牆鐘時間：傷害在快轉(背景分頁補跑)時不累積，
+    // 若分母照算牆鐘,分頁背景化一陣子回來 DPS 會被稀釋到趨近 0。經驗/金幣在快轉照樣累積,故上方 /10分 仍用牆鐘。
+    let _dpsSecs = Math.max(0.001, (_dps.ms || 0) / 1000);
     let _dpsRows = [{ name: '玩家', dps: (_dps.player || 0) / _dpsSecs, color: '#38bdf8' }];   // 玩家＝天藍
     if (typeof player !== 'undefined' && player && Array.isArray(player.allies)) {
         player.allies.forEach(a => {
