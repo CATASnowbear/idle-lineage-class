@@ -796,25 +796,21 @@ function autoActions() {
             } else if (state._autoBossHunt === 2 && (state.ticks || 0) < (state._autoBossHuntUntil || 0)) {
                 // 剛瞬移、BOSS 尚未生成→等待，不重複瞬移
             } else {
-                let done = false;
-                if (player.skills && player.skills.includes('sk_teleport')) {   // 先用傳送術（有 MP），比照手動瞬移
-                    let _sk = DB.skills.sk_teleport;
-                    if (player.mp >= player.d.getMpCost(_sk.mp, _sk.tier)) { manualCast('sk_teleport'); done = true; }
-                }
-                if (!done) {   // 無傳送術／MP 不足→用瞬間移動卷軸（非 silent＝持戒指強制遇 BOSS）；缺卷軸時比照逃離用同一個自動購買勾選
-                    let item = player.inv.find(i => i.id === 'scroll_teleport');
-                    if (!item) {
-                        let buyChk = document.getElementById('set-auto-buy-teleport');
-                        let _tpCost = shopPrice(DB.items.scroll_teleport.p);
-                        if (buyChk && buyChk.checked && player.gold >= _tpCost) {
-                            player.gold -= _tpCost;
-                            gainItem('scroll_teleport', 1, true, true);
-                            item = player.inv.find(i => i.id === 'scroll_teleport');
-                        }
+                // 一律用瞬間移動卷軸（非 silent＝持戒指強制遇 BOSS）；缺卷軸時比照逃離用同一個自動購買勾選
+                let item = player.inv.find(i => i.id === 'scroll_teleport');
+                if (!item) {
+                    let buyChk = document.getElementById('set-auto-buy-teleport');
+                    let _tpCost = shopPrice(DB.items.scroll_teleport.p);
+                    if (buyChk && buyChk.checked && player.gold >= _tpCost) {
+                        player.gold -= _tpCost;
+                        gainItem('scroll_teleport', 1, true, true);
+                        item = player.inv.find(i => i.id === 'scroll_teleport');
                     }
-                    if (item) { useItem(item.uid, false); done = true; }
                 }
-                if (done) { state._autoBossHunt = 2; state._autoBossHuntUntil = (state.ticks || 0) + 100; }   // 進入「等待 BOSS 生成」
+                if (item) {
+                    useItem(item.uid, false);
+                    state._autoBossHunt = 2; state._autoBossHuntUntil = (state.ticks || 0) + 100;   // 進入「等待 BOSS 生成」
+                }
             }
         }
     }
